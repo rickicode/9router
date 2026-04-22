@@ -517,71 +517,74 @@ export default function ProviderLimits() {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-sm shadow-sm px-4 py-4 space-y-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-3 min-w-0">
-            <div>
-              <h2 className="text-xl font-semibold text-text-primary">
-                Provider Limits
-              </h2>
-              <p className="mt-1 text-sm text-text-muted">
-                Read-only observer of backend-maintained shared quota state.
-              </p>
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-xl font-semibold text-text-primary">
+              Provider Limits
+            </h2>
+            <p className="mt-1 text-sm text-text-muted">
+              Read-only observer of backend-maintained shared quota state.
+            </p>
+          </div>
+
+          <div className="space-y-2 text-xs text-text-muted">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-2.5 py-1">
+                {sortedConnections.length} matching {sortedConnections.length === 1 ? "connection" : "connections"}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-2.5 py-1">
+                {activeWithLimits} with quota data
+              </span>
             </div>
 
-            <div className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 ${schedulerTone.surface}`}>
-              <span className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${schedulerTone.tone} ${schedulerStatus?.status === "running" ? "animate-spin" : schedulerStatus?.restartRequested ? "animate-pulse" : ""}`}>
-                {schedulerTone.icon}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+                {canonicalStatusCounts.eligible} eligible
               </span>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className={`text-sm font-medium ${schedulerTone.tone}`}>
-                    {schedulerTone.label}
-                  </span>
-                  {schedulerLastUpdated && (
-                    <span className="text-xs text-text-muted">
-                      updated {getRelativeTime(schedulerLastUpdated)}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs leading-5 text-text-muted">
-                  {schedulerMessage}
-                </p>
-                {(schedulerStatus?.nextScheduledAt || schedulerStatus?.currentRun?.trigger) && (
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-muted">
-                    {schedulerStatus?.currentRun?.trigger && (
-                      <span>Trigger: {schedulerStatus.currentRun.trigger}</span>
-                    )}
-                    {schedulerStatus?.nextScheduledAt && (
-                      <span>Next sweep {getRelativeTime(schedulerStatus.nextScheduledAt)}</span>
-                    )}
-                  </div>
-                )}
-              </div>
+              <span className="inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-300">
+                {canonicalStatusCounts.exhausted} exhausted
+              </span>
+              <span className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-700 dark:text-red-300">
+                {canonicalStatusCounts.blocked} blocked
+              </span>
+              <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-2.5 py-1">
+                {canonicalStatusCounts.disabled} disabled
+              </span>
+              <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-2.5 py-1">
+                {canonicalStatusCounts.unknown} unknown
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {sortedConnections.length} matching {sortedConnections.length === 1 ? "connection" : "connections"}
+          <div className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 ${schedulerTone.surface}`}>
+            <span className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${schedulerTone.tone} ${schedulerStatus?.status === "running" ? "animate-spin" : schedulerStatus?.restartRequested ? "animate-pulse" : ""}`}>
+              {schedulerTone.icon}
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {activeWithLimits} with quota data
-            </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {canonicalStatusCounts.eligible} eligible
-            </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {canonicalStatusCounts.exhausted} exhausted
-            </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {canonicalStatusCounts.blocked} blocked
-            </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {canonicalStatusCounts.disabled} disabled
-            </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
-              {canonicalStatusCounts.unknown} unknown
-            </span>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className={`text-sm font-medium ${schedulerTone.tone}`}>
+                  {schedulerTone.label}
+                </span>
+                {schedulerLastUpdated && (
+                  <span className="text-xs text-text-muted">
+                    updated {getRelativeTime(schedulerLastUpdated)}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs leading-5 text-text-muted">
+                {schedulerMessage}
+              </p>
+              {(schedulerStatus?.nextScheduledAt || schedulerStatus?.currentRun?.trigger) && (
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-muted">
+                  {schedulerStatus?.currentRun?.trigger && (
+                    <span>Trigger: {schedulerStatus.currentRun.trigger}</span>
+                  )}
+                  {schedulerStatus?.nextScheduledAt && (
+                    <span>Next sweep {getRelativeTime(schedulerStatus.nextScheduledAt)}</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
