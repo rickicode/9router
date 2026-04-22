@@ -48,6 +48,39 @@ const DEFAULT_SETTINGS = {
   rtkEnabled: false,
 };
 
+const CANONICAL_STATUS_KEYS = ["routingStatus", "healthStatus", "quotaState", "authState"];
+
+function hasCanonicalStatus(connection = {}) {
+  return CANONICAL_STATUS_KEYS.some((key) => connection?.[key] !== undefined && connection?.[key] !== null);
+}
+
+function buildEligibilityRecoveryPatch() {
+  const now = new Date().toISOString();
+  return {
+    routingStatus: "eligible",
+    healthStatus: "healthy",
+    quotaState: "ok",
+    authState: "ok",
+    reasonCode: "unknown",
+    reasonDetail: null,
+    nextRetryAt: null,
+    resetAt: null,
+    testStatus: "active",
+    lastError: null,
+    lastErrorType: null,
+    lastErrorAt: null,
+    rateLimitedUntil: null,
+    errorCode: null,
+    backoffLevel: 0,
+    lastCheckedAt: now,
+    lastTested: now,
+  };
+}
+
+function shouldSeedEligibility(connection = {}) {
+  return connection?.isActive !== false && !hasCanonicalStatus(connection);
+}
+
 function normalizeQuotaExhaustedThresholdPercent(value) {
   if (!Number.isFinite(value)) return DEFAULT_SETTINGS.quotaExhaustedThresholdPercent;
   return Math.min(100, Math.max(0, value));
@@ -118,6 +151,14 @@ function ensureDbShape(data) {
   const defaults = cloneDefaultData();
   const next = data && typeof data === "object" ? data : {};
   let changed = false;
+
+  if (Array.isArray(next.providerConnections)) {
+    for (const connection of next.providerConnections) {
+      if (!shouldSeedEligibility(connection)) continue;
+      Object.assign(connection, buildEligibilityRecoveryPatch());
+      changed = true;
+    }
+  }
 
   for (const [key, defaultValue] of Object.entries(defaults)) {
     if (next[key] === undefined || next[key] === null) {
@@ -458,6 +499,11 @@ export async function createProviderConnection(data) {
       ...data,
       updatedAt: now,
     };
+
+    if (shouldSeedEligibility(db.data.providerConnections[existingIndex])) {
+      Object.assign(db.data.providerConnections[existingIndex], buildEligibilityRecoveryPatch());
+    }
+
     await safeWrite(db);
     return db.data.providerConnections[existingIndex];
   }
@@ -511,6 +557,10 @@ export async function createProviderConnection(data) {
 
   if (data.providerSpecificData && Object.keys(data.providerSpecificData).length > 0) {
     connection.providerSpecificData = data.providerSpecificData;
+  }
+
+  if (shouldSeedEligibility(connection)) {
+    Object.assign(connection, buildEligibilityRecoveryPatch());
   }
 
   db.data.providerConnections.push(connection);
@@ -567,6 +617,10 @@ export async function updateProviderConnection(id, data) {
     ...data,
     updatedAt: new Date().toISOString(),
   };
+
+  if (shouldSeedEligibility(db.data.providerConnections[index])) {
+    Object.assign(db.data.providerConnections[index], buildEligibilityRecoveryPatch());
+  }
 
   if (!canUseRedisForHotState) {
     await safeWrite(db);

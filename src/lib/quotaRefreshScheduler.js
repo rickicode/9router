@@ -244,6 +244,7 @@ export class QuotaRefreshScheduler {
       let skippedCount = 0;
       const batchSize = Math.max(1, this.settings.batchSize || 1);
 
+      const sweepConcurrency = 3;
       for (let index = 0; index < dueEntries.length; index += batchSize) {
         const batch = dueEntries.slice(index, index + batchSize);
         const currentBatchStart = index + 1;
@@ -259,38 +260,36 @@ export class QuotaRefreshScheduler {
           currentBatchEnd,
         });
 
-        for (const entry of batch) {
-          const connection = entry?.connection;
-          if (!connection) {
-            skippedCount += 1;
+        for (let batchOffset = 0; batchOffset < batch.length; batchOffset += sweepConcurrency) {
+          const chunk = batch.slice(batchOffset, batchOffset + sweepConcurrency);
+          const chunkResults = await Promise.all(chunk.map(async (entry) => {
+            const connection = entry?.connection;
+            if (!connection) {
+              return { type: "skipped" };
+            }
+
+            try {
+              const usage = await getUsageForProvider(connection);
+              await applyCanonicalUsageRefresh(connection, usage, {
+                globalExhaustedThreshold: this.quotaExhaustedThresholdPercent,
+              });
+              return { type: "success" };
+            } catch (error) {
+              this.logger.error?.(
+                `[QuotaRefreshScheduler] Refresh failed | connectionId=${connection.id} | provider=${connection.provider}`,
+                error
+              );
+              return { type: "error" };
+            }
+          }));
+
+          for (const result of chunkResults) {
+            if (result.type === "success") successCount += 1;
+            else if (result.type === "error") errorCount += 1;
+            else skippedCount += 1;
             completedCount += 1;
-            this.state.updateProgress({
-              totalCount,
-              completedCount,
-              successCount,
-              errorCount,
-              skippedCount,
-              currentBatchStart,
-              currentBatchEnd,
-            });
-            continue;
           }
 
-          try {
-            const usage = await getUsageForProvider(connection);
-            await applyCanonicalUsageRefresh(connection, usage, {
-              globalExhaustedThreshold: this.quotaExhaustedThresholdPercent,
-            });
-            successCount += 1;
-          } catch (error) {
-            errorCount += 1;
-            this.logger.error?.(
-              `[QuotaRefreshScheduler] Refresh failed | connectionId=${connection.id} | provider=${connection.provider}`,
-              error
-            );
-          }
-
-          completedCount += 1;
           this.state.updateProgress({
             totalCount,
             completedCount,

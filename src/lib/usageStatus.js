@@ -342,6 +342,21 @@ export function getUsageStatusUpdates(connection, usage, options = {}) {
   const base = getHealthyUsageStatusUpdates(usage);
   const liveSignal = options.liveSignal || null;
   const nowIso = options.observedAt || new Date().toISOString();
+  const usageMessage = typeof usage?.message === "string" ? usage.message : "";
+  const authBlockedPatch = getConnectionAuthBlockedPatch(usageMessage, {
+    lastCheckedAt: nowIso,
+    statusCode: connection?.provider === "codex" && /\((\d{3})\)/.test(usageMessage)
+      ? Number(usageMessage.match(/\((\d{3})\)/)?.[1])
+      : null,
+  });
+
+  if (authBlockedPatch) {
+    return {
+      ...base,
+      ...authBlockedPatch,
+      usageSnapshot: JSON.stringify(usage || {}),
+    };
+  }
 
   if (liveSignal?.kind === "quota_exhausted" && connection?.provider === "codex") {
     return {

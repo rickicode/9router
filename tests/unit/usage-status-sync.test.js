@@ -284,6 +284,29 @@ describe("usage request status sync", () => {
     );
   });
 
+  it("does not promote Codex 401 unavailable responses to eligible", async () => {
+    const { applyCanonicalUsageRefresh } = await import("../../src/lib/usageStatus.js");
+
+    await applyCanonicalUsageRefresh({ id: "conn-codex-401", provider: "codex" }, {
+      message: "Codex connected. Usage API temporarily unavailable (401).",
+    });
+
+    expect(writeConnectionHotState).toHaveBeenCalledWith(expect.objectContaining({
+      connectionId: "conn-codex-401",
+      provider: "codex",
+      patch: expect.objectContaining({
+        routingStatus: "blocked",
+        authState: "invalid",
+        reasonCode: "auth_invalid",
+        lastErrorType: "auth_invalid",
+      }),
+    }));
+    expect(updateProviderConnection).toHaveBeenCalledWith(
+      "conn-codex-401",
+      expect.objectContaining({ testStatus: "expired" })
+    );
+  });
+
   it("marks codex as exhausted when remaining falls below the default global threshold", async () => {
     const { applyCanonicalUsageRefresh } = await import("../../src/lib/usageStatus.js");
 

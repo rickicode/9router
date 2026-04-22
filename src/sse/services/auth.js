@@ -78,7 +78,9 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     const eligibleConnections = Array.isArray(centralizedEligibleConnections)
       ? sortByPriority(centralizedEligibleConnections)
       : null;
-    const selectionPool = eligibleConnections;
+    const selectionPool = Array.isArray(eligibleConnections)
+      ? eligibleConnections
+      : sortByPriority(availableConnections.filter((connection) => connection?.testStatus === "active"));
 
     log.debug("AUTH", `${provider} | available: ${availableConnections.length}/${connections.length}, eligible: ${eligibleConnections === null ? "unavailable" : eligibleConnections.length}`);
     connections.forEach(c => {

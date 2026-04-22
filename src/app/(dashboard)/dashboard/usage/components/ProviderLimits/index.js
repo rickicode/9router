@@ -690,9 +690,9 @@ export default function ProviderLimits() {
                   <div className="flex items-center gap-1 shrink-0">
                     <div
                       className="inline-flex items-center rounded-lg border border-black/5 dark:border-white/10 bg-surface px-2 py-1 text-[11px] text-text-muted"
-                      title="Quota data is maintained by the backend scheduler"
+                      title="Current provider account status"
                     >
-                      shared state
+                      {getConnectionCentralizedStatus(conn)}
                     </div>
                     <button
                       type="button"

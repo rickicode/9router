@@ -241,7 +241,7 @@ describe("auth account selection", () => {
     expect(credentials.connectionId).toBe("conn-eligible");
   });
 
-  it("does not fall back to raw available accounts when centralized eligibility is definitively empty", async () => {
+  it("does not fall back when centralized eligibility is definitively empty", async () => {
     mockConnections.push(
       {
         id: "conn-blocked",
@@ -270,7 +270,7 @@ describe("auth account selection", () => {
     expect(credentials).toBeNull();
   });
 
-  it("returns null when centralized eligibility is unavailable", async () => {
+  it("falls back to active available accounts when centralized eligibility is unavailable", async () => {
     mockConnections.push(
       {
         id: "conn-first",
@@ -288,9 +288,28 @@ describe("auth account selection", () => {
         priority: 2,
         displayName: "Second",
         accessToken: "second-token",
-        testStatus: "active",
+        testStatus: "unknown",
       },
     );
+    getEligibleConnections.mockResolvedValueOnce(null);
+
+    const { getProviderCredentials } = await import("../../src/sse/services/auth.js");
+    const credentials = await getProviderCredentials("codex", null, "gpt-4.1");
+
+    expect(credentials.connectionId).toBe("conn-first");
+    expect(credentials.accessToken).toBe("first-token");
+  });
+
+  it("returns null when centralized eligibility is unavailable and no active fallback candidate exists", async () => {
+    mockConnections.push({
+      id: "conn-unknown-only",
+      provider: "codex",
+      isActive: true,
+      priority: 1,
+      displayName: "Unknown only",
+      accessToken: "unknown-token",
+      testStatus: "unknown",
+    });
     getEligibleConnections.mockResolvedValueOnce(null);
 
     const { getProviderCredentials } = await import("../../src/sse/services/auth.js");
