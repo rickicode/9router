@@ -145,6 +145,12 @@ function getSchedulerMessage(status = {}) {
   }
 
   if (status.status === "running") {
+    const rangeStart = status?.currentRun?.progress?.currentBatchStart ?? status?.progress?.currentBatchStart;
+    const rangeEnd = status?.currentRun?.progress?.currentBatchEnd ?? status?.progress?.currentBatchEnd;
+    if (Number.isFinite(rangeStart) && Number.isFinite(rangeEnd)) {
+      return `Backend sweep sedang cek ${rangeStart} sampai ${rangeEnd}.`;
+    }
+
     return "Backend sweep is updating shared quota state now. Cards will reflect changes on the next lightweight status refresh.";
   }
 
@@ -522,7 +528,7 @@ export default function ProviderLimits() {
               </p>
             </div>
 
-            <div className={`inline-flex max-w-full items-start gap-3 rounded-2xl border px-3 py-3 ${schedulerTone.surface}`}>
+            <div className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 ${schedulerTone.surface}`}>
               <span className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${schedulerTone.tone} ${schedulerStatus?.status === "running" ? "animate-spin" : schedulerStatus?.restartRequested ? "animate-pulse" : ""}`}>
                 {schedulerTone.icon}
               </span>

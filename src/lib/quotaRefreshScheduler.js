@@ -1,6 +1,9 @@
-import { getSettings } from "@/lib/localDb";
-import { normalizeQuotaSchedulerSettings } from "@/lib/quotaRefreshPlanner";
+import { getProviderConnections, getSettings } from "@/lib/localDb";
+import { getConnectionHotStates } from "@/lib/providerHotState";
+import { normalizeQuotaSchedulerSettings, planQuotaRefreshCandidates } from "@/lib/quotaRefreshPlanner";
 import { createQuotaRefreshState, QUOTA_REFRESH_RUN_STATES } from "@/lib/quotaRefreshState";
+import { getUsageForProvider } from "open-sse/services/usage.js";
+import { applyCanonicalUsageRefresh } from "@/lib/usageStatus";
 
 const DEFAULT_QUOTA_EXHAUSTED_THRESHOLD_PERCENT = 10;
 
@@ -169,7 +172,7 @@ export class QuotaRefreshScheduler {
 
     this.clearScheduledTimer();
     this.state.setNextScheduledAt(null);
-    const snapshot = await this.runScaffold(reason);
+    const snapshot = await this.runSweep(reason);
     return {
       accepted: true,
       reason: mode,
@@ -177,7 +180,12 @@ export class QuotaRefreshScheduler {
     };
   }
 
-  async runScaffold(trigger = "timer") {
+  async runSweep(trigger = "timer") {
+    const startedAt = this.now();
+    this.logger.log?.(
+      `[QuotaRefreshScheduler] Run started | trigger=${trigger} | at=${startedAt.toISOString()}`
+    );
+
     const { status } = this.state.getSnapshot();
     if (
       status === QUOTA_REFRESH_RUN_STATES.RUNNING
@@ -187,29 +195,127 @@ export class QuotaRefreshScheduler {
       return this.buildStatusSnapshot();
     }
 
+    const nowIso = startedAt.toISOString();
+    const connections = await getProviderConnections({ isActive: true });
+    const connectionRefs = connections.map((connection) => ({
+      id: connection.id,
+      provider: connection.provider,
+      providerId: connection.provider,
+    }));
+    const hotStateMap = await getConnectionHotStates(connectionRefs);
+    const hotStateByConnectionId = {};
+    for (const connection of connections) {
+      hotStateByConnectionId[connection.id] = hotStateMap.get(`${connection.provider}:${connection.id}`)
+        || hotStateMap.get(connection.id)
+        || {};
+    }
+
+    const planned = planQuotaRefreshCandidates({
+      connections,
+      schedulerSettings: this.settings,
+      hotStateByConnectionId,
+      now: nowIso,
+    });
+    const dueEntries = planned.filter((entry) => entry?.decision?.due);
+    const totalCount = dueEntries.length;
+
     this.state.startRun({
       trigger,
       metadata: {
-        scaffoldOnly: true,
         cadenceMs: this.settings.cadenceMs,
+        plannedCount: planned.length,
+        dueCount: totalCount,
       },
       progress: {
-        totalCount: 0,
+        totalCount,
         completedCount: 0,
         successCount: 0,
         errorCount: 0,
         skippedCount: 0,
+        currentBatchStart: null,
+        currentBatchEnd: null,
       },
     });
 
     try {
+      let completedCount = 0;
+      let successCount = 0;
+      let errorCount = 0;
+      let skippedCount = 0;
+      const batchSize = Math.max(1, this.settings.batchSize || 1);
+
+      for (let index = 0; index < dueEntries.length; index += batchSize) {
+        const batch = dueEntries.slice(index, index + batchSize);
+        const currentBatchStart = index + 1;
+        const currentBatchEnd = index + batch.length;
+
+        this.state.updateProgress({
+          totalCount,
+          completedCount,
+          successCount,
+          errorCount,
+          skippedCount,
+          currentBatchStart,
+          currentBatchEnd,
+        });
+
+        for (const entry of batch) {
+          const connection = entry?.connection;
+          if (!connection) {
+            skippedCount += 1;
+            completedCount += 1;
+            this.state.updateProgress({
+              totalCount,
+              completedCount,
+              successCount,
+              errorCount,
+              skippedCount,
+              currentBatchStart,
+              currentBatchEnd,
+            });
+            continue;
+          }
+
+          try {
+            const usage = await getUsageForProvider(connection);
+            await applyCanonicalUsageRefresh(connection, usage, {
+              globalExhaustedThreshold: this.quotaExhaustedThresholdPercent,
+            });
+            successCount += 1;
+          } catch (error) {
+            errorCount += 1;
+            this.logger.error?.(
+              `[QuotaRefreshScheduler] Refresh failed | connectionId=${connection.id} | provider=${connection.provider}`,
+              error
+            );
+          }
+
+          completedCount += 1;
+          this.state.updateProgress({
+            totalCount,
+            completedCount,
+            successCount,
+            errorCount,
+            skippedCount,
+            currentBatchStart,
+            currentBatchEnd,
+          });
+        }
+      }
+
       this.state.finishRun({
         trigger,
-        outcome: "scaffold_only",
-        note: "Quota refresh execution loop not implemented yet",
+        outcome: "completed",
+        processedCount: completedCount,
+        successCount,
+        errorCount,
+        skippedCount,
       });
+      this.logger.log?.(
+        `[QuotaRefreshScheduler] Run finished | trigger=${trigger} | outcome=completed | processed=${completedCount}/${totalCount} | success=${successCount} | error=${errorCount} | skipped=${skippedCount} | durationMs=${this.now().getTime() - startedAt.getTime()}`
+      );
     } catch (error) {
-      this.logger.error?.("[QuotaRefreshScheduler] Scaffold run failed:", error);
+      this.logger.error?.("[QuotaRefreshScheduler] Sweep run failed:", error);
       this.state.failRun(error);
     }
 
@@ -221,7 +327,7 @@ export class QuotaRefreshScheduler {
     if (pendingRestartReason && this.started && this.settings.enabled) {
       this.clearScheduledTimer();
       this.state.setNextScheduledAt(null);
-      return this.runScaffold(pendingRestartReason);
+      return this.runSweep(pendingRestartReason);
     }
 
     if (this.started) {
@@ -238,7 +344,7 @@ export class QuotaRefreshScheduler {
     this.state.setNextScheduledAt(nextScheduledAt.toISOString());
     this.timerId = this.setTimeoutFn(() => {
       this.timerId = null;
-      this.runScaffold(reason).catch((error) => {
+      this.runSweep(reason).catch((error) => {
         this.logger.error?.("[QuotaRefreshScheduler] Timer run failed:", error);
         this.state.failRun(error);
       });

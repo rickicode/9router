@@ -22,8 +22,8 @@ vi.mock("@/lib/localDb", () => ({
   getSettings,
   updateSettings,
   getApiKeys,
+  getProviderConnections,
 }));
-
 vi.mock("@/lib/quotaRefreshPlanner", () => ({
   normalizeQuotaSchedulerSettings: (settings = {}) => ({
     enabled: settings.enabled ?? true,
@@ -33,9 +33,32 @@ vi.mock("@/lib/quotaRefreshPlanner", () => ({
     exhaustedTtlMs: settings.exhaustedTtlMs ?? 60000,
     batchSize: settings.batchSize ?? 25,
   }),
+  planQuotaRefreshCandidates: ({ connections = [] } = {}) => connections.map((connection) => ({
+    connection,
+    decision: { due: true, reason: "never_checked" },
+  })),
+}));
+vi.mock("@/lib/quotaRefreshState", async () => vi.importActual("../../src/lib/quotaRefreshState.js"));
+
+const getProviderConnections = vi.fn(async () => ([
+  { id: "conn-1", provider: "codex", authType: "oauth", isActive: true },
+  { id: "conn-2", provider: "codex", authType: "oauth", isActive: true },
+]));
+const getConnectionHotStates = vi.fn(async () => new Map());
+const getUsageForProvider = vi.fn(async () => ({ message: "ok" }));
+const applyCanonicalUsageRefresh = vi.fn(async () => ({}));
+
+vi.mock("@/lib/providerHotState", () => ({
+  getConnectionHotStates,
 }));
 
-vi.mock("@/lib/quotaRefreshState", async () => vi.importActual("../../src/lib/quotaRefreshState.js"));
+vi.mock("open-sse/services/usage.js", () => ({
+  getUsageForProvider,
+}));
+
+vi.mock("@/lib/usageStatus", () => ({
+  applyCanonicalUsageRefresh,
+}));
 
 vi.mock("@/lib/tunnel/tunnelManager", () => ({
   enableTunnel: vi.fn(async () => {}),
@@ -68,7 +91,7 @@ describe("quotaRefreshScheduler", () => {
     delete global.__appSingleton;
   });
 
-  it("schedules a single scaffold timer when enabled", async () => {
+  it("schedules a single sweep timer when enabled", async () => {
     const unref = vi.fn();
     const setTimeoutFn = vi.fn((fn, delay) => ({ fn, delay, unref }));
     const clearTimeoutFn = vi.fn();
@@ -235,7 +258,7 @@ describe("quotaRefreshScheduler", () => {
     });
   });
 
-  it("runs scaffold work immediately for manual run requests", async () => {
+  it("runs sweep work immediately for manual run requests", async () => {
     const setTimeoutFn = vi.fn(() => ({ unref: vi.fn() }));
     const clearTimeoutFn = vi.fn();
 
@@ -266,7 +289,7 @@ describe("quotaRefreshScheduler", () => {
         lastRun: expect.objectContaining({
           trigger: "api",
           result: expect.objectContaining({
-            outcome: "scaffold_only",
+            outcome: "completed",
           }),
         }),
         nextScheduledAt: "2026-04-21T12:00:05.000Z",
@@ -300,7 +323,7 @@ describe("quotaRefreshScheduler", () => {
     await scheduler.start();
     scheduler.state.startRun({
       trigger: "timer",
-      metadata: { scaffoldOnly: true },
+      metadata: { cadenceMs: 5000 },
     });
 
     await expect(scheduler.requestManualRun("api")).resolves.toMatchObject({
@@ -320,7 +343,7 @@ describe("quotaRefreshScheduler", () => {
     expect(setTimeoutFn).toHaveBeenCalledTimes(2);
   });
 
-  it("honors a pending restart after the active scaffold run completes", async () => {
+  it("honors a pending restart after the active sweep run completes", async () => {
     const setTimeoutFn = vi.fn(() => ({ unref: vi.fn() }));
     const clearTimeoutFn = vi.fn();
 
@@ -356,7 +379,7 @@ describe("quotaRefreshScheduler", () => {
       return originalFinishRun(result);
     });
 
-    const snapshot = await scheduler.runScaffold("timer");
+    const snapshot = await scheduler.runSweep("timer");
 
     expect(startRunSpy).toHaveBeenCalledTimes(2);
     expect(snapshot).toMatchObject({
@@ -364,7 +387,7 @@ describe("quotaRefreshScheduler", () => {
       lastRun: expect.objectContaining({
         trigger: "api",
         result: expect.objectContaining({
-          outcome: "scaffold_only",
+          outcome: "completed",
         }),
       }),
       nextScheduledAt: "2026-04-21T12:00:05.000Z",

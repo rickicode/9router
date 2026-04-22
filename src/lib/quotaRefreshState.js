@@ -17,6 +17,8 @@ function createEmptyProgress(overrides = {}) {
     successCount: 0,
     errorCount: 0,
     skippedCount: 0,
+    currentBatchStart: null,
+    currentBatchEnd: null,
     ...overrides,
   };
 }
