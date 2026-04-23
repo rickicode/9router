@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
+import { isLocalRequest, getClientIP } from "@/lib/security/ipValidator";
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "9router-default-secret-change-me"
@@ -20,12 +21,6 @@ const PROTECTED_API_PATHS = [
   "/api/provider-nodes/validate",
   "/api/opencode",
 ];
-
-function isLocalRequest(request) {
-  const host = request.headers.get("host") || "";
-  const hostname = host.split(":")[0];
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
 
 async function hasValidToken(request) {
   const token = request.cookies.get("auth_token")?.value;
@@ -54,13 +49,25 @@ async function isAuthenticated(request) {
   return false;
 }
 
+function getTunnelHostname(tunnelUrl) {
+  if (!tunnelUrl || typeof tunnelUrl !== "string") return "";
+  try {
+    const url = new URL(tunnelUrl);
+    // Only allow http/https protocols
+    if (!["http:", "https:"].includes(url.protocol)) return "";
+    return url.hostname.toLowerCase();
+  } catch {
+    return ""; // Invalid URL format
+  }
+}
+
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
-  const isLocal = isLocalRequest(request);
+  const settings = await loadSettings();
 
-  // Always protected - allow localhost or valid JWT only
+  // Always protected - allow localhost/whitelist or valid JWT only
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    if (isLocal || await hasValidToken(request))
+    if (isLocalRequest(request, settings) || await hasValidToken(request))
       return NextResponse.next();
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -68,7 +75,7 @@ export async function proxy(request) {
   // Protect sensitive API endpoints (bypass if localhost or requireLogin = false)
   if (PROTECTED_API_PATHS.some((p) => pathname.startsWith(p))) {
     if (pathname === "/api/settings/require-login") return NextResponse.next();
-    if (isLocal || await isAuthenticated(request))
+    if (isLocalRequest(request, settings) || await isAuthenticated(request))
       return NextResponse.next();
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -79,7 +86,6 @@ export async function proxy(request) {
     let tunnelDashboardAccess = true;
 
     try {
-      const settings = await loadSettings();
       if (settings) {
         requireLogin = settings.requireLogin !== false;
         tunnelDashboardAccess = settings.tunnelDashboardAccess === true;
@@ -87,8 +93,8 @@ export async function proxy(request) {
         // Block tunnel/tailscale access if disabled (redirect to login)
         if (!tunnelDashboardAccess) {
           const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
-          const tunnelHost = settings.tunnelUrl ? new URL(settings.tunnelUrl).hostname.toLowerCase() : "";
-          const tailscaleHost = settings.tailscaleUrl ? new URL(settings.tailscaleUrl).hostname.toLowerCase() : "";
+          const tunnelHost = getTunnelHostname(settings.tunnelUrl);
+          const tailscaleHost = getTunnelHostname(settings.tailscaleUrl);
           if ((tunnelHost && host === tunnelHost) || (tailscaleHost && host === tailscaleHost)) {
             return NextResponse.redirect(new URL("/login", request.url));
           }
