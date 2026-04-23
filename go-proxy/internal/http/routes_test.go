@@ -1,0 +1,554 @@
+package http
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"go-proxy/internal/config"
+	"go-proxy/internal/credentials"
+	"go-proxy/internal/proxy"
+	"go-proxy/internal/report"
+	"go-proxy/internal/resolve"
+)
+
+func TestConfigDefaults(t *testing.T) {
+	cfg := config.Default()
+
+	if cfg.Host != "127.0.0.1" {
+		t.Fatalf("expected default host 127.0.0.1, got %q", cfg.Host)
+	}
+
+	if cfg.Port != 8080 {
+		t.Fatalf("expected default port 8080, got %d", cfg.Port)
+	}
+
+	if cfg.NineRouterBaseURL != "http://127.0.0.1:20128" {
+		t.Fatalf("expected default 9router base URL http://127.0.0.1:20128, got %q", cfg.NineRouterBaseURL)
+	}
+}
+
+func TestHealthEndpointScaffold(t *testing.T) {
+	h := NewRoutes(config.Default())
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rr := httptest.NewRecorder()
+
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+
+	var payload map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON response, got error: %v", err)
+	}
+
+	if payload["status"] != "ok" {
+		t.Fatalf("expected status field to be ok, got %q", payload["status"])
+	}
+}
+
+func TestPublicProxyEndpointsAreRegistered(t *testing.T) {
+	h := NewRoutes(config.Default())
+
+	paths := []string{"/v1/chat/completions", "/v1/responses", "/v1/messages"}
+	for _, path := range paths {
+		req := httptest.NewRequest(http.MethodOptions, path, nil)
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("expected 405 for %s when wrong method is used, got %d", path, rr.Code)
+		}
+	}
+}
+
+func TestPublicProxyEndpointRequiresAPIKey(t *testing.T) {
+	h := NewRoutes(config.Default())
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	rr := httptest.NewRecorder()
+
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for missing api key, got %d", rr.Code)
+	}
+}
+
+func TestBuildUpstreamURLUsesApprovedPublicPaths(t *testing.T) {
+	if got := buildUpstreamURL("openai", "/v1/chat/completions"); got != "https://api.openai.com/v1/chat/completions" {
+		t.Fatalf("unexpected openai path wiring: %q", got)
+	}
+	if got := buildUpstreamURL("openai", "/v1/responses"); got != "https://api.openai.com/v1/responses" {
+		t.Fatalf("unexpected openai responses path wiring: %q", got)
+	}
+	if got := buildUpstreamURL("anthropic", "/v1/messages"); got != "https://api.anthropic.com/v1/messages" {
+		t.Fatalf("unexpected anthropic path wiring: %q", got)
+	}
+}
+
+func TestExtractModelAndStream(t *testing.T) {
+	model, stream := extractModelAndStream([]byte(`{"model":"gpt-4.1","stream":true}`))
+	if model != "gpt-4.1" {
+		t.Fatalf("expected model gpt-4.1, got %q", model)
+	}
+	if !stream {
+		t.Fatalf("expected stream flag true")
+	}
+}
+
+func TestReadPublicAPIKeySupportsBearerAndHeader(t *testing.T) {
+	bearerReq := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	bearerReq.Header.Set("Authorization", "Bearer sk-test")
+	if key := readPublicAPIKey(bearerReq); key != "sk-test" {
+		t.Fatalf("expected bearer api key, got %q", key)
+	}
+
+	xKeyReq := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	xKeyReq.Header.Set("x-api-key", "sk-alt")
+	if key := readPublicAPIKey(xKeyReq); key != "sk-alt" {
+		t.Fatalf("expected x-api-key, got %q", key)
+	}
+}
+
+func TestMapForwardError(t *testing.T) {
+	mapped := mapForwardError(nil)
+	if mapped != nil {
+		t.Fatalf("expected nil mapped error")
+	}
+
+	mapped = mapForwardError(&proxy.ForwardError{Message: "boom", Phase: "upstream"})
+	if mapped == nil || mapped.Message != "boom" || mapped.Phase != "upstream" {
+		t.Fatalf("unexpected mapped error: %#v", mapped)
+	}
+}
+
+func TestNewRoutes_UsesDistinctResolveAndReportTokens(t *testing.T) {
+	t.Setenv("INTERNAL_PROXY_RESOLVE_TOKEN", "resolve-token-123")
+	t.Setenv("INTERNAL_PROXY_REPORT_TOKEN", "report-token-456")
+	t.Setenv("GO_PROXY_HTTP_TIMEOUT_SECONDS", "2")
+
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+	t.Setenv("GO_PROXY_CREDENTIALS_FILE", credPath)
+
+	resolveSeen := make(chan string, 1)
+	reportSeen := make(chan string, 1)
+	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/internal/proxy/resolve":
+			resolveSeen <- r.Header.Get("x-internal-auth")
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"ok":true,"resolution":{"provider":"openai","model":"gpt-4.1","chosenConnection":{"connectionId":"conn-a"},"fallbackChain":[]}}`))
+		case "/api/internal/proxy/report":
+			reportSeen <- r.Header.Get("x-internal-auth")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer internal.Close()
+
+	h := NewRoutes(config.Config{
+		Host:                     "127.0.0.1",
+		Port:                     8080,
+		NineRouterBaseURL:        internal.URL,
+		InternalResolveAuthToken: "resolve-token-123",
+		InternalReportAuthToken:  "report-token-456",
+		CredentialsFilePath:      credPath,
+		HTTPTimeoutSeconds:       2,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusOK {
+		t.Fatalf("expected non-200 upstream result in this unit test setup")
+	}
+
+	select {
+	case got := <-resolveSeen:
+		if got != "resolve-token-123" {
+			t.Fatalf("expected resolve token, got %q", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("resolve endpoint was not called")
+	}
+
+	select {
+	case got := <-reportSeen:
+		if got != "report-token-456" {
+			t.Fatalf("expected report token, got %q", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("report endpoint was not called")
+	}
+
+}
+
+func TestExtractResponseEvidenceFromNonStreamOpenAIBody(t *testing.T) {
+	resp := proxy.ForwardResponse{Body: []byte(`{"id":"resp_1","usage":{"prompt_tokens":12,"completion_tokens":34}}`)}
+
+	usage, quotas := extractResponseEvidence(resp)
+	if usage == nil {
+		t.Fatalf("expected usage evidence to be extracted")
+	}
+	if got, ok := usage["prompt_tokens"].(float64); !ok || int(got) != 12 {
+		t.Fatalf("expected prompt_tokens=12, got %#v", usage["prompt_tokens"])
+	}
+	if got, ok := usage["completion_tokens"].(float64); !ok || int(got) != 34 {
+		t.Fatalf("expected completion_tokens=34, got %#v", usage["completion_tokens"])
+	}
+	if quotas != nil {
+		t.Fatalf("expected no quotas evidence for plain OpenAI usage payload")
+	}
+}
+
+func TestExtractResponseEvidenceReadsNestedQuotasFromUsage(t *testing.T) {
+	resp := proxy.ForwardResponse{Body: []byte(`{"usage":{"input_tokens":5,"output_tokens":8,"quotas":{"weekly":{"used":13,"remaining":7,"total":20}}}}`)}
+
+	usage, quotas := extractResponseEvidence(resp)
+	if usage == nil {
+		t.Fatalf("expected usage evidence")
+	}
+	if quotas == nil {
+		t.Fatalf("expected nested quotas evidence")
+	}
+	weekly, ok := quotas["weekly"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected weekly quota map, got %#v", quotas["weekly"])
+	}
+	if got, ok := weekly["remaining"].(float64); !ok || int(got) != 7 {
+		t.Fatalf("expected weekly remaining=7, got %#v", weekly["remaining"])
+	}
+}
+
+func TestExtractResponseEvidenceReturnsNilWhenNoUsageAvailable(t *testing.T) {
+	resp := proxy.ForwardResponse{Body: []byte(`{"id":"resp_1","object":"response"}`)}
+	usage, quotas := extractResponseEvidence(resp)
+	if usage != nil || quotas != nil {
+		t.Fatalf("expected nil evidence when usage is absent, got usage=%#v quotas=%#v", usage, quotas)
+	}
+}
+
+func TestExtractResponseEvidenceReturnsNilForStreamBodyWithoutBufferedPayload(t *testing.T) {
+	resp := proxy.ForwardResponse{BodyStream: io.NopCloser(strings.NewReader("data: done\n\n"))}
+	usage, quotas := extractResponseEvidence(resp)
+	if usage != nil || quotas != nil {
+		t.Fatalf("expected nil evidence for streaming-only response, got usage=%#v quotas=%#v", usage, quotas)
+	}
+}
+
+func TestExtractResponseEvidencePrefersCapturedStreamEvidence(t *testing.T) {
+	resp := proxy.ForwardResponse{
+		BodyStream:     io.NopCloser(strings.NewReader("data: ignored\n\n")),
+		UsageEvidence:  map[string]any{"prompt_tokens": float64(11), "completion_tokens": float64(5)},
+		QuotasEvidence: map[string]any{"daily": map[string]any{"remaining": float64(9)}},
+	}
+	usage, quotas := extractResponseEvidence(resp)
+	if usage == nil || quotas == nil {
+		t.Fatalf("expected captured stream evidence, got usage=%#v quotas=%#v", usage, quotas)
+	}
+	if got, ok := usage["prompt_tokens"].(float64); !ok || int(got) != 11 {
+		t.Fatalf("expected prompt_tokens=11, got %#v", usage["prompt_tokens"])
+	}
+}
+
+func TestExtractUsageAndQuotasFromSSE(t *testing.T) {
+	payload := strings.Join([]string{
+		"event: message",
+		"data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}",
+		"",
+		"event: message",
+		"data: {\"type\":\"response.completed\",\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":7,\"quotas\":{\"daily\":{\"remaining\":90}}}}",
+		"",
+	}, "\n")
+
+	usage, quotas := extractUsageAndQuotasFromSSE([]byte(payload))
+	if usage == nil {
+		t.Fatalf("expected usage from SSE payload")
+	}
+	if quotas == nil {
+		t.Fatalf("expected quotas from nested usage payload")
+	}
+	if got, ok := usage["completion_tokens"].(float64); !ok || int(got) != 7 {
+		t.Fatalf("expected completion_tokens=7, got %#v", usage["completion_tokens"])
+	}
+}
+
+func TestHandleProxy_StreamingSuccessReportsUsageEvidenceFromSSE(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	reporter := &capturingReporter{}
+	h := requestHandler{
+		resolver: staticResolveClient{response: resolve.Response{
+			Provider:           "openai",
+			Model:              "gpt-4.1",
+			ChosenConnectionID: "conn-a",
+		}},
+		reporter:   reporter,
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: staticResponseRoundTripper{resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+			Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+				"event: message",
+				"data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}",
+				"",
+				"event: message",
+				"data: {\"type\":\"response.completed\",\"usage\":{\"prompt_tokens\":4,\"completion_tokens\":6,\"quotas\":{\"daily\":{\"remaining\":10}}}}",
+				"",
+			}, "\n"))),
+		}}},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1","stream":true}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 for streamed success, got %d", rr.Code)
+	}
+	if reporter.calls != 1 {
+		t.Fatalf("expected one report call, got %d", reporter.calls)
+	}
+	if reporter.last.Outcome != string(proxy.OutcomeOK) {
+		t.Fatalf("expected ok outcome, got %q", reporter.last.Outcome)
+	}
+	if reporter.last.Usage == nil {
+		t.Fatalf("expected usage evidence in report payload")
+	}
+	if got, ok := reporter.last.Usage["prompt_tokens"].(float64); !ok || int(got) != 4 {
+		t.Fatalf("expected prompt_tokens=4, got %#v", reporter.last.Usage["prompt_tokens"])
+	}
+	if reporter.last.Quotas == nil {
+		t.Fatalf("expected quotas evidence in report payload")
+	}
+}
+
+func TestHandleProxy_ReportsUsedFallbackConnectionID(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"bad-key"},{"id":"conn-b","provider":"openai","authType":"apiKey","apiKey":"good-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	var reportedConnectionID string
+	var reportedPromptTokens int
+	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/internal/proxy/resolve":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"ok":true,"resolution":{"provider":"openai","model":"gpt-4.1","chosenConnection":{"connectionId":"conn-a"},"fallbackChain":[{"connectionId":"conn-b"}]}}`))
+		case "/api/internal/proxy/report":
+			body, _ := io.ReadAll(r.Body)
+			var payload map[string]any
+			_ = json.Unmarshal(body, &payload)
+			if v, ok := payload["connectionId"].(string); ok {
+				reportedConnectionID = v
+			}
+			if usage, ok := payload["usage"].(map[string]any); ok {
+				if prompt, ok := usage["prompt_tokens"].(float64); ok {
+					reportedPromptTokens = int(prompt)
+				}
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer internal.Close()
+
+	h := NewRoutes(config.Config{
+		Host:                     "127.0.0.1",
+		Port:                     8080,
+		NineRouterBaseURL:        internal.URL,
+		InternalResolveAuthToken: "resolve-token",
+		InternalReportAuthToken:  "report-token",
+		CredentialsFilePath:      credPath,
+		HTTPTimeoutSeconds:       2,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusOK {
+		t.Fatalf("expected non-200 upstream result in this unit test setup")
+	}
+	if reportedConnectionID != "conn-b" {
+		t.Fatalf("expected report to use fallback connection conn-b, got %q", reportedConnectionID)
+	}
+	if reportedPromptTokens != 0 {
+		t.Fatalf("expected no usage evidence for failed fallback flow, got prompt_tokens=%d", reportedPromptTokens)
+	}
+}
+
+func TestHandleProxy_ReportUsesFreshContextWhenRequestCanceled(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"bad-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	reporter := &contextInspectingReporter{}
+	h := requestHandler{
+		resolver: staticResolveClient{response: resolve.Response{
+			Provider:           "openai",
+			Model:              "gpt-4.1",
+			ChosenConnectionID: "conn-a",
+		}},
+		reporter:   reporter,
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: failingRoundTripper{err: errors.New("dial boom")}},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1"}`)).WithContext(ctx)
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 when forwarding fails, got %d", rr.Code)
+	}
+	if reporter.calls != 1 {
+		t.Fatalf("expected one report call, got %d", reporter.calls)
+	}
+	if reporter.lastCtxErr != nil {
+		t.Fatalf("expected fresh report context to be active, got %v", reporter.lastCtxErr)
+	}
+	if !reporter.lastCtxHasDeadline {
+		t.Fatalf("expected report context to set a timeout deadline")
+	}
+}
+
+func TestHandleProxy_ReportsForwardingTransportFailure(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"bad-key"},{"id":"conn-b","provider":"openai","authType":"apiKey","apiKey":"good-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	reporter := &capturingReporter{}
+	h := requestHandler{
+		resolver: staticResolveClient{response: resolve.Response{
+			Provider:              "openai",
+			Model:                 "gpt-4.1",
+			ChosenConnectionID:    "conn-a",
+			FallbackConnectionIDs: []string{"conn-b"},
+		}},
+		reporter:   reporter,
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: failingRoundTripper{err: errors.New("dial boom")}},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 when forwarding fails, got %d", rr.Code)
+	}
+	if reporter.calls != 1 {
+		t.Fatalf("expected one report call, got %d", reporter.calls)
+	}
+	if reporter.last.ConnectionID != "conn-b" {
+		t.Fatalf("expected report to use final attempted connection conn-b, got %q", reporter.last.ConnectionID)
+	}
+	if reporter.last.Outcome != string(proxy.OutcomeError) {
+		t.Fatalf("expected error outcome, got %q", reporter.last.Outcome)
+	}
+	if reporter.last.UpstreamStatus != 0 {
+		t.Fatalf("expected upstream status 0 for transport failure, got %d", reporter.last.UpstreamStatus)
+	}
+	if reporter.last.Error == nil {
+		t.Fatalf("expected normalized error payload")
+	}
+	if reporter.last.Error.Phase != "transport" {
+		t.Fatalf("expected transport phase, got %q", reporter.last.Error.Phase)
+	}
+	if !strings.Contains(reporter.last.Error.Message, "dial boom") {
+		t.Fatalf("expected transport error message to include dial boom, got %q", reporter.last.Error.Message)
+	}
+}
+
+func credentialsReaderForTest(path string) *credentials.Reader {
+	return credentials.NewReader(path)
+}
+
+type staticResolveClient struct {
+	response resolve.Response
+	err      error
+}
+
+func (s staticResolveClient) Resolve(context.Context, resolve.ResolveRequest) (resolve.Response, error) {
+	if s.err != nil {
+		return resolve.Response{}, s.err
+	}
+	return s.response, nil
+}
+
+type capturingReporter struct {
+	calls int
+	last  report.OutcomePayload
+}
+
+func (c *capturingReporter) ReportOutcome(_ context.Context, payload report.OutcomePayload) error {
+	c.calls++
+	c.last = payload
+	return nil
+}
+
+type contextInspectingReporter struct {
+	calls              int
+	lastCtxErr         error
+	lastCtxHasDeadline bool
+}
+
+func (c *contextInspectingReporter) ReportOutcome(ctx context.Context, _ report.OutcomePayload) error {
+	c.calls++
+	c.lastCtxErr = ctx.Err()
+	_, c.lastCtxHasDeadline = ctx.Deadline()
+	return nil
+}
+
+type failingRoundTripper struct {
+	err error
+}
+
+func (f failingRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, f.err
+}
+
+type staticResponseRoundTripper struct {
+	resp *http.Response
+	err  error
+}
+
+func (s staticResponseRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.resp, nil
+}

@@ -1,4 +1,5 @@
-import { updateProviderConnection } from "@/lib/localDb";
+import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
+import { saveRequestDetail, saveRequestUsage } from "@/lib/usageDb";
 import { projectLegacyConnectionState, writeConnectionHotState } from "@/lib/providerHotState";
 
 const AUTH_EXPIRED_PATTERNS = ["expired", "authentication", "unauthorized", "401", "re-authorize"];
@@ -486,4 +487,180 @@ export async function applyLiveQuotaUpdate(connection, signal, options = {}) {
   });
   await syncUsageStatus(connection, updates);
   return updates;
+}
+
+function normalizeReportTokens(report = {}) {
+  const usage = report.usage;
+  if (!usage || typeof usage !== "object") return null;
+
+  const promptTokens = Number(
+    usage.prompt_tokens
+    ?? usage.input_tokens
+    ?? usage.promptTokens
+    ?? usage.inputTokens
+    ?? 0
+  );
+  const completionTokens = Number(
+    usage.completion_tokens
+    ?? usage.output_tokens
+    ?? usage.completionTokens
+    ?? usage.outputTokens
+    ?? 0
+  );
+  const cachedTokens = Number(usage.cached_tokens ?? usage.cachedTokens ?? usage.cache_read_input_tokens ?? 0);
+
+  if (!Number.isFinite(promptTokens) || !Number.isFinite(completionTokens) || !Number.isFinite(cachedTokens)) {
+    return null;
+  }
+
+  if (promptTokens <= 0 && completionTokens <= 0 && cachedTokens <= 0) {
+    return null;
+  }
+
+  return {
+    prompt_tokens: Math.max(0, Math.trunc(promptTokens)),
+    completion_tokens: Math.max(0, Math.trunc(completionTokens)),
+    ...(cachedTokens > 0 ? { cached_tokens: Math.max(0, Math.trunc(cachedTokens)) } : {}),
+  };
+}
+
+function mapReportStatus(report = {}) {
+  const outcome = String(report.outcome || "").toLowerCase();
+  if (outcome === "error" || outcome === "failed" || outcome === "failure") {
+    return "error";
+  }
+
+  const upstreamStatus = Number(report.upstreamStatus);
+  if (Number.isFinite(upstreamStatus) && upstreamStatus >= 400) {
+    return "error";
+  }
+
+  if (report.error) {
+    return "error";
+  }
+
+  return "ok";
+}
+
+function getReportObservedAt(report = {}) {
+  return report.observedAt || report.finishedAt || report.timestamp || new Date().toISOString();
+}
+
+export async function applyProxyOutcomeReport(report = {}) {
+  const connectionId = report.connectionId || null;
+  const provider = report.provider || null;
+  const model = report.model || report.requestedModel || null;
+  const observedAt = getReportObservedAt(report);
+  const status = mapReportStatus(report);
+  const tokens = normalizeReportTokens(report);
+  const usageEvidence = report.usage && typeof report.usage === "object"
+    ? report.usage
+    : null;
+  const quotasEvidence = report.quotas && typeof report.quotas === "object"
+    ? report.quotas
+    : null;
+  const hasCanonicalUsageEvidence = Boolean(tokens || usageEvidence || quotasEvidence);
+
+  if (tokens) {
+    await saveRequestUsage({
+      provider,
+      model,
+      tokens,
+      connectionId,
+      endpoint: report.publicPath || report.route || null,
+      status,
+      timestamp: observedAt,
+    }, { propagateError: true });
+  }
+
+  await saveRequestDetail({
+    id: report.requestId || report.id || undefined,
+    provider,
+    model,
+    connectionId,
+    timestamp: observedAt,
+    status,
+    latency: {
+      totalMs: report.latencyMs ?? null,
+    },
+    tokens: tokens || {},
+    request: {
+      protocolFamily: report.protocolFamily || null,
+      publicPath: report.publicPath || null,
+      method: report.method || null,
+    },
+    providerRequest: {
+      requestId: report.requestId || null,
+    },
+    providerResponse: {
+      status: report.upstreamStatus ?? null,
+      error: report.error || null,
+    },
+    response: {
+      outcome: report.outcome || null,
+    },
+  }, { propagateError: true });
+
+  if (!connectionId) {
+    return { ok: true };
+  }
+
+  const connection = await getProviderConnectionById(connectionId);
+  if (!connection) {
+    return { ok: true };
+  }
+
+  const statusCode = Number.isFinite(Number(report.upstreamStatus))
+    ? Number(report.upstreamStatus)
+    : null;
+  const errorMessage = report.error?.message || report.error || null;
+
+  if (status === "error") {
+    const authPatch = getConnectionAuthBlockedPatch(errorMessage, {
+      lastCheckedAt: observedAt,
+      statusCode,
+    });
+
+    if (authPatch) {
+      await syncUsageStatus(connection, authPatch);
+      return { ok: true };
+    }
+
+    const liveSignal = getCodexLiveQuotaSignal(connection, {
+      statusCode,
+      errorText: errorMessage,
+      errorCode: report.error?.code,
+    });
+
+    if (liveSignal) {
+      await applyLiveQuotaUpdate(connection, liveSignal, { observedAt });
+      return { ok: true };
+    }
+
+    await syncUsageStatus(connection, {
+      healthStatus: "degraded",
+      lastCheckedAt: observedAt,
+      lastError: errorMessage || "Proxy request failed",
+      lastErrorType: "proxy_error",
+      lastErrorAt: observedAt,
+      errorCode: report.error?.code || "proxy_error",
+    });
+
+    return { ok: true };
+  }
+
+  if (hasCanonicalUsageEvidence) {
+    await applyCanonicalUsageRefresh(connection, {
+      quotas: quotasEvidence,
+      usage: usageEvidence,
+    }, { observedAt });
+    return { ok: true };
+  }
+
+  await syncUsageStatus(connection, {
+    lastCheckedAt: observedAt,
+    usageSnapshot: JSON.stringify(usageEvidence || {}),
+  });
+
+  return { ok: true };
 }

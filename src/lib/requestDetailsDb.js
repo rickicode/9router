@@ -74,6 +74,7 @@ async function getObservabilityConfig() {
 let writeBuffer = [];
 let flushTimer = null;
 let isFlushing = false;
+let activeFlushPromise = null;
 
 function safeJsonStringify(obj, maxSize) {
   try {
@@ -106,8 +107,8 @@ function generateDetailId(model) {
   return `${timestamp}-${random}-${modelPart}`;
 }
 
-async function flushToDatabase() {
-  if (isCloud || isFlushing || writeBuffer.length === 0) return;
+async function runFlush(options = {}) {
+  if (isCloud || writeBuffer.length === 0) return;
 
   isFlushing = true;
   try {
@@ -172,12 +173,32 @@ async function flushToDatabase() {
     await db.write();
   } catch (error) {
     console.error("[requestDetailsDb] Batch write failed:", error);
+    if (options.propagateError) {
+      throw error;
+    }
   } finally {
     isFlushing = false;
   }
 }
 
-export async function saveRequestDetail(detail) {
+async function flushToDatabase(options = {}) {
+  if (isCloud) return;
+
+  while (isFlushing && activeFlushPromise) {
+    await activeFlushPromise;
+  }
+
+  if (writeBuffer.length === 0) return;
+
+  activeFlushPromise = runFlush(options);
+  try {
+    await activeFlushPromise;
+  } finally {
+    activeFlushPromise = null;
+  }
+}
+
+export async function saveRequestDetail(detail, options = {}) {
   if (isCloud) return;
 
   const config = await getObservabilityConfig();
@@ -186,7 +207,10 @@ export async function saveRequestDetail(detail) {
   writeBuffer.push(detail);
 
   if (writeBuffer.length >= config.batchSize) {
-    await flushToDatabase();
+    await flushToDatabase(options);
+    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+  } else if (options.propagateError) {
+    await flushToDatabase(options);
     if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
   } else if (!flushTimer) {
     flushTimer = setTimeout(() => {

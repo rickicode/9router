@@ -7,6 +7,9 @@
     "dev": "next dev --webpack --port 20129",
     "build": "NODE_ENV=production next build --webpack",
     "start": "NODE_ENV=production node ./scripts/start.js",
+    "start:with-go-wrapper": "GO_PROXY_WRAPPER_ENABLED=true NODE_ENV=production node ./scripts/start.js",
+    "go-proxy:test": "sh -c 'cd go-proxy && go test ./...'",
+    "test": "npm --prefix tests test",
     "dev:bun": "bun --bun next dev --webpack --port 20129",
     "build:bun": "NODE_ENV=production bun --bun next build --webpack",
     "start:bun": "NODE_ENV=production bun ./.next/standalone/server.js"
