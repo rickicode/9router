@@ -8,6 +8,12 @@ type ToolCall struct {
 	Arguments string                 `json:"-"`
 }
 
+type UsageData struct {
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+}
+
 type StreamState struct {
 	MessageID            string
 	Model                string
@@ -21,6 +27,7 @@ type StreamState struct {
 	InThinkingBlock      bool
 	CurrentBlockIndex    int
 	Usage                map[string]any
+	UsageData            *UsageData
 	FinishReason         string
 	FinishReasonSent     bool
 }
