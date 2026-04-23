@@ -173,4 +173,39 @@ describe("go proxy parity and rollback verification", () => {
       { propagateError: true },
     );
   });
+
+  it("keeps rollback authority in 9router when runtime-manager verification fails", async () => {
+    const { startGoProxyRuntime, restartGoProxyRuntime, getGoProxyRuntimeStatus, resetGoProxyRuntimeState } = await import("../../src/lib/goProxyRuntime.js");
+
+    resetGoProxyRuntimeState({
+      host: "127.0.0.1",
+      port: 20138,
+      ninerouterBaseUrl: "http://127.0.0.1:20129",
+      internalResolveToken: "resolve-token",
+      internalReportToken: "report-token",
+      credentialsFile: "/tmp/db.json",
+    });
+
+    await startGoProxyRuntime();
+    const beforeRestart = getGoProxyRuntimeStatus();
+
+    await expect(
+      restartGoProxyRuntime({
+        verification: {
+          ok: false,
+          error: "runtime-manager unavailable",
+        },
+      }),
+    ).rejects.toThrow("runtime-manager unavailable");
+
+    expect(getGoProxyRuntimeStatus()).toMatchObject({
+      enabled: true,
+      running: true,
+      status: "running",
+      host: beforeRestart.host,
+      port: beforeRestart.port,
+      startedAt: beforeRestart.startedAt,
+      lastError: "runtime-manager unavailable",
+    });
+  });
 });

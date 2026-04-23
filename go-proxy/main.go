@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"go-proxy/internal/config"
@@ -10,7 +11,11 @@ import (
 )
 
 func main() {
-	cfg := config.Default()
+	args := os.Args[1:]
+	cfg, err := config.LoadFromArgs(args)
+	if err != nil {
+		log.Fatalf("config load failed: %v", err)
+	}
 	addr := cfg.Host + ":" + strconv.Itoa(cfg.Port)
 
 	log.Printf("go-proxy listening on %s", addr)

@@ -46,7 +46,7 @@ describe("go proxy wrapper supervision config", () => {
     expect(options.enabled).toBe(false);
   });
 
-  it("enables wrapper supervision and resolves /health URL", () => {
+  it("marks start.js wrapper config as legacy compatibility bootstrap", () => {
     const options = resolveGoProxyWrapperOptions({
       GO_PROXY_WRAPPER_ENABLED: "true",
       GO_PROXY_WRAPPER_HOST: "127.0.0.1",
@@ -54,6 +54,8 @@ describe("go proxy wrapper supervision config", () => {
     });
 
     expect(options.enabled).toBe(true);
+    expect(options.mode).toBe("compatibility-bootstrap");
+    expect(options.primaryRuntimeContract).toBe("go-proxy runtime control API");
     expect(options.healthUrl).toBe("http://127.0.0.1:8080/health");
   });
 });

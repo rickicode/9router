@@ -337,6 +337,8 @@ function resolveGoProxyWrapperOptions(sourceEnv = process.env) {
 
   return {
     enabled,
+    mode: "compatibility-bootstrap",
+    primaryRuntimeContract: "go-proxy runtime control API",
     host,
     port,
     healthPath: normalizedHealthPath,

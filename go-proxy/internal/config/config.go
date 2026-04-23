@@ -1,6 +1,9 @@
 package config
 
 import (
+	"errors"
+	"flag"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -38,12 +41,6 @@ func Default() Config {
 
 	resolveToken := strings.TrimSpace(os.Getenv("INTERNAL_PROXY_RESOLVE_TOKEN"))
 	reportToken := strings.TrimSpace(os.Getenv("INTERNAL_PROXY_REPORT_TOKEN"))
-	if resolveToken == "" {
-		resolveToken = reportToken
-	}
-	if reportToken == "" {
-		reportToken = resolveToken
-	}
 
 	credentialsPath := strings.TrimSpace(os.Getenv("GO_PROXY_CREDENTIALS_FILE"))
 	if credentialsPath == "" {
@@ -74,4 +71,47 @@ func Default() Config {
 		CredentialsFilePath:      credentialsPath,
 		HTTPTimeoutSeconds:       httpTimeoutSeconds,
 	}
+}
+
+var ErrMissingInternalTokens = errors.New("missing required internal proxy tokens")
+
+// LoadFromArgs builds config from defaults and explicit CLI args.
+// CLI values are authoritative over environment-derived defaults.
+func LoadFromArgs(args []string) (Config, error) {
+	cfg := Default()
+
+	fs := flag.NewFlagSet("go-proxy", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	fs.StringVar(&cfg.Host, "host", cfg.Host, "proxy host")
+	fs.IntVar(&cfg.Port, "port", cfg.Port, "proxy port")
+	fs.StringVar(&cfg.NineRouterBaseURL, "base-url", cfg.NineRouterBaseURL, "nine-router base URL")
+	fs.StringVar(&cfg.InternalResolveAuthToken, "resolve-token", cfg.InternalResolveAuthToken, "internal resolve auth token")
+	fs.StringVar(&cfg.InternalReportAuthToken, "report-token", cfg.InternalReportAuthToken, "internal report auth token")
+	fs.StringVar(&cfg.CredentialsFilePath, "credentials-file", cfg.CredentialsFilePath, "credentials file path")
+
+	if err := fs.Parse(args); err != nil {
+		return Config{}, err
+	}
+
+	cfg.Host = strings.TrimSpace(cfg.Host)
+	if cfg.Host == "" {
+		cfg.Host = "127.0.0.1"
+	}
+	if cfg.Port <= 0 {
+		cfg.Port = 8080
+	}
+	cfg.NineRouterBaseURL = strings.TrimRight(strings.TrimSpace(cfg.NineRouterBaseURL), "/")
+	if cfg.NineRouterBaseURL == "" {
+		cfg.NineRouterBaseURL = "http://127.0.0.1:20128"
+	}
+	cfg.InternalResolveAuthToken = strings.TrimSpace(cfg.InternalResolveAuthToken)
+	cfg.InternalReportAuthToken = strings.TrimSpace(cfg.InternalReportAuthToken)
+	cfg.CredentialsFilePath = strings.TrimSpace(cfg.CredentialsFilePath)
+
+	if cfg.InternalResolveAuthToken == "" || cfg.InternalReportAuthToken == "" {
+		return Config{}, ErrMissingInternalTokens
+	}
+
+	return cfg, nil
 }
