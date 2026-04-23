@@ -272,17 +272,34 @@ export default function APIPageClient({ machineId }) {
     }
   };
 
-  const testConnection = async (id, url) => {
+  const testConnection = async (id, url, retries = 3) => {
     setTestingUrl(id);
     try {
-      const res = await fetch("/api/cloud-urls/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
+      let data = null;
 
-      if (res.ok) {
-        const data = await res.json();
+      for (let i = 0; i < retries; i += 1) {
+        try {
+          const res = await fetch("/api/cloud-urls/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          });
+
+          if (res.ok) {
+            data = await res.json();
+            break;
+          }
+
+          if (i < retries - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
+          }
+        } catch (err) {
+          if (i === retries - 1) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
+        }
+      }
+
+      if (data) {
         const checkedAt = new Date().toISOString();
 
         await fetch("/api/cloud-urls", {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { v4 as uuidv4 } from "uuid";
 
-const VALID_STATUSES = new Set(["unknown", "online", "offline", "error", "testing"]);
+const VALID_STATUSES = new Set(["unknown", "online", "offline", "error"]);
 
 function normalizeUrl(value) {
   if (typeof value !== "string") return "";
@@ -48,6 +48,14 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const url = normalizeUrl(body?.url);
+    let lastChecked = body?.lastChecked ?? null;
+
+    if (lastChecked) {
+      const date = new Date(lastChecked);
+      if (Number.isNaN(date.getTime()) || date > new Date()) {
+        lastChecked = null;
+      }
+    }
 
     if (!url) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -65,7 +73,7 @@ export async function POST(request) {
         id: getNextId(cloudUrls),
         url,
         status: VALID_STATUSES.has(body?.status) ? body.status : "unknown",
-        lastChecked: body?.lastChecked ?? null,
+        lastChecked,
       };
 
       return [...cloudUrls, nextEntry];
@@ -81,7 +89,15 @@ export async function POST(request) {
 export async function PATCH(request) {
   try {
     const body = await request.json();
-    const { id, status, lastChecked } = body;
+    const { id, status } = body;
+    let lastChecked = body?.lastChecked ?? null;
+
+    if (lastChecked) {
+      const date = new Date(lastChecked);
+      if (Number.isNaN(date.getTime()) || date > new Date()) {
+        lastChecked = null;
+      }
+    }
 
     if (!id) {
       return NextResponse.json({ error: "Valid cloud URL id is required" }, { status: 400 });

@@ -42,11 +42,14 @@ export async function POST(request) {
       statusCode: response.status,
     });
   } catch (error) {
+    const isCors = error.message?.includes("CORS") || error.name === "TypeError";
     return NextResponse.json({
       success: false,
       status: "error",
       latency: null,
-      error: error.name === "TimeoutError" ? "Request timed out" : (error.message || "Health check failed"),
+      error: error.name === "TimeoutError"
+        ? "Request timed out"
+        : (isCors ? "CORS error - check worker configuration" : (error.message || "Health check failed")),
     }, { status: 503 });
   }
 }

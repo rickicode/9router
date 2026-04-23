@@ -48,7 +48,7 @@ if (!isCloud && !fs.existsSync(DATA_DIR)) {
 const DEFAULT_SETTINGS = {
   cloudEnabled: false,
   cloudUrls: [
-    { id: 1, url: "", status: "unknown", lastChecked: null }
+    { id: "default", url: "http://localhost:8787", status: "unknown", lastChecked: null }
   ],
   tunnelEnabled: false,
   tunnelUrl: "",
@@ -237,8 +237,23 @@ function ensureDbShape(data) {
         changed = true;
       }
 
+      if (Array.isArray(next.settings.cloudUrls)) {
+        const seen = new Set();
+        const deduped = next.settings.cloudUrls.filter((url) => {
+          const key = String(url?.url ?? "").toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        if (deduped.length !== next.settings.cloudUrls.length) {
+          next.settings.cloudUrls = deduped;
+          changed = true;
+        }
+      }
+
       if (!Array.isArray(next.settings.cloudUrls) || next.settings.cloudUrls.length === 0) {
-        next.settings.cloudUrls = [{ id: 1, url: "", status: "unknown", lastChecked: null }];
+        next.settings.cloudUrls = [{ id: "default", url: "http://localhost:8787", status: "unknown", lastChecked: null }];
         changed = true;
       }
     }
