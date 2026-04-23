@@ -12,6 +12,32 @@ class AuditLogger {
     this.maxSize = DEFAULT_MAX_SIZE;
   }
 
+  rotate(logFile) {
+    try {
+      // Shift existing rotated files (.3 → delete, .2 → .3, .1 → .2)
+      for (let i = 3; i >= 1; i--) {
+        const oldFile = logFile + "." + i;
+        const newFile = logFile + "." + (i + 1);
+        
+        if (fs.existsSync(oldFile)) {
+          if (i === 3) {
+            // Delete .3 (only keep 3 rotated files)
+            fs.unlinkSync(oldFile);
+          } else {
+            fs.renameSync(oldFile, newFile);
+          }
+        }
+      }
+
+      // Move current log to .1
+      if (fs.existsSync(logFile)) {
+        fs.renameSync(logFile, logFile + ".1");
+      }
+    } catch (error) {
+      console.error("[AuditLog] Failed to rotate log:", error.message);
+    }
+  }
+
   log(event, data, logFile = DEFAULT_LOG_FILE) {
     if (!this.enabled) return;
 
@@ -30,10 +56,17 @@ class AuditLogger {
         fs.mkdirSync(dir, { recursive: true });
       }
 
+      // Check if rotation needed
+      if (fs.existsSync(logFile)) {
+        const stats = fs.statSync(logFile);
+        if (stats.size >= this.maxSize) {
+          this.rotate(logFile);
+        }
+      }
+
       // Append to file
       fs.appendFileSync(logFile, line, "utf-8");
     } catch (error) {
-      // Don't block requests on log failure
       console.error("[AuditLog] Failed to write log:", error.message);
     }
   }
@@ -48,3 +81,4 @@ class AuditLogger {
 }
 
 export const auditLog = new AuditLogger();
+export { AuditLogger }; // Export class for testing
