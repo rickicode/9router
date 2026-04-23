@@ -310,6 +310,18 @@ export class QuotaRefreshScheduler {
         errorCount,
         skippedCount,
       });
+      if (this.started) {
+        try {
+          const { isCloudEnabled } = await import("@/lib/localDb");
+          const { syncToCloud } = await import("@/lib/cloudSync");
+          if (await isCloudEnabled()) {
+            await syncToCloud();
+            this.logger?.log?.("[QuotaRefreshScheduler] Cloud sync triggered after quota check");
+          }
+        } catch (error) {
+          this.logger?.error?.("[QuotaRefreshScheduler] Cloud sync failed:", error);
+        }
+      }
       this.logger.log?.(
         `[QuotaRefreshScheduler] Run finished | trigger=${trigger} | outcome=completed | processed=${completedCount}/${totalCount} | success=${successCount} | error=${errorCount} | skipped=${skippedCount} | durationMs=${this.now().getTime() - startedAt.getTime()}`
       );

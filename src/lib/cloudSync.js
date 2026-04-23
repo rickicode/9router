@@ -1,5 +1,5 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { getAllConnections, getAllModelAliases, getAllCombos, getSettings } from "./localDb.js";
+import { getAllConnections, getAllModelAliases, getAllCombos, getSettings, getApiKeys } from "./localDb.js";
 
 /**
  * Get cloud URL from settings
@@ -34,12 +34,14 @@ export async function syncToCloud() {
   const connections = await getAllConnections();
   const modelAliases = await getAllModelAliases();
   const combos = await getAllCombos();
+  const apiKeys = await getApiKeys();
   const settings = await getSettings();
 
   const payload = {
     providers: connections.map(formatConnection),
     modelAliases,
     combos,
+    apiKeys,
     settings: {
       roundRobin: settings.roundRobin || false,
       sticky: settings.sticky || false,

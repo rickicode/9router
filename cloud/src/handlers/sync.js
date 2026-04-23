@@ -135,8 +135,11 @@ async function handlePost(request, machineId, env) {
 
   return jsonResponse({
     success: true,
-    data: finalData,
-    changes
+    syncId: `sync_${Date.now()}`,
+    receivedAt: new Date().toISOString(),
+    credentialsCount: Object.keys(mergedProviders).length,
+    modelsCount: Object.keys(finalData.modelAliases || {}).length,
+    combosCount: (finalData.combos || []).length
   });
 }
 
