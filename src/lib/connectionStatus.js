@@ -24,7 +24,6 @@ export function getConnectionActiveModelLocks(connection = {}) {
 export function getConnectionCooldownUntil(connection = {}) {
   const timestamps = [
     getFutureTimestamp(connection?.nextRetryAt),
-    getFutureTimestamp(connection?.rateLimitedUntil),
     getFutureTimestamp(connection?.resetAt),
     ...getConnectionActiveModelLocks(connection).map((lock) => lock.until),
   ].filter(Boolean);
@@ -36,7 +35,6 @@ export function getConnectionCooldownUntil(connection = {}) {
 export function getConnectionProviderCooldownUntil(connection = {}) {
   const timestamps = [
     getFutureTimestamp(connection?.nextRetryAt),
-    getFutureTimestamp(connection?.rateLimitedUntil),
     getFutureTimestamp(connection?.resetAt),
   ].filter(Boolean);
 
@@ -66,9 +64,13 @@ function getCentralizedStatus(connection = {}) {
 
   switch (connection?.quotaState) {
     case "exhausted":
-    case "cooldown":
     case "blocked":
       return { status: "exhausted", source: "quotaState" };
+    case "ok":
+      if (connection?.authState === "ok" && connection?.healthStatus === "healthy") {
+        return { status: "eligible", source: "quotaState" };
+      }
+      break;
     default:
       break;
   }
@@ -80,18 +82,8 @@ function getCentralizedStatus(connection = {}) {
     case "unknown":
     case "disabled":
       return { status: connection.routingStatus, source: "routingStatus" };
-    case "blocked_auth":
-    case "blocked_health":
-      return { status: "blocked", source: "routingStatus-legacy" };
-    case "blocked_quota":
-    case "cooldown":
-      return { status: "exhausted", source: "routingStatus-legacy" };
     default:
       break;
-  }
-
-  if (connection?.quotaState === "ok") {
-    return { status: "eligible", source: "quotaState" };
   }
 
   return null;
@@ -106,21 +98,7 @@ const CONNECTION_FILTER_STATUSES = new Set([
   "unknown",
 ]);
 
-const LEGACY_CONNECTION_FILTER_STATUS_MAP = {
-  active: "eligible",
-  "quota-exhausted": "exhausted",
-  "revoked-invalid": "blocked",
-  cooldown: "exhausted",
-  blocked_quota: "exhausted",
-  blocked_auth: "blocked",
-  blocked_health: "blocked",
-};
-
 export function normalizeConnectionFilterStatus(value) {
-  if (LEGACY_CONNECTION_FILTER_STATUS_MAP[value]) {
-    return LEGACY_CONNECTION_FILTER_STATUS_MAP[value];
-  }
-
   return CONNECTION_FILTER_STATUSES.has(value) ? value : "all";
 }
 
@@ -159,42 +137,13 @@ export function getConnectionStatusDetails(connection) {
     };
   }
 
-  switch (connection?.testStatus) {
-    case "active":
-    case "success":
-      return {
-        status: "eligible",
-        source: "legacy-testStatus",
-        hasActiveModelLock: activeModelLocks.length > 0,
-        cooldownUntil,
-        activeModelLocks,
-      };
-    case "expired":
-    case "error":
-      return {
-        status: "blocked",
-        source: "legacy-testStatus",
-        hasActiveModelLock: activeModelLocks.length > 0,
-        cooldownUntil,
-        activeModelLocks,
-      };
-    case "unavailable":
-      return {
-        status: cooldownUntil ? "exhausted" : "unknown",
-        source: cooldownUntil ? "legacy-unavailable-cooldown" : "legacy-unavailable-stale",
-        hasActiveModelLock: activeModelLocks.length > 0,
-        cooldownUntil,
-        activeModelLocks,
-      };
-    default:
-      return {
-        status: "unknown",
-        source: connection.testStatus ? "legacy-testStatus" : "unknown",
-        hasActiveModelLock: activeModelLocks.length > 0,
-        cooldownUntil,
-        activeModelLocks,
-      };
-  }
+  return {
+    status: "unknown",
+    source: "unknown",
+    hasActiveModelLock: activeModelLocks.length > 0,
+    cooldownUntil,
+    activeModelLocks,
+  };
 }
 
 export function getConnectionEffectiveStatus(connection) {

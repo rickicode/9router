@@ -21,14 +21,8 @@ const HOT_STATE_KEYS = new Set([
   "version",
   "lastUsedAt",
   "consecutiveUseCount",
-  "testStatus",
-  "lastError",
-  "lastErrorAt",
   "backoffLevel",
-  "rateLimitedUntil",
   "expiresIn",
-  "errorCode",
-  "lastTested",
   "updatedAt",
 ]);
 
@@ -153,6 +147,52 @@ function mergeState(base, updates) {
   return { ...(base || {}), ...(updates || {}) };
 }
 
+const LEGACY_MIRROR_FIELDS = new Set([
+  "testStatus",
+  "lastError",
+  "lastErrorType",
+  "lastErrorAt",
+  "rateLimitedUntil",
+  "errorCode",
+  "lastTested",
+]);
+
+const CANONICAL_ROUTING_STATUSES = new Set([
+  "eligible",
+  "exhausted",
+  "blocked",
+  "unknown",
+  "disabled",
+]);
+
+export function sanitizeConnectionStatusRecord(state = null) {
+  if (!state || typeof state !== "object") return state;
+
+  const sanitized = { ...state };
+  for (const key of LEGACY_MIRROR_FIELDS) {
+    delete sanitized[key];
+  }
+
+  if ("routingStatus" in sanitized && !CANONICAL_ROUTING_STATUSES.has(sanitized.routingStatus)) {
+    delete sanitized.routingStatus;
+  }
+
+  return sanitized;
+}
+
+function stripLegacyMirrorFields(state = null) {
+  return sanitizeConnectionStatusRecord(state);
+}
+
+function mergeHotState(base, updates) {
+  const sanitizedBase = stripLegacyMirrorFields(base || {});
+  const sanitizedUpdates = stripLegacyMirrorFields(updates || {});
+  return {
+    ...sanitizedBase,
+    ...sanitizedUpdates,
+  };
+}
+
 function normalizeConnectionRef(entry) {
   if (!entry) return null;
   if (typeof entry === "string") {
@@ -196,10 +236,6 @@ function getConnectionRetryAt(state = {}) {
     timestamps.push(state.nextRetryAt);
   }
 
-  if (isFutureTimestamp(state.rateLimitedUntil)) {
-    timestamps.push(state.rateLimitedUntil);
-  }
-
   for (const [key, value] of Object.entries(state || {})) {
     if (isAccountWideModelLockKey(key) && isFutureTimestamp(value)) {
       timestamps.push(value);
@@ -227,7 +263,7 @@ function isConnectionEligible(state = {}) {
   }
 
   const quotaState = state?.quotaState || null;
-  if (["exhausted", "cooldown", "blocked"].includes(quotaState)) {
+  if (["exhausted", "blocked"].includes(quotaState)) {
     return false;
   }
 
@@ -270,11 +306,15 @@ function hydrateProviderState(providerId, rawState = {}) {
 
     const parsedField = parseRedisConnectionField(field);
     if (parsedField) {
+      if (LEGACY_MIRROR_FIELDS.has(parsedField.stateKey)) {
+        continue;
+      }
+
       const value = parseStoredValue(raw);
       if (value !== undefined) {
         const connectionState = providerState.connections.get(parsedField.connectionId) || {};
         connectionState[parsedField.stateKey] = value;
-        providerState.connections.set(parsedField.connectionId, connectionState);
+        providerState.connections.set(parsedField.connectionId, stripLegacyMirrorFields(connectionState));
       }
       continue;
     }
@@ -287,10 +327,7 @@ function hydrateProviderState(providerId, rawState = {}) {
 
   for (const [connectionId, legacyState] of legacyConnectionStates.entries()) {
     const currentState = providerState.connections.get(connectionId) || {};
-    providerState.connections.set(connectionId, {
-      ...legacyState,
-      ...currentState,
-    });
+    providerState.connections.set(connectionId, mergeHotState(legacyState, currentState));
   }
 
   recalculateProviderIndexes(providerState);
@@ -359,6 +396,7 @@ async function persistConnectionField(providerId, connectionId, updates = {}) {
   if (!client) return { storedInRedis: false, providerState: null };
 
   const key = getProviderRedisKey(providerId);
+  const sanitizedUpdates = stripLegacyMirrorFields(updates || {});
 
   const buildPersistPlan = (rawState = {}) => {
     const legacyState = parseStoredState(rawState?.[connectionId]);
@@ -379,9 +417,9 @@ async function persistConnectionField(providerId, connectionId, updates = {}) {
             }
           }
 
-          return mergeState(mergedState, updates);
+          return mergeHotState(mergedState, sanitizedUpdates);
         })()
-      : updates;
+      : mergeHotState({}, sanitizedUpdates);
 
     for (const [stateKey, value] of Object.entries(fieldsToPersist || {})) {
       const redisField = getRedisConnectionField(connectionId, stateKey);
@@ -598,31 +636,12 @@ export function projectProviderHotState(connection = {}, providerState = null) {
   if (!providerState) return connection;
 
   const connectionHotState = providerState.connections.get(connection.id) || null;
-  const projected = connectionHotState ? { ...connection, ...connectionHotState } : { ...connection };
-  const eligibleSet = providerState.eligibleConnectionIds;
-
-  if (connectionHotState && eligibleSet instanceof Set && !eligibleSet.has(connection.id)) {
-    if (!projected.rateLimitedUntil && providerState.retryAt) {
-      projected.rateLimitedUntil = providerState.retryAt;
-    }
-
-    const legacyProjection = projectLegacyConnectionState({
-      ...projected,
-      testStatus: connectionHotState?.routingStatus ? undefined : connectionHotState?.testStatus,
-    });
-
-    Object.assign(projected, legacyProjection);
-
-    if (
-      !projected.testStatus
-      || (projected.routingStatus && projected.testStatus === "unknown")
-      || (!projected.routingStatus && ["active", "success", "unknown"].includes(projected.testStatus))
-    ) {
-      projected.testStatus = "unavailable";
-    }
+  if (!connectionHotState) {
+    return { ...connection };
   }
 
-  return projected;
+  const projected = { ...connection, ...connectionHotState };
+  return stripLegacyMirrorFields(projected);
 }
 
 export async function getConnectionHotState(connectionId, providerId) {
@@ -677,9 +696,10 @@ export async function setConnectionHotState(connectionId, providerId, updates = 
     return { storedInRedis: false, state: null };
   }
 
+  const sanitizedUpdates = stripLegacyMirrorFields(updates);
   const providerState = (await getProviderHotState(providerId)) || createEmptyProviderState();
   const current = providerState.connections.get(connectionId) || {};
-  const next = mergeState(current, updates);
+  const next = mergeHotState(current, sanitizedUpdates);
 
   providerState.connections.set(connectionId, next);
   recalculateProviderIndexes(providerState);
@@ -688,7 +708,7 @@ export async function setConnectionHotState(connectionId, providerId, updates = 
   let storedInRedis = false;
   const client = await getRedisClient();
   if (client) {
-    const persisted = await persistConnectionField(providerId, connectionId, updates);
+    const persisted = await persistConnectionField(providerId, connectionId, sanitizedUpdates);
     storedInRedis = persisted.storedInRedis;
   } else {
     storedInRedis = await persistProviderState(providerId, providerState);
@@ -697,7 +717,7 @@ export async function setConnectionHotState(connectionId, providerId, updates = 
   const latestProviderState = providerStateCache.get(providerId) || providerState;
   return {
     storedInRedis,
-    state: next,
+    state: stripLegacyMirrorFields(next),
     providerState: {
       eligibleConnectionIds: latestProviderState.eligibleConnectionIds ? [...latestProviderState.eligibleConnectionIds] : null,
       retryAt: latestProviderState.retryAt,
@@ -707,73 +727,11 @@ export async function setConnectionHotState(connectionId, providerId, updates = 
 }
 
 export async function writeConnectionHotState({ connectionId, provider, patch = {} } = {}) {
-  const result = await setConnectionHotState(connectionId, provider, patch);
+  const sanitizedPatch = stripLegacyMirrorFields(patch);
+  const result = await setConnectionHotState(connectionId, provider, sanitizedPatch);
   return result?.state || null;
 }
 
-export function projectLegacyConnectionState(snapshot = {}) {
-  if (!snapshot || typeof snapshot !== "object") {
-    return {
-      testStatus: "unknown",
-      lastError: null,
-      lastErrorType: null,
-      lastErrorAt: null,
-      rateLimitedUntil: null,
-      errorCode: null,
-      lastTested: null,
-    };
-  }
-
-  const explicitTestStatus = snapshot.testStatus;
-  const routingStatus = snapshot.routingStatus || null;
-  let testStatus = explicitTestStatus || "unknown";
-
-  if (!explicitTestStatus) {
-    if (routingStatus === "eligible") testStatus = "active";
-    else if (routingStatus === "exhausted" || routingStatus === "blocked_quota" || routingStatus === "cooldown") testStatus = "unavailable";
-    else if (routingStatus === "blocked_auth") testStatus = "expired";
-    else if (routingStatus === "blocked_health") testStatus = "error";
-    else if (routingStatus === "blocked") {
-      const reasonCode = typeof snapshot.reasonCode === "string" ? snapshot.reasonCode : "";
-      const isAuthBlocked = reasonCode === "auth_invalid" || reasonCode.startsWith("auth_");
-      testStatus = isAuthBlocked ? "expired" : "error";
-    }
-  }
-
-  let lastError = snapshot.lastError ?? null;
-  let lastErrorType = snapshot.lastErrorType ?? null;
-
-  if (testStatus === "active" || testStatus === "success") {
-    lastError = null;
-    lastErrorType = null;
-  } else {
-    if (lastError == null && snapshot.reasonDetail) {
-      lastError = snapshot.reasonDetail;
-    }
-    if (lastErrorType == null && snapshot.reasonCode && snapshot.reasonCode !== "unknown") {
-      lastErrorType = snapshot.reasonCode;
-    }
-    if (lastError == null && routingStatus === "blocked_quota") {
-      lastError = "Quota exhausted";
-    }
-    if (lastError == null && routingStatus === "blocked_auth") {
-      lastError = "Authentication expired";
-    }
-    if (lastError == null && routingStatus === "blocked_health") {
-      lastError = "Provider unhealthy";
-    }
-  }
-
-  return {
-    testStatus,
-    lastError,
-    lastErrorType,
-    lastErrorAt: snapshot.lastErrorAt ?? (lastError ? snapshot.lastCheckedAt || null : null),
-    rateLimitedUntil: snapshot.rateLimitedUntil ?? snapshot.nextRetryAt ?? snapshot.resetAt ?? null,
-    errorCode: snapshot.errorCode ?? (snapshot.reasonCode && snapshot.reasonCode !== "unknown" ? snapshot.reasonCode : null),
-    lastTested: snapshot.lastTested ?? snapshot.lastCheckedAt ?? null,
-  };
-}
 
 export async function isRedisHotStateReady() {
   const client = await getRedisClient();

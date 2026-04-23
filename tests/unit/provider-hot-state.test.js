@@ -12,6 +12,7 @@ import {
   getConnectionHotStates,
   mergeConnectionsWithHotState,
   setConnectionHotState,
+  writeConnectionHotState,
 } from "../../src/lib/providerHotState.js";
 
 function createDeferred() {
@@ -49,8 +50,8 @@ describe("providerHotState", () => {
     expect(await getEligibleConnectionIds("provider-redis")).toEqual(["conn-eligible"]);
 
     redisState["conn-blocked"] = JSON.stringify({
-      routingStatus: "blocked_auth",
-      testStatus: "active",
+      routingStatus: "blocked",
+      authState: "invalid",
     });
     delete redisState["conn-eligible"];
 
@@ -72,32 +73,38 @@ describe("providerHotState", () => {
     });
 
     expect(result.state).toMatchObject({
-      testStatus: "unavailable",
-      lastError: "second failure",
       backoffLevel: 2,
       lastUsedAt: "2026-04-21T10:00:00.000Z",
       modelLock_gpt4: "2026-04-21T10:10:00.000Z",
     });
+    expect(result.state).not.toHaveProperty("testStatus");
+    expect(result.state).not.toHaveProperty("lastError");
 
-    expect(await getConnectionHotState("conn-1", "provider-a")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-1", "provider-a");
+    expect(snapshot).toMatchObject({
       id: "conn-1",
-      testStatus: "unavailable",
-      lastError: "second failure",
       backoffLevel: 2,
       modelLock_gpt4: "2026-04-21T10:10:00.000Z",
+      lastUsedAt: "2026-04-21T10:00:00.000Z",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
   });
 
-  it("projects centralized provider state back onto legacy connection fields", async () => {
+  it("projects centralized provider state without emitting legacy mirror fields", async () => {
     const retryAt = new Date(Date.now() + 60_000).toISOString();
 
     await setConnectionHotState("conn-blocked", "provider-b", {
-      rateLimitedUntil: retryAt,
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: retryAt,
     });
 
     await setConnectionHotState("conn-ready", "provider-b", {
       routingStatus: "eligible",
-      testStatus: "active",
+      authState: "ok",
+      healthStatus: "healthy",
+      quotaState: "ok",
       lastUsedAt: "2026-04-21T10:15:00.000Z",
     });
 
@@ -122,14 +129,20 @@ describe("providerHotState", () => {
 
     expect(merged[0]).toMatchObject({
       id: "conn-blocked",
-      testStatus: "unavailable",
-      rateLimitedUntil: retryAt,
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: retryAt,
     });
+    expect(merged[0]).not.toHaveProperty("testStatus");
+    expect(merged[0]).not.toHaveProperty("rateLimitedUntil");
+
     expect(merged[1]).toMatchObject({
       id: "conn-ready",
-      testStatus: "active",
+      routingStatus: "eligible",
       lastUsedAt: "2026-04-21T10:15:00.000Z",
     });
+    expect(merged[1]).not.toHaveProperty("testStatus");
+
     expect(merged[2]).toMatchObject({
       id: "conn-unknown",
       provider: "provider-b",
@@ -142,7 +155,9 @@ describe("providerHotState", () => {
       { id: "conn-unknown", provider: "provider-b", testStatus: "active" },
     ]);
 
-    expect(projected.get("conn-ready")).toMatchObject({ id: "conn-ready", testStatus: "active" });
+    expect(projected.get("conn-ready")).toMatchObject({ id: "conn-ready", routingStatus: "eligible" });
+    expect(projected.get("conn-ready")).not.toHaveProperty("testStatus");
+
     expect(projected.get("conn-unknown")).toMatchObject({
       id: "conn-unknown",
       testStatus: "active",
@@ -153,7 +168,7 @@ describe("providerHotState", () => {
     const retryAt = new Date(Date.now() + 60_000).toISOString();
 
     await setConnectionHotState("conn-blocked", "provider-h", {
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
       nextRetryAt: retryAt,
     });
@@ -173,9 +188,12 @@ describe("providerHotState", () => {
 
     expect(merged[0]).toMatchObject({
       id: "conn-blocked",
-      testStatus: "unavailable",
-      rateLimitedUntil: retryAt,
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: retryAt,
     });
+    expect(merged[0]).not.toHaveProperty("testStatus");
+    expect(merged[0]).not.toHaveProperty("rateLimitedUntil");
     expect(merged[1]).toMatchObject({
       id: "conn-untouched",
       testStatus: "active",
@@ -186,14 +204,17 @@ describe("providerHotState", () => {
     const retryAt = new Date(Date.now() + 60_000).toISOString();
 
     await setConnectionHotState("shared-conn", "provider-left", {
-      testStatus: "unavailable",
-      rateLimitedUntil: retryAt,
-      lastError: "left blocked",
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: retryAt,
+      reasonDetail: "left blocked",
     });
 
     await setConnectionHotState("shared-conn", "provider-right", {
       routingStatus: "eligible",
-      testStatus: "active",
+      authState: "ok",
+      healthStatus: "healthy",
+      quotaState: "ok",
       lastUsedAt: "2026-04-21T10:20:00.000Z",
     });
 
@@ -213,16 +234,21 @@ describe("providerHotState", () => {
     expect(merged[0]).toMatchObject({
       id: "shared-conn",
       provider: "provider-left",
-      testStatus: "unavailable",
-      rateLimitedUntil: retryAt,
-      lastError: "left blocked",
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: retryAt,
+      reasonDetail: "left blocked",
     });
+    expect(merged[0]).not.toHaveProperty("testStatus");
+    expect(merged[0]).not.toHaveProperty("rateLimitedUntil");
+    expect(merged[0]).not.toHaveProperty("lastError");
     expect(merged[1]).toMatchObject({
       id: "shared-conn",
       provider: "provider-right",
-      testStatus: "active",
+      routingStatus: "eligible",
       lastUsedAt: "2026-04-21T10:20:00.000Z",
     });
+    expect(merged[1]).not.toHaveProperty("testStatus");
 
     const projected = await getConnectionHotStates([
       { id: "shared-conn", provider: "provider-left", testStatus: "active" },
@@ -232,23 +258,29 @@ describe("providerHotState", () => {
     expect(projected.get("provider-left:shared-conn")).toMatchObject({
       id: "shared-conn",
       provider: "provider-left",
-      testStatus: "unavailable",
-      rateLimitedUntil: retryAt,
-      lastError: "left blocked",
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: retryAt,
+      reasonDetail: "left blocked",
     });
+    expect(projected.get("provider-left:shared-conn")).not.toHaveProperty("testStatus");
+    expect(projected.get("provider-left:shared-conn")).not.toHaveProperty("lastError");
     expect(projected.get("provider-right:shared-conn")).toMatchObject({
       id: "shared-conn",
       provider: "provider-right",
-      testStatus: "active",
+      routingStatus: "eligible",
       lastUsedAt: "2026-04-21T10:20:00.000Z",
     });
+    expect(projected.get("provider-right:shared-conn")).not.toHaveProperty("testStatus");
     expect(projected.has("shared-conn")).toBe(false);
   });
 
   it("keeps unscoped hot-state access for non-colliding connection IDs", async () => {
     await setConnectionHotState("unique-conn", "provider-solo", {
       routingStatus: "eligible",
-      testStatus: "active",
+      authState: "ok",
+      healthStatus: "healthy",
+      quotaState: "ok",
       lastUsedAt: "2026-04-21T11:00:00.000Z",
     });
 
@@ -259,15 +291,18 @@ describe("providerHotState", () => {
     expect(projected.get("provider-solo:unique-conn")).toMatchObject({
       id: "unique-conn",
       provider: "provider-solo",
-      testStatus: "active",
+      routingStatus: "eligible",
       lastUsedAt: "2026-04-21T11:00:00.000Z",
     });
+    expect(projected.get("provider-solo:unique-conn")).not.toHaveProperty("testStatus");
+
     expect(projected.get("unique-conn")).toMatchObject({
       id: "unique-conn",
       provider: "provider-solo",
-      testStatus: "active",
+      routingStatus: "eligible",
       lastUsedAt: "2026-04-21T11:00:00.000Z",
     });
+    expect(projected.get("unique-conn")).not.toHaveProperty("testStatus");
   });
 
   it("maintains eligible-account membership and retry indexes as connections change", async () => {
@@ -280,14 +315,14 @@ describe("providerHotState", () => {
       lastUsedAt: "2026-04-21T10:00:00.000Z",
     });
     await setConnectionHotState("conn-b", "provider-c", {
-      routingStatus: "eligible",
-      testStatus: "unavailable",
-      rateLimitedUntil: laterRetryAt,
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: laterRetryAt,
     });
     await setConnectionHotState("conn-c", "provider-c", {
-      routingStatus: "eligible",
-      testStatus: "unavailable",
-      rateLimitedUntil: earlierRetryAt,
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: earlierRetryAt,
     });
 
     expect(__getProviderHotStateSnapshotForTests("provider-c")).toMatchObject({
@@ -297,9 +332,9 @@ describe("providerHotState", () => {
 
     await setConnectionHotState("conn-b", "provider-c", {
       routingStatus: "eligible",
-      testStatus: "active",
-      rateLimitedUntil: null,
-      lastError: null,
+      quotaState: "ok",
+      nextRetryAt: null,
+      reasonDetail: null,
     });
 
     expect(__getProviderHotStateSnapshotForTests("provider-c")).toMatchObject({
@@ -368,7 +403,6 @@ describe("providerHotState", () => {
       retryAt: null,
       connections: {
         "conn-model-locked": {
-          testStatus: "active",
           modelLock_gpt4: modelRetryAt,
         },
       },
@@ -379,7 +413,7 @@ describe("providerHotState", () => {
     const retryAt = new Date(Date.now() + 45_000).toISOString();
 
     await setConnectionHotState("conn-blocked", "provider-mixed", {
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
       nextRetryAt: retryAt,
     });
@@ -394,7 +428,7 @@ describe("providerHotState", () => {
     const retryAt = new Date(Date.now() + 45_000).toISOString();
 
     await setConnectionHotState("conn-blocked", "provider-unknown", {
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
       nextRetryAt: retryAt,
     });
@@ -418,7 +452,7 @@ describe("providerHotState", () => {
         provider: "provider-revoked-gap",
         priority: 1,
         testStatus: "active",
-        routingStatus: "blocked_auth",
+        routingStatus: "blocked",
         authState: "revoked",
         lastError: "Token revoked",
       },
@@ -472,7 +506,7 @@ describe("providerHotState", () => {
     ])).toBeNull();
 
     await setConnectionHotState("conn-blocked", "provider-empty", {
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
       nextRetryAt: new Date(Date.now() + 45_000).toISOString(),
     });
@@ -488,17 +522,16 @@ describe("providerHotState", () => {
       testStatus: "active",
     });
     await setConnectionHotState("conn-auth-blocked", "provider-e", {
-      routingStatus: "blocked_auth",
-      testStatus: "active",
+      routingStatus: "blocked",
+      authState: "invalid",
     });
     await setConnectionHotState("conn-health-blocked", "provider-e", {
-      routingStatus: "blocked_health",
-      testStatus: "active",
+      routingStatus: "blocked",
+      healthStatus: "unhealthy",
     });
     await setConnectionHotState("conn-quota-blocked", "provider-e", {
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
-      testStatus: "active",
     });
 
     expect(await getEligibleConnectionIds("provider-e")).toEqual(["conn-eligible"]);
@@ -520,8 +553,8 @@ describe("providerHotState", () => {
         updatedAt: "2026-04-21T10:00:00.000Z",
       }),
       "conn-stale": JSON.stringify({
-        routingStatus: "blocked_auth",
-        testStatus: "active",
+        routingStatus: "blocked",
+        authState: "invalid",
       }),
       "conn-eligible": JSON.stringify({
         routingStatus: "eligible",
@@ -532,80 +565,218 @@ describe("providerHotState", () => {
     expect(await getEligibleConnectionIds("provider-f")).toEqual(["conn-eligible"]);
   });
 
-  it("projects blocked health state back to legacy error fields", async () => {
+  it("does not emit legacy mirror fields from read-time projection", async () => {
     await setConnectionHotState("conn-health", "provider-g", {
-      routingStatus: "blocked_health",
+      routingStatus: "blocked",
       reasonCode: "upstream_unhealthy",
       reasonDetail: "Provider health check failed",
+      nextRetryAt: "2026-04-21T12:30:00.000Z",
     });
 
-    expect(await getConnectionHotState("conn-health", "provider-g")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-health", "provider-g");
+    expect(snapshot).toMatchObject({
       id: "conn-health",
-      testStatus: "error",
-      lastError: "Provider health check failed",
-      lastErrorType: "upstream_unhealthy",
+      routingStatus: "blocked",
+      reasonCode: "upstream_unhealthy",
+      reasonDetail: "Provider health check failed",
+      nextRetryAt: "2026-04-21T12:30:00.000Z",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
+    expect(snapshot).not.toHaveProperty("lastErrorType");
+    expect(snapshot).not.toHaveProperty("lastErrorAt");
+    expect(snapshot).not.toHaveProperty("rateLimitedUntil");
+    expect(snapshot).not.toHaveProperty("errorCode");
+    expect(snapshot).not.toHaveProperty("lastTested");
   });
 
-  it("does not let legacy active testStatus override canonical blocked routing", async () => {
+  it("retains canonical blocked routing state without read-time legacy projection", async () => {
     await setConnectionHotState("conn-canonical-blocked", "provider-canonical-projection", {
-      routingStatus: "blocked_health",
+      routingStatus: "blocked",
       reasonCode: "upstream_unhealthy",
       testStatus: "active",
       reasonDetail: "Provider health check failed",
     });
 
-    expect(await getConnectionHotState("conn-canonical-blocked", "provider-canonical-projection")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-canonical-blocked", "provider-canonical-projection");
+    expect(snapshot).toMatchObject({
       id: "conn-canonical-blocked",
-      routingStatus: "blocked_health",
-      testStatus: "error",
-      lastErrorType: "upstream_unhealthy",
+      routingStatus: "blocked",
+      reasonCode: "upstream_unhealthy",
+      reasonDetail: "Provider health check failed",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastErrorType");
   });
 
-  it("projects canonical exhausted routing state to legacy unavailable status", async () => {
+  it("does not emit legacy mirror fields from active setConnectionHotState writes", async () => {
+    const result = await setConnectionHotState("conn-no-legacy-set", "provider-no-legacy-set", {
+      routingStatus: "eligible",
+      healthStatus: "healthy",
+      authState: "ok",
+      quotaState: "ok",
+      testStatus: "active",
+      lastError: null,
+      lastErrorType: null,
+      lastErrorAt: null,
+      rateLimitedUntil: null,
+      errorCode: null,
+      lastTested: "2026-04-21T12:00:00.000Z",
+      lastCheckedAt: "2026-04-21T12:00:00.000Z",
+    });
+
+    expect(result.state).toMatchObject({
+      routingStatus: "eligible",
+      healthStatus: "healthy",
+      authState: "ok",
+      quotaState: "ok",
+      lastCheckedAt: "2026-04-21T12:00:00.000Z",
+    });
+
+    expect(result.state).not.toHaveProperty("testStatus");
+    expect(result.state).not.toHaveProperty("lastError");
+    expect(result.state).not.toHaveProperty("lastErrorType");
+    expect(result.state).not.toHaveProperty("lastErrorAt");
+    expect(result.state).not.toHaveProperty("rateLimitedUntil");
+    expect(result.state).not.toHaveProperty("errorCode");
+    expect(result.state).not.toHaveProperty("lastTested");
+
+    const readSnapshot = await getConnectionHotState("conn-no-legacy-set", "provider-no-legacy-set");
+    expect(readSnapshot).toMatchObject({
+      id: "conn-no-legacy-set",
+      routingStatus: "eligible",
+    });
+    expect(readSnapshot).not.toHaveProperty("testStatus");
+  });
+
+  it("does not emit legacy mirror fields from active writeConnectionHotState writes", async () => {
+    const snapshot = await writeConnectionHotState({
+      connectionId: "conn-no-legacy-write",
+      provider: "provider-no-legacy-write",
+      patch: {
+        routingStatus: "blocked",
+        reasonCode: "auth_invalid",
+        reasonDetail: "Token expired",
+        testStatus: "expired",
+        lastError: "Token expired",
+        lastErrorType: "auth_invalid",
+        lastErrorAt: "2026-04-21T12:30:00.000Z",
+      },
+    });
+
+    expect(snapshot).toMatchObject({
+      routingStatus: "blocked",
+      reasonCode: "auth_invalid",
+      reasonDetail: "Token expired",
+    });
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
+    expect(snapshot).not.toHaveProperty("lastErrorType");
+    expect(snapshot).not.toHaveProperty("lastErrorAt");
+
+    const readSnapshot = await getConnectionHotState("conn-no-legacy-write", "provider-no-legacy-write");
+    expect(readSnapshot).toMatchObject({
+      id: "conn-no-legacy-write",
+      routingStatus: "blocked",
+      reasonCode: "auth_invalid",
+      reasonDetail: "Token expired",
+    });
+    expect(readSnapshot).not.toHaveProperty("testStatus");
+
+    const providerSnapshot = __getProviderHotStateSnapshotForTests("provider-no-legacy-write");
+    expect(providerSnapshot?.connections?.["conn-no-legacy-write"]).toMatchObject({
+      routingStatus: "blocked",
+      reasonCode: "auth_invalid",
+      reasonDetail: "Token expired",
+    });
+    expect(providerSnapshot?.connections?.["conn-no-legacy-write"]).not.toHaveProperty("testStatus");
+    expect(providerSnapshot?.connections?.["conn-no-legacy-write"]).not.toHaveProperty("lastError");
+    expect(providerSnapshot?.connections?.["conn-no-legacy-write"]).not.toHaveProperty("lastErrorType");
+    expect(providerSnapshot?.connections?.["conn-no-legacy-write"]).not.toHaveProperty("lastErrorAt");
+  });
+
+  it("drops legacy top-level routing statuses on hot-state writes while keeping canonical details", async () => {
+    const result = await setConnectionHotState("conn-legacy-routing", "provider-legacy-routing", {
+      routingStatus: "blocked_auth",
+      authState: "invalid",
+      reasonCode: "auth_invalid",
+      reasonDetail: "Token expired",
+    });
+
+    expect(result.state).toMatchObject({
+      authState: "invalid",
+      reasonCode: "auth_invalid",
+    });
+    expect(result.state).not.toHaveProperty("routingStatus");
+
+    const snapshot = await getConnectionHotState("conn-legacy-routing", "provider-legacy-routing");
+    expect(snapshot).toMatchObject({
+      id: "conn-legacy-routing",
+      authState: "invalid",
+      reasonCode: "auth_invalid",
+    });
+    expect(snapshot).not.toHaveProperty("routingStatus");
+  });
+
+  it("treats quotaState=cooldown as non-blocking for eligibility indexes", async () => {
+    await setConnectionHotState("conn-cooldown", "provider-cooldown", {
+      routingStatus: "eligible",
+      authState: "ok",
+      healthStatus: "healthy",
+      quotaState: "cooldown",
+    });
+
+    expect(await getEligibleConnectionIds("provider-cooldown")).toEqual(["conn-cooldown"]);
+  });
+
+  it("returns canonical exhausted routing state without legacy unavailable projection", async () => {
     await setConnectionHotState("conn-exhausted-projection", "provider-canonical", {
       routingStatus: "exhausted",
       quotaState: "exhausted",
       nextRetryAt: new Date(Date.now() + 60_000).toISOString(),
     });
 
-    expect(await getConnectionHotState("conn-exhausted-projection", "provider-canonical")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-exhausted-projection", "provider-canonical");
+    expect(snapshot).toMatchObject({
       id: "conn-exhausted-projection",
       routingStatus: "exhausted",
       quotaState: "exhausted",
-      testStatus: "unavailable",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
   });
 
-  it("projects canonical blocked auth_invalid reason to legacy expired status", async () => {
+  it("returns canonical blocked auth_invalid state without legacy expired projection", async () => {
     await setConnectionHotState("conn-blocked-auth", "provider-canonical", {
       routingStatus: "blocked",
       reasonCode: "auth_invalid",
       reasonDetail: "Token expired",
     });
 
-    expect(await getConnectionHotState("conn-blocked-auth", "provider-canonical")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-blocked-auth", "provider-canonical");
+    expect(snapshot).toMatchObject({
       id: "conn-blocked-auth",
       routingStatus: "blocked",
       reasonCode: "auth_invalid",
-      testStatus: "expired",
+      reasonDetail: "Token expired",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
   });
 
-  it("projects canonical blocked non-auth reason to legacy error status", async () => {
+  it("returns canonical blocked non-auth state without legacy error projection", async () => {
     await setConnectionHotState("conn-blocked-upstream", "provider-canonical", {
       routingStatus: "blocked",
       reasonCode: "upstream_unhealthy",
       reasonDetail: "Provider health check failed",
     });
 
-    expect(await getConnectionHotState("conn-blocked-upstream", "provider-canonical")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-blocked-upstream", "provider-canonical");
+    expect(snapshot).toMatchObject({
       id: "conn-blocked-upstream",
       routingStatus: "blocked",
       reasonCode: "upstream_unhealthy",
-      testStatus: "error",
+      reasonDetail: "Provider health check failed",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
   });
 
   it("preserves different-key updates when workers patch the same connection concurrently", async () => {
@@ -659,14 +830,15 @@ describe("providerHotState", () => {
     allowWrites.resolve();
     await Promise.all([firstWrite, secondWrite]);
 
-    expect(await getConnectionHotState("conn-shared", "provider-shared")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-shared", "provider-shared");
+    expect(snapshot).toMatchObject({
       id: "conn-shared",
-      routingStatus: "eligible",
-      testStatus: "active",
-      lastError: "worker-a",
       backoffLevel: 3,
-      lastErrorAt: "2026-04-21T10:30:00.000Z",
     });
+    expect(snapshot).toHaveProperty("routingStatus", "eligible");
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
+    expect(snapshot).not.toHaveProperty("lastErrorAt");
   });
 
   it("hydrates mixed legacy and per-key Redis state deterministically with per-key values winning", async () => {
@@ -698,13 +870,15 @@ describe("providerHotState", () => {
       },
     });
 
-    expect(await getConnectionHotState("conn-mixed", "provider-mixed")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-mixed", "provider-mixed");
+    expect(snapshot).toMatchObject({
       id: "conn-mixed",
-      testStatus: "active",
-      lastError: "new-format",
       backoffLevel: 1,
-      lastErrorAt: "2026-04-21T11:00:00.000Z",
     });
+    expect(snapshot).toHaveProperty("routingStatus", "eligible");
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
+    expect(snapshot).not.toHaveProperty("lastErrorAt");
   });
 
   it("hydrates mixed legacy and per-key Redis state independent of field insertion order", async () => {
@@ -736,12 +910,12 @@ describe("providerHotState", () => {
     expect(__getProviderHotStateSnapshotForTests("provider-order-a")).toMatchObject({
       connections: {
         "conn:mixed": {
-          testStatus: "active",
-          lastError: "new-format",
           backoffLevel: 1,
         },
       },
     });
+    expect(__getProviderHotStateSnapshotForTests("provider-order-a")?.connections?.["conn:mixed"]).not.toHaveProperty("testStatus");
+    expect(__getProviderHotStateSnapshotForTests("provider-order-a")?.connections?.["conn:mixed"]).not.toHaveProperty("lastError");
   });
 
   it("migrates legacy blob partial updates without dropping untouched fields", async () => {
@@ -785,21 +959,91 @@ describe("providerHotState", () => {
       lastUsedAt: "2026-04-21T12:30:00.000Z",
     });
 
-    expect(await getConnectionHotState("conn-legacy", "provider-legacy-migration")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn-legacy", "provider-legacy-migration");
+    expect(snapshot).toMatchObject({
       id: "conn-legacy",
-      testStatus: "unavailable",
-      lastError: "legacy failure",
       backoffLevel: 2,
       lastUsedAt: "2026-04-21T12:30:00.000Z",
     });
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
 
     const storedHash = redisHashes.get("9router:provider-hot-state:provider-legacy-migration");
     expect(storedHash).not.toHaveProperty("conn-legacy");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1sZWdhY3k=:dGVzdFN0YXR1cw==");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1sZWdhY3k=:bGFzdEVycm9y");
     expect(Object.values(storedHash || {})).not.toContain(JSON.stringify({
       testStatus: "unavailable",
       lastError: "legacy failure",
       backoffLevel: 2,
     }));
+  });
+
+  it("does not retain legacy mirror fields in Redis per-key storage on direct writes", async () => {
+    process.env.REDIS_URL = "redis://example.test:6379";
+
+    const redisKey = "9router:provider-hot-state:provider-direct-write";
+    const redisHashes = new Map();
+
+    __setRedisClientForTests({
+      isReady: true,
+      async hGetAll(key) {
+        return { ...(redisHashes.get(key) || {}) };
+      },
+      async hSet(key, payload) {
+        redisHashes.set(key, {
+          ...(redisHashes.get(key) || {}),
+          ...payload,
+        });
+      },
+      async hDel(key, field) {
+        const current = { ...(redisHashes.get(key) || {}) };
+        delete current[field];
+        redisHashes.set(key, current);
+      },
+      async expire() {
+        return 1;
+      },
+    });
+
+    await setConnectionHotState("conn-direct", "provider-direct-write", {
+      routingStatus: "blocked",
+      reasonCode: "auth_invalid",
+      reasonDetail: "Token expired",
+      testStatus: "expired",
+      lastError: "Token expired",
+      lastErrorType: "auth_invalid",
+      lastErrorAt: "2026-04-21T12:30:00.000Z",
+      rateLimitedUntil: "2026-04-21T12:35:00.000Z",
+      errorCode: "E_AUTH",
+      lastTested: "2026-04-21T12:30:00.000Z",
+    });
+
+    const storedHash = redisHashes.get(redisKey) || {};
+    expect(storedHash).toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:cm91dGluZ1N0YXR1cw==", JSON.stringify("blocked"));
+    expect(storedHash).toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:cmVhc29uQ29kZQ==", JSON.stringify("auth_invalid"));
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:dGVzdFN0YXR1cw==");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:bGFzdEVycm9y");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:bGFzdEVycm9yVHlwZQ==");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:bGFzdEVycm9yQXQ=");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:cmF0ZUxpbWl0ZWRVbnRpbA==");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:ZXJyb3JDb2Rl");
+    expect(storedHash).not.toHaveProperty("__conn__:Y29ubi1kaXJlY3Q=:bGFzdFRlc3RlZA==");
+
+    const snapshot = await getConnectionHotState("conn-direct", "provider-direct-write");
+    expect(snapshot).toMatchObject({
+      id: "conn-direct",
+      routingStatus: "blocked",
+      reasonCode: "auth_invalid",
+      reasonDetail: "Token expired",
+    });
+    expect(snapshot).not.toHaveProperty("testStatus");
+    expect(snapshot).not.toHaveProperty("lastError");
+    expect(snapshot).not.toHaveProperty("lastErrorType");
+    expect(snapshot).not.toHaveProperty("lastErrorAt");
+    expect(snapshot).not.toHaveProperty("rateLimitedUntil");
+    expect(snapshot).not.toHaveProperty("errorCode");
+    expect(snapshot).not.toHaveProperty("lastTested");
   });
 
   it("preserves concurrent partial updates during legacy-to-per-key migration", async () => {
@@ -941,14 +1185,16 @@ describe("providerHotState", () => {
 
     await setConnectionHotState("conn:with:colon", "provider-colon", {
       "modelLock_model:alpha": "2026-04-21T12:00:00.000Z",
-      lastError: "colon-safe",
+      reasonDetail: "colon-safe",
     });
 
-    expect(await getConnectionHotState("conn:with:colon", "provider-colon")).toMatchObject({
+    const snapshot = await getConnectionHotState("conn:with:colon", "provider-colon");
+    expect(snapshot).toMatchObject({
       id: "conn:with:colon",
       "modelLock_model:alpha": "2026-04-21T12:00:00.000Z",
-      lastError: "colon-safe",
+      reasonDetail: "colon-safe",
     });
+    expect(snapshot).not.toHaveProperty("lastError");
   });
 
   it("preserves sibling connection updates when workers write the same provider concurrently", async () => {
@@ -997,14 +1243,12 @@ describe("providerHotState", () => {
 
     const firstWrite = setConnectionHotState("conn-a", "provider-race", {
       routingStatus: "eligible",
-      testStatus: "active",
-      lastError: "worker-a",
+      reasonDetail: "worker-a",
     });
 
     const secondWrite = setConnectionHotState("conn-b", "provider-race", {
       routingStatus: "eligible",
-      testStatus: "active",
-      lastError: "worker-b",
+      reasonDetail: "worker-b",
     });
 
     await readsStarted.promise;
@@ -1018,11 +1262,14 @@ describe("providerHotState", () => {
 
     expect(providerState.get("provider-race:conn-a")).toMatchObject({
       id: "conn-a",
-      lastError: "worker-a",
+      reasonDetail: "worker-a",
     });
+    expect(providerState.get("provider-race:conn-a")).not.toHaveProperty("lastError");
+
     expect(providerState.get("provider-race:conn-b")).toMatchObject({
       id: "conn-b",
-      lastError: "worker-b",
+      reasonDetail: "worker-b",
     });
+    expect(providerState.get("provider-race:conn-b")).not.toHaveProperty("lastError");
   });
 });

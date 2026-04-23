@@ -28,6 +28,32 @@ function sortByRecencyAsc(connections = []) {
   });
 }
 
+function hasFutureTimestamp(value) {
+  if (!value) return false;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) && timestamp > Date.now();
+}
+
+function isCanonicalFallbackEligible(connection = {}) {
+  const routingStatus = connection?.routingStatus || null;
+  if (routingStatus !== "eligible") return false;
+
+  const authState = connection?.authState || null;
+  if (["expired", "invalid", "revoked"].includes(authState)) return false;
+
+  const healthStatus = connection?.healthStatus || null;
+  if (["error", "failed", "unhealthy", "down"].includes(healthStatus)) return false;
+
+  const quotaState = connection?.quotaState || null;
+  if (["exhausted", "cooldown", "blocked"].includes(quotaState)) return false;
+
+  if (hasFutureTimestamp(connection?.nextRetryAt) || hasFutureTimestamp(connection?.resetAt)) {
+    return false;
+  }
+
+  return true;
+}
+
 // Mutex to prevent race conditions during account selection
 let selectionMutex = Promise.resolve();
 
@@ -75,14 +101,13 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     });
 
     const centralizedEligibleConnections = await getEligibleConnections(providerId, availableConnections);
-    const eligibleConnections = Array.isArray(centralizedEligibleConnections)
+    const hasCentralizedEligibility = Array.isArray(centralizedEligibleConnections);
+    const hasCentralizedEligibilityData = centralizedEligibleConnections != null;
+    let selectionPool = hasCentralizedEligibility
       ? sortByPriority(centralizedEligibleConnections)
       : null;
-    const selectionPool = Array.isArray(eligibleConnections)
-      ? eligibleConnections
-      : sortByPriority(availableConnections.filter((connection) => connection?.testStatus === "active"));
 
-    log.debug("AUTH", `${provider} | available: ${availableConnections.length}/${connections.length}, eligible: ${eligibleConnections === null ? "unavailable" : eligibleConnections.length}`);
+    log.debug("AUTH", `${provider} | available: ${availableConnections.length}/${connections.length}, eligible: ${hasCentralizedEligibility ? selectionPool.length : "unavailable"}`);
     connections.forEach(c => {
       const excluded = excludeSet.has(c.id);
       const locked = isModelLockActive(c, model);
@@ -99,13 +124,13 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       const earliest = expiries.sort()[0] || null;
       if (earliest) {
         const earliestConn = lockedConns[0];
-        log.warn("AUTH", `${provider} | all ${connections.length} accounts locked for ${model || "all"} (${formatRetryAfter(earliest)}) | lastError=${earliestConn?.lastError?.slice(0, 50)}`);
+        log.warn("AUTH", `${provider} | all ${connections.length} accounts locked for ${model || "all"} (${formatRetryAfter(earliest)}) | reason=${earliestConn?.reasonDetail?.slice(0, 50)}`);
         return {
           allRateLimited: true,
           retryAfter: earliest,
           retryAfterHuman: formatRetryAfter(earliest),
-          lastError: earliestConn?.lastError || null,
-          lastErrorCode: earliestConn?.errorCode || null
+          lastError: earliestConn?.reasonDetail || null,
+          lastErrorCode: earliestConn?.reasonCode || null
         };
       }
       log.warn("AUTH", `${provider} | all ${connections.length} accounts unavailable`);
@@ -113,8 +138,18 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     }
 
     if (!Array.isArray(selectionPool)) {
-      log.warn("AUTH", `${provider} | centralized eligibility unavailable`);
-      return null;
+      if (!hasCentralizedEligibilityData) {
+        const fallbackPool = sortByPriority(availableConnections.filter(isCanonicalFallbackEligible));
+        log.warn("AUTH", `${provider} | centralized eligibility unavailable, using canonical fallback (${fallbackPool.length}/${availableConnections.length})`);
+        if (fallbackPool.length > 0) {
+          selectionPool = fallbackPool;
+        }
+      }
+
+      if (!Array.isArray(selectionPool)) {
+        log.warn("AUTH", `${provider} | centralized eligibility unavailable`);
+        return null;
+      }
     }
 
     if (selectionPool.length === 0) {
@@ -178,9 +213,6 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
         vercelRelayUrl: resolvedProxy.vercelRelayUrl || "",
       },
       connectionId: connection.id,
-      // Include current status for optimization check
-      testStatus: connection.testStatus,
-      lastError: connection.lastError,
       // Pass full connection for clearAccountError to read modelLock_* keys
       _connection: connection
     };
@@ -231,13 +263,11 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
     || status === 429
     || normalizedReason.includes("rate limit")
     || normalizedReason.includes("too many requests")
-    || normalizedReason.includes("quota")
-    || Boolean(conn?.rateLimitedUntil);
+    || normalizedReason.includes("quota");
 
-  const exhaustedRetryAt = liveQuotaSignal?.resetAt || conn?.rateLimitedUntil || null;
+  const exhaustedRetryAt = liveQuotaSignal?.resetAt || null;
   const exhaustedReason = liveQuotaSignal?.reasonDetail || reason;
   const exhaustedReasonCode = liveQuotaSignal?.reasonCode || "quota_exhausted";
-  const exhaustedErrorCode = liveQuotaSignal?.errorCode || "quota_exhausted";
 
   const exhaustedPatch = !authBlockedPatch && isRuntimeQuotaOrRateLimited
     ? {
@@ -249,14 +279,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
         reasonDetail: exhaustedReason,
         nextRetryAt: exhaustedRetryAt,
         resetAt: exhaustedRetryAt,
-        testStatus: "unavailable",
-        lastError: exhaustedReason,
-        lastErrorType: exhaustedReasonCode,
-        lastErrorAt: lastCheckedAt,
-        rateLimitedUntil: exhaustedRetryAt,
-        errorCode: exhaustedErrorCode,
         lastCheckedAt,
-        lastTested: lastCheckedAt,
       }
     : null;
 
@@ -268,14 +291,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
         authState: "ok",
         reasonCode: "upstream_unhealthy",
         reasonDetail: reason,
-        testStatus: "error",
-        lastError: reason,
-        lastErrorType: "upstream_unhealthy",
-        lastErrorAt: lastCheckedAt,
-        rateLimitedUntil: null,
-        errorCode: "upstream_unhealthy",
         lastCheckedAt,
-        lastTested: lastCheckedAt,
       }
     : null;
 
@@ -295,14 +311,19 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
   const connectionPatch = {
     ...(canonicalBlockedPatch || {}),
     ...lockUpdate,
-    testStatus: canonicalBlockedPatch?.testStatus || "unavailable",
-    lastErrorAt: canonicalBlockedPatch?.lastErrorAt || lastCheckedAt,
-    backoffLevel: newBackoffLevel ?? backoffLevel
+    backoffLevel: newBackoffLevel ?? backoffLevel,
   };
 
   if (!canonicalBlockedPatch) {
-    connectionPatch.lastError = reason;
-    connectionPatch.errorCode = status;
+    Object.assign(connectionPatch, {
+      routingStatus: "blocked",
+      healthStatus: "degraded",
+      quotaState: "ok",
+      authState: "ok",
+      reasonCode: "usage_request_failed",
+      reasonDetail: reason,
+      lastCheckedAt,
+    });
   }
 
   await updateProviderConnection(connectionId, connectionPatch);
@@ -346,7 +367,7 @@ export async function clearAccountError(connectionId, currentConnection, model =
     conn.resetAt,
   ].some(Boolean);
 
-  if (!conn.testStatus && !conn.lastError && !hasCentralizedBlockedState && allLockKeys.length === 0) return;
+  if (!hasCentralizedBlockedState && allLockKeys.length === 0) return;
 
   // Keys to clear: current model's lock + all expired locks
   const keysToClear = allLockKeys.filter(k => {
@@ -356,7 +377,7 @@ export async function clearAccountError(connectionId, currentConnection, model =
     return expiry && new Date(expiry).getTime() <= now;   // expired
   });
 
-  if (keysToClear.length === 0 && conn.testStatus !== "unavailable" && !conn.lastError && !hasCentralizedBlockedState) return;
+  if (keysToClear.length === 0 && !hasCentralizedBlockedState) return;
 
   // Check if any active locks remain after clearing
   const remainingActiveLocks = allLockKeys.filter(k => {

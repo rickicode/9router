@@ -43,7 +43,7 @@ describe("models availability route", () => {
         id: "conn-cooldown",
         provider: "codex",
         name: "Cooldown Conn",
-        routingStatus: "blocked_quota",
+        routingStatus: "exhausted",
         nextRetryAt: "2026-04-25T00:00:00.000Z",
         reasonDetail: "Quota exhausted",
       },
@@ -58,7 +58,7 @@ describe("models availability route", () => {
         id: "conn-blocked",
         provider: "openai",
         name: "Blocked Conn",
-        routingStatus: "blocked_health",
+        routingStatus: "blocked",
         lastError: "Probe failed",
       },
     );
@@ -88,7 +88,7 @@ describe("models availability route", () => {
         provider: "openai",
         model: "__all",
         status: "blocked",
-        lastError: "Probe failed",
+        lastError: null,
       }),
     ]);
     expect(response.body.unavailableCount).toBe(3);
@@ -99,7 +99,7 @@ describe("models availability route", () => {
       id: "conn-both",
       provider: "codex",
       name: "Mixed Conn",
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       nextRetryAt: "2026-04-25T00:00:00.000Z",
       modelLock_gpt4: "2026-04-24T00:00:00.000Z",
     });
@@ -128,7 +128,7 @@ describe("models availability route", () => {
     mockConnections.push({
       id: "conn-cooldown",
       provider: "codex",
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
       testStatus: "unavailable",
       nextRetryAt: "2026-04-25T00:00:00.000Z",
@@ -147,7 +147,6 @@ describe("models availability route", () => {
 
     expect(response.status).toBe(200);
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-cooldown", {
-      rateLimitedUntil: null,
       nextRetryAt: null,
       resetAt: null,
       modelLock_gpt4: null,
@@ -161,7 +160,7 @@ describe("models availability route", () => {
       id: "conn-expired",
       provider: "codex",
       routingStatus: "blocked_quota",
-      quotaState: "cooldown",
+      quotaState: "exhausted",
       authState: "expired",
       testStatus: "unavailable",
       nextRetryAt: "2026-04-25T00:00:00.000Z",
@@ -176,10 +175,8 @@ describe("models availability route", () => {
 
     expect(response.status).toBe(200);
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-expired", {
-      rateLimitedUntil: null,
       nextRetryAt: null,
       resetAt: null,
-      routingStatus: null,
       quotaState: null,
     });
   });

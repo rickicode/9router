@@ -25,18 +25,43 @@ const ALLOWED_FIELDS = [
   "scope",
   "projectId",
   "providerSpecificData",
-    "testStatus",
-    "lastTested",
-    "lastError",
-    "lastErrorType",
-    "lastErrorAt",
-    "rateLimitedUntil",
-    "errorCode",
+  "routingStatus",
+  "quotaState",
+  "healthStatus",
+  "authState",
+  "reasonCode",
+  "reasonDetail",
+  "nextRetryAt",
+  "resetAt",
+  "lastCheckedAt",
+  "usageSnapshot",
+  "version",
+  "lastUsedAt",
+  "consecutiveUseCount",
+  "backoffLevel",
 ];
 
+const LEGACY_STATUS_FIELDS = new Set([
+  "testStatus",
+  "test_status",
+  "lastTested",
+  "last_tested",
+  "lastError",
+  "last_error",
+  "lastErrorAt",
+  "last_error_at",
+  "lastErrorType",
+  "last_error_type",
+  "rateLimitedUntil",
+  "rate_limited_until",
+  "errorCode",
+  "error_code",
+]);
+
 function normalizeAuthType(value) {
-  if (value === "apikey") return "apikey";
-  return "oauth";
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") return value;
+  return value.trim().toLowerCase();
 }
 
 function toNonArrayObject(value) {
@@ -60,9 +85,25 @@ function compactObject(input) {
   return out;
 }
 
+function findLegacyStatusFields(record = {}) {
+  return Object.keys(record).filter((key) => LEGACY_STATUS_FIELDS.has(key));
+}
+
+function assertNoLegacyStatusFields(record = {}) {
+  const legacyFields = findLegacyStatusFields(record);
+  if (legacyFields.length === 0) return;
+
+  const error = new Error(`Legacy status fields are not supported: ${legacyFields.join(", ")}`);
+  error.code = "INVALID_LEGACY_STATUS_FIELDS";
+  error.legacyFields = legacyFields;
+  throw error;
+}
+
 function normalizeInputRecord(raw) {
   const record = toNonArrayObject(raw);
   if (!record) return null;
+
+  assertNoLegacyStatusFields(record);
 
   const credentials = toNonArrayObject(record.credentials);
   const secrets = toNonArrayObject(record.secrets);
@@ -182,19 +223,34 @@ function normalizeInputRecord(raw) {
       meta?.projectId,
       meta?.project_id,
     ),
-    testStatus: pickValue(record.testStatus, record.test_status),
-    lastTested: pickValue(record.lastTested, record.last_tested),
-    lastError: pickValue(record.lastError, record.last_error),
-    lastErrorType: pickValue(record.lastErrorType, record.last_error_type),
-    lastErrorAt: pickValue(record.lastErrorAt, record.last_error_at),
-    rateLimitedUntil: pickValue(record.rateLimitedUntil, record.rate_limited_until),
-    errorCode: pickValue(record.errorCode, record.error_code),
+    routingStatus: pickValue(record.routingStatus, record.routing_status),
+    quotaState: pickValue(record.quotaState, record.quota_state),
+    healthStatus: pickValue(record.healthStatus, record.health_status),
+    authState: pickValue(record.authState, record.auth_state),
+    reasonCode: pickValue(record.reasonCode, record.reason_code),
+    reasonDetail: pickValue(record.reasonDetail, record.reason_detail),
+    nextRetryAt: pickValue(record.nextRetryAt, record.next_retry_at),
+    resetAt: pickValue(record.resetAt, record.reset_at),
+    lastCheckedAt: pickValue(record.lastCheckedAt, record.last_checked_at),
+    usageSnapshot: pickValue(record.usageSnapshot, record.usage_snapshot),
+    version: pickValue(record.version),
+    lastUsedAt: pickValue(record.lastUsedAt, record.last_used_at),
+    consecutiveUseCount: pickValue(record.consecutiveUseCount, record.consecutive_use_count),
+    backoffLevel: pickValue(record.backoffLevel, record.backoff_level),
     providerSpecificData: {
       ...providerSpecificData,
       ...compactObject(metadata),
       ...compactObject(meta),
     },
   };
+
+  if (normalized.routingStatus === undefined && normalized.quotaState === "ok") {
+    normalized.routingStatus = "eligible";
+  }
+
+  if (normalized.reasonCode === undefined && normalized.routingStatus === "exhausted") {
+    normalized.reasonCode = "quota_exhausted";
+  }
 
   if (Object.keys(normalized.providerSpecificData).length === 0) {
     delete normalized.providerSpecificData;
@@ -235,9 +291,17 @@ function hasCredentialPayload(data) {
   );
 }
 
+function createInvalidRecordError(message) {
+  const error = new Error(message);
+  error.code = "INVALID_RECORD";
+  return error;
+}
+
 function inferAuthType(record, normalizedAuthType) {
-  if (normalizedAuthType === "apikey") return "apikey";
-  if (record.authType === "oauth") return "oauth";
+  if (normalizedAuthType === "apikey" || normalizedAuthType === "oauth") return normalizedAuthType;
+  if (normalizedAuthType !== undefined) {
+    throw createInvalidRecordError(`Unsupported authType: ${record.authType ?? normalizedAuthType}`);
+  }
 
   // If authType is missing/unknown but payload clearly has an API key only,
   // treat it as API key auth for safer upsert behavior.
@@ -260,23 +324,26 @@ function sanitizeCredentialRecord(record) {
   data.provider = typeof data.provider === "string" ? data.provider.trim() : "";
   data.authType = inferAuthType(record, normalizeAuthType(data.authType));
 
-  // Restored Codex OAuth credentials should behave like manually added ones:
-  // if the backup did not include a test status, seed the initial status so
-  // the dashboard does not surface a misleading "unknown" badge.
+  // Restored Codex OAuth credentials should behave like manually added ones.
+  // If no canonical status was provided, seed an initial eligible state.
   if (
     data.provider === "codex" &&
     data.authType === "oauth" &&
-    data.testStatus === undefined
+    data.routingStatus === undefined &&
+    data.quotaState === undefined &&
+    data.healthStatus === undefined &&
+    data.authState === undefined
   ) {
-    data.testStatus = "active";
+    data.routingStatus = "eligible";
+    data.quotaState = "ok";
   }
 
   if (!data.provider) {
-    throw new Error("Credential record is missing provider");
+    throw createInvalidRecordError("Credential record is missing provider");
   }
 
   if (!hasCredentialPayload(data)) {
-    throw new Error("Credential record has no credential payload");
+    throw createInvalidRecordError("Credential record has no credential payload");
   }
 
   return data;
@@ -338,11 +405,13 @@ export async function POST(request) {
     let created = 0;
     let updated = 0;
     let skipped = 0;
+    const skipReasons = [];
 
     for (const item of inputRecords) {
       const normalizedItem = normalizeInputRecord(item);
       if (!normalizedItem) {
         skipped += 1;
+        skipReasons.push({ code: "INVALID_RECORD", message: "Credential record must be an object" });
         continue;
       }
 
@@ -350,8 +419,12 @@ export async function POST(request) {
       let data;
       try {
         data = sanitizeCredentialRecord(normalizedItem);
-      } catch {
+      } catch (error) {
         skipped += 1;
+        skipReasons.push({
+          code: error?.code || "INVALID_RECORD",
+          message: error?.message || "Credential record is invalid",
+        });
         continue;
       }
 
@@ -367,6 +440,10 @@ export async function POST(request) {
       } else {
         if (data.authType === "apikey" && !data.name) {
           skipped += 1;
+          skipReasons.push({
+            code: "INVALID_RECORD",
+            message: "API key credential record is missing name",
+          });
           continue;
         }
 
@@ -382,9 +459,21 @@ export async function POST(request) {
       updated,
       skipped,
       imported: created + updated,
+      skipReasons,
     });
   } catch (error) {
     console.log("Error importing credentials:", error);
+    if (error?.code === "INVALID_LEGACY_STATUS_FIELDS") {
+      return NextResponse.json(
+        {
+          error: error.message,
+          errorCode: "INVALID_LEGACY_STATUS_FIELDS",
+          legacyFields: error.legacyFields || [],
+        },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
       { error: error?.message || "Failed to import credentials" },
       { status: 400 },

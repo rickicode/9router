@@ -270,25 +270,72 @@ describe("auth account selection", () => {
     expect(credentials).toBeNull();
   });
 
-  it("falls back to active available accounts when centralized eligibility is unavailable", async () => {
+  it("falls back to canonical eligibility when centralized eligibility is unavailable", async () => {
+    mockConnections.push(
+      {
+        id: "conn-blocked",
+        provider: "codex",
+        isActive: true,
+        priority: 1,
+        displayName: "Blocked",
+        accessToken: "blocked-token",
+        testStatus: "active",
+        routingStatus: "blocked",
+        authState: "invalid",
+        healthStatus: "healthy",
+        quotaState: "ok",
+      },
+      {
+        id: "conn-eligible",
+        provider: "codex",
+        isActive: true,
+        priority: 2,
+        displayName: "Eligible",
+        accessToken: "eligible-token",
+        testStatus: "unavailable",
+        routingStatus: "eligible",
+        authState: "ok",
+        healthStatus: "healthy",
+        quotaState: "ok",
+      },
+    );
+    getEligibleConnections.mockResolvedValueOnce(undefined);
+
+    const { getProviderCredentials } = await import("../../src/sse/services/auth.js");
+    const credentials = await getProviderCredentials("codex", null, "gpt-4.1");
+
+    expect(credentials.connectionId).toBe("conn-eligible");
+    expect(credentials.accessToken).toBe("eligible-token");
+  });
+
+  it("does not fall back to legacy testStatus when centralized eligibility is unavailable", async () => {
     mockConnections.push(
       {
         id: "conn-first",
         provider: "codex",
         isActive: true,
         priority: 1,
-        displayName: "First",
+        displayName: "Legacy active",
         accessToken: "first-token",
         testStatus: "active",
       },
       {
-        id: "conn-second",
+        id: "conn-legacy-unknown",
         provider: "codex",
         isActive: true,
         priority: 2,
-        displayName: "Second",
-        accessToken: "second-token",
+        displayName: "Legacy unknown",
+        accessToken: "legacy-unknown-token",
         testStatus: "unknown",
+      },
+      {
+        id: "conn-legacy-unavailable",
+        provider: "codex",
+        isActive: true,
+        priority: 3,
+        displayName: "Legacy unavailable",
+        accessToken: "legacy-unavailable-token",
+        testStatus: "unavailable",
       },
     );
     getEligibleConnections.mockResolvedValueOnce(null);
@@ -296,11 +343,10 @@ describe("auth account selection", () => {
     const { getProviderCredentials } = await import("../../src/sse/services/auth.js");
     const credentials = await getProviderCredentials("codex", null, "gpt-4.1");
 
-    expect(credentials.connectionId).toBe("conn-first");
-    expect(credentials.accessToken).toBe("first-token");
+    expect(credentials).toBeNull();
   });
 
-  it("returns null when centralized eligibility is unavailable and no active fallback candidate exists", async () => {
+  it("returns null when centralized eligibility is unavailable and no canonical fallback candidate exists", async () => {
     mockConnections.push({
       id: "conn-unknown-only",
       provider: "codex",
@@ -309,6 +355,10 @@ describe("auth account selection", () => {
       displayName: "Unknown only",
       accessToken: "unknown-token",
       testStatus: "unknown",
+      routingStatus: null,
+      authState: null,
+      healthStatus: null,
+      quotaState: null,
     });
     getEligibleConnections.mockResolvedValueOnce(null);
 
@@ -357,9 +407,6 @@ describe("auth account selection", () => {
       quotaState: "exhausted",
       reasonCode: "quota_exhausted",
       reasonDetail: "Codex quota exhausted",
-      testStatus: "unavailable",
-      lastError: "Codex quota exhausted",
-      errorCode: "codex_live_quota_exhausted",
     }));
   });
 
@@ -402,9 +449,6 @@ describe("auth account selection", () => {
       quotaState: "exhausted",
       reasonCode: "quota_exhausted",
       reasonDetail: "Rate limit exceeded. Too many requests.",
-      testStatus: "unavailable",
-      lastError: "Rate limit exceeded. Too many requests.",
-      errorCode: "quota_exhausted",
     }));
   });
 
@@ -444,10 +488,6 @@ describe("auth account selection", () => {
       authState: "invalid",
       reasonCode: "auth_invalid",
       reasonDetail: "401 Unauthorized: token revoked",
-      testStatus: "blocked",
-      lastError: "401 Unauthorized: token revoked",
-      lastErrorType: "auth_invalid",
-      errorCode: "auth_invalid",
       backoffLevel: 3,
     }));
     expect(applyLiveQuotaUpdate).not.toHaveBeenCalled();
@@ -490,10 +530,6 @@ describe("auth account selection", () => {
       quotaState: "ok",
       reasonCode: "auth_invalid",
       reasonDetail: "Provider error",
-      testStatus: "blocked",
-      lastError: "Provider error",
-      lastErrorType: "auth_invalid",
-      errorCode: "auth_invalid",
       backoffLevel: 1,
     }));
     expect(applyLiveQuotaUpdate).not.toHaveBeenCalled();
@@ -535,9 +571,6 @@ describe("auth account selection", () => {
       authState: "invalid",
       reasonCode: "auth_invalid",
       reasonDetail: "Unauthorized: invalid token",
-      testStatus: "blocked",
-      lastError: "Unauthorized: invalid token",
-      errorCode: "auth_invalid",
       backoffLevel: 2,
     }));
     expect(applyLiveQuotaUpdate).not.toHaveBeenCalled();
@@ -573,10 +606,6 @@ describe("auth account selection", () => {
       quotaState: "ok",
       reasonCode: "upstream_unhealthy",
       reasonDetail: "Provider health check failed",
-      testStatus: "error",
-      lastError: "Provider health check failed",
-      lastErrorType: "upstream_unhealthy",
-      errorCode: "upstream_unhealthy",
       backoffLevel: 2,
     }));
     expect(applyLiveQuotaUpdate).not.toHaveBeenCalled();
@@ -642,12 +671,6 @@ describe("auth account selection", () => {
 
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-recover", expect.objectContaining({
       modelLock_gpt4: null,
-      testStatus: "active",
-      lastError: null,
-      lastErrorAt: null,
-      lastErrorType: null,
-      rateLimitedUntil: null,
-      errorCode: null,
       backoffLevel: 0,
       routingStatus: "eligible",
       quotaState: "ok",

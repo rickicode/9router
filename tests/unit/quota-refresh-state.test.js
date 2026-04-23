@@ -22,6 +22,8 @@ describe("quotaRefreshState", () => {
         successCount: 0,
         errorCount: 0,
         skippedCount: 0,
+        currentBatchStart: null,
+        currentBatchEnd: null,
       },
       error: null,
     });
@@ -75,6 +77,8 @@ describe("quotaRefreshState", () => {
         successCount: 0,
         errorCount: 0,
         skippedCount: 0,
+        currentBatchStart: null,
+        currentBatchEnd: null,
       },
       lastRun: {
         trigger: "timer",

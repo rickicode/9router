@@ -119,10 +119,12 @@ describe("localDb hot-state lifecycle", () => {
       name: "Imported",
       testStatus: "active",
     });
-    expect(importedConnection).not.toHaveProperty("lastError");
-    expect(importedConnection).not.toHaveProperty("authState");
-    expect(importedConnection).not.toHaveProperty("quotaState");
-    expect(importedConnection).not.toHaveProperty("routingStatus");
+    expect(importedConnection).toMatchObject({
+      routingStatus: "eligible",
+      authState: "ok",
+      quotaState: "ok",
+      lastError: null,
+    });
   });
 
   it("clears provider hot state when deleting provider connections in bulk", async () => {
@@ -181,8 +183,7 @@ describe("localDb hot-state lifecycle", () => {
     await localDb.updateProviderConnection(created.id, {
       routingStatus: "blocked_auth",
       authState: "expired",
-      testStatus: "expired",
-      lastError: "Authentication expired",
+      reasonDetail: "Authentication expired",
     });
 
     const persistedDb = await readDbJson(dataDir);
@@ -190,10 +191,8 @@ describe("localDb hot-state lifecycle", () => {
       persistedDb.providerConnections.find((connection) => connection.id === created.id)
     ).toMatchObject({
       id: created.id,
-      routingStatus: "blocked_auth",
       authState: "expired",
-      testStatus: "expired",
-      lastError: "Authentication expired",
+      reasonDetail: "Authentication expired",
     });
 
     providerHotState.__resetProviderHotStateForTests();
@@ -203,10 +202,8 @@ describe("localDb hot-state lifecycle", () => {
     expect(recovered).toMatchObject({
       id: created.id,
       provider: "provider-redis-fallback",
-      routingStatus: "blocked_auth",
       authState: "expired",
-      testStatus: "expired",
-      lastError: "Authentication expired",
+      reasonDetail: "Authentication expired",
     });
   });
 
@@ -228,19 +225,17 @@ describe("localDb hot-state lifecycle", () => {
     await localDb.updateProviderConnection(created.id, {
       apiKey: "new-secret",
       name: "After mixed update",
-      routingStatus: "blocked_quota",
+      routingStatus: "exhausted",
       quotaState: "exhausted",
       nextRetryAt: "2026-04-22T12:00:00.000Z",
-      testStatus: "unavailable",
     });
 
     expect(providerHotState.__getProviderHotStateSnapshotForTests("provider-mixed-update")).toMatchObject({
       connections: {
         [created.id]: expect.objectContaining({
-          routingStatus: "blocked_quota",
+          routingStatus: "exhausted",
           quotaState: "exhausted",
           nextRetryAt: "2026-04-22T12:00:00.000Z",
-          testStatus: "unavailable",
         }),
       },
     });
@@ -252,8 +247,9 @@ describe("localDb hot-state lifecycle", () => {
       id: created.id,
       name: "After mixed update",
       apiKey: "new-secret",
-      testStatus: "unavailable",
-      rateLimitedUntil: "2026-04-22T12:00:00.000Z",
+      routingStatus: "exhausted",
+      quotaState: "exhausted",
+      nextRetryAt: "2026-04-22T12:00:00.000Z",
     });
   });
 });
