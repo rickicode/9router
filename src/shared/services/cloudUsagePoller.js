@@ -11,6 +11,7 @@ export class CloudUsagePoller {
     this.machineId = machineId;
     this.intervalMs = intervalMs;
     this.intervalId = null;
+    this.machineIdPromise = null;
   }
 
   /**
@@ -18,8 +19,11 @@ export class CloudUsagePoller {
    */
   async initializeMachineId() {
     if (!this.machineId) {
-      this.machineId = await getConsistentMachineId();
+      this.machineIdPromise ??= getConsistentMachineId();
+      this.machineId = await this.machineIdPromise;
     }
+
+    return this.machineId;
   }
 
   /**
@@ -57,8 +61,17 @@ export class CloudUsagePoller {
   async poll() {
     await this.initializeMachineId();
 
-    const cloudUrl = await getCloudUrl();
-    const response = await fetch(`${cloudUrl}/worker/usage/${this.machineId}`);
+    let cloudUrl = "";
+    try {
+      cloudUrl = await getCloudUrl();
+    } catch (error) {
+      console.error("[USAGE_POLL] Cloud URL unavailable:", error);
+      return;
+    }
+
+    const response = await fetch(`${cloudUrl}/worker/usage/${this.machineId}`, {
+      signal: AbortSignal.timeout(5000),
+    });
 
     if (!response.ok) {
       console.error("[USAGE_POLL] Failed:", response.statusText);
@@ -75,6 +88,7 @@ export class CloudUsagePoller {
         const conn = connections.find(c => c.id === connId);
         
         if (conn) {
+          // WARNING: This merge/update sequence is not transactional and may overwrite concurrent providerSpecificData changes.
           await updateProviderConnection(connId, {
             providerSpecificData: {
               ...(conn.providerSpecificData || {}),

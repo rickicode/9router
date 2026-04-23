@@ -4,6 +4,7 @@ import { getCloudUrl } from "./cloudUrlResolver.js";
 
 async function getFirstApiKey() {
   const apiKeys = await getApiKeys();
+  if (!Array.isArray(apiKeys)) return "";
   const firstActiveKey = apiKeys.find((apiKey) => apiKey?.isActive !== false && typeof apiKey?.key === "string" && apiKey.key);
   return firstActiveKey?.key || "";
 }
@@ -28,7 +29,12 @@ function formatConnection(conn) {
  */
 export async function syncToCloud() {
   const machineId = await getConsistentMachineId();
-  const cloudUrl = await getCloudUrl();
+  let cloudUrl = "";
+  try {
+    cloudUrl = await getCloudUrl();
+  } catch (error) {
+    throw new Error(error?.message || "Cloud URL unavailable");
+  }
 
   const connections = await getAllConnections();
   const modelAliases = await getAllModelAliases();
@@ -40,6 +46,7 @@ export async function syncToCloud() {
     providers: connections.map(formatConnection),
     modelAliases,
     combos,
+    // NOTE: API keys/tokens are sent to the worker in plaintext application payloads; fixing this requires an encryption/key-management system.
     apiKeys,
     settings: {
       roundRobin: settings.roundRobin || false,

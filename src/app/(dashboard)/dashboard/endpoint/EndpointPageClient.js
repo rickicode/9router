@@ -101,9 +101,13 @@ export default function APIPageClient({ machineId }) {
 
       // Load cloud URLs
       const cloudUrlsRes = await fetch("/api/cloud-urls");
-      if (cloudUrlsRes.ok) {
+      if (!cloudUrlsRes.ok) {
+        throw new Error("Failed to load cloud URLs");
+      }
+
+      {
         const data = await cloudUrlsRes.json();
-        setCloudUrls(data.cloudUrls || []);
+        setCloudUrls(Array.isArray(data.cloudUrls) ? data.cloudUrls : []);
       }
 
       if (statusRes.ok) {
@@ -301,6 +305,10 @@ export default function APIPageClient({ machineId }) {
         }
       }
 
+      if (!data) {
+        throw new Error("Cloud URL test failed after retries");
+      }
+
       if (data) {
         const checkedAt = new Date().toISOString();
 
@@ -314,6 +322,7 @@ export default function APIPageClient({ machineId }) {
           }),
         });
 
+        // Optimistic update keeps the UI responsive even if the PATCH response is delayed.
         setCloudUrls((prev) => prev.map((u) =>
           u.id === id ? { ...u, status: data.status, lastChecked: checkedAt } : u
         ));

@@ -37,7 +37,7 @@ function validateUrl(urlString) {
       /^fc00:/i,
     ];
 
-    if (!isDevelopment && privateIpPatterns.some((pattern) => pattern.test(hostname)) && !isLocalhost) {
+    if (isProduction && privateIpPatterns.some((pattern) => pattern.test(hostname)) && !isLocalhost) {
       throw new Error("Private IP addresses not allowed");
     }
 
@@ -79,6 +79,7 @@ async function writeCloudUrls(mutator) {
   const currentUrls = Array.isArray(currentSettings.cloudUrls) ? currentSettings.cloudUrls : [];
   const clonedUrls = currentUrls.map((entry) => structuredClone(entry));
   const nextUrls = mutator(clonedUrls);
+  // WARNING: This read-modify-write flow is not transactional and can lose updates under concurrent writes.
   const settings = await updateSettings({ cloudUrls: nextUrls });
   return settings.cloudUrls;
 }
@@ -205,7 +206,8 @@ export async function DELETE(request) {
       if (index === -1) {
         throw new Error("Cloud URL not found");
       }
-      if (cloudUrls.length === 1) {
+      const remainingValidUrls = cloudUrls.filter((entry) => entry.id !== id && normalizeUrl(entry.url));
+      if (remainingValidUrls.length === 0) {
         throw new Error("At least one cloud URL must remain");
       }
 
