@@ -15,6 +15,7 @@ import (
 
 	"go-proxy/internal/config"
 	"go-proxy/internal/credentials"
+	"go-proxy/internal/model"
 	"go-proxy/internal/proxy"
 	"go-proxy/internal/report"
 	"go-proxy/internal/resolve"
@@ -493,8 +494,130 @@ func TestHandleProxy_ReportsForwardingTransportFailure(t *testing.T) {
 	}
 }
 
+func TestHandleProxy_ResolvesAliasBuildsProviderURLAndHeaders(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{
+		"modelAliases":{"fast":"oaic/gpt-4.1-mini"},
+		"providerNodes":[{"id":"openai-compatible-local","type":"openai-compatible","prefix":"oaic","baseUrl":"https://custom-openai.example/v1","apiType":"chat"}],
+		"providerConnections":[{"id":"conn-a","provider":"openai-compatible-local","authType":"apiKey","apiKey":"upstream-key"}]
+	}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	var seenURL string
+	var seenAuth string
+	var seenAccept string
+	var seenContentType string
+	h := requestHandler{
+		reporter:            &capturingReporter{},
+		credReader:          credentialsReaderForTest(credPath),
+		credentialsFilePath: credPath,
+		modelStore:          mustLoadModelStore(t, credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			seenURL = req.URL.String()
+			seenAuth = req.Header.Get("Authorization")
+			seenAccept = req.Header.Get("Accept")
+			seenContentType = req.Header.Get("Content-Type")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
+			}, nil
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions?trace=1", strings.NewReader(`{"model":"fast","stream":true}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if seenURL != "https://custom-openai.example/v1/chat/completions?trace=1" {
+		t.Fatalf("expected resolved provider URL, got %q", seenURL)
+	}
+	if seenAuth != "Bearer upstream-key" {
+		t.Fatalf("expected upstream auth header, got %q", seenAuth)
+	}
+	if seenAccept != "text/event-stream" {
+		t.Fatalf("expected stream accept header, got %q", seenAccept)
+	}
+	if seenContentType != "application/json" {
+		t.Fatalf("expected content type to be preserved, got %q", seenContentType)
+	}
+}
+
+func TestHandleProxy_UnknownProviderReturnsBadGateway(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"mystery","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	h := requestHandler{
+		resolver:            staticResolveClient{response: resolve.Response{Provider: "mystery", Model: "mystery-model", ChosenConnectionID: "conn-a"}},
+		reporter:            &capturingReporter{},
+		credReader:          credentialsReaderForTest(credPath),
+		credentialsFilePath: credPath,
+		modelStore:          mustLoadModelStore(t, credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("should not send upstream request")
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"mystery-model"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 for unknown provider, got %d", rr.Code)
+	}
+}
+
+func TestHandleProxy_ComboModelReturnsBadRequest(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"combos":[{"name":"writer-pack","models":["openai/gpt-4.1","anthropic/claude-sonnet-4"]}],"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	h := requestHandler{
+		reporter:            &capturingReporter{},
+		credReader:          credentialsReaderForTest(credPath),
+		credentialsFilePath: credPath,
+		modelStore:          mustLoadModelStore(t, credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("should not send upstream request")
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"writer-pack"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for combo model, got %d", rr.Code)
+	}
+}
+
 func credentialsReaderForTest(path string) *credentials.Reader {
 	return credentials.NewReader(path)
+}
+
+func mustLoadModelStore(t *testing.T, path string) *model.Store {
+	t.Helper()
+
+	store, err := model.LoadStore(path)
+	if err != nil {
+		t.Fatalf("load model store: %v", err)
+	}
+
+	return store
 }
 
 type staticResolveClient struct {
@@ -551,4 +674,10 @@ func (s staticResponseRoundTripper) RoundTrip(*http.Request) (*http.Response, er
 		return nil, s.err
 	}
 	return s.resp, nil
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }

@@ -6,14 +6,18 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"go-proxy/internal/config"
 	"go-proxy/internal/credentials"
+	"go-proxy/internal/model"
+	"go-proxy/internal/provider"
 	"go-proxy/internal/proxy"
 	"go-proxy/internal/report"
 	"go-proxy/internal/resolve"
@@ -47,12 +51,15 @@ func NewRoutes(cfg config.Config) http.Handler {
 	}
 
 	credReader := credentials.NewReader(cfg.CredentialsFilePath)
+	modelStore, _ := model.LoadStore(cfg.CredentialsFilePath)
 
 	h := requestHandler{
-		resolver:   resolverClient,
-		reporter:   reportClient,
-		credReader: credReader,
-		httpClient: &http.Client{Timeout: time.Duration(cfg.HTTPTimeoutSeconds) * time.Second},
+		resolver:            resolverClient,
+		reporter:            reportClient,
+		credReader:          credReader,
+		credentialsFilePath: cfg.CredentialsFilePath,
+		modelStore:          modelStore,
+		httpClient:          &http.Client{Timeout: time.Duration(cfg.HTTPTimeoutSeconds) * time.Second},
 	}
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -74,10 +81,12 @@ func NewRoutes(cfg config.Config) http.Handler {
 }
 
 type requestHandler struct {
-	resolver   resolve.Client
-	reporter   report.Client
-	credReader *credentials.Reader
-	httpClient *http.Client
+	resolver            resolve.Client
+	reporter            report.Client
+	credReader          *credentials.Reader
+	credentialsFilePath string
+	modelStore          *model.Store
+	httpClient          *http.Client
 }
 
 func (h requestHandler) handleOpenAI(w http.ResponseWriter, r *http.Request) {
@@ -118,14 +127,9 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 		return
 	}
 
-	resolved, err := h.resolver.Resolve(r.Context(), resolve.ResolveRequest{
-		Provider:       protocolFamily,
-		Model:          model,
-		ProtocolFamily: protocolFamily,
-		PublicPath:     r.URL.Path,
-	})
+	resolved, statusCode, err := h.resolveRequest(r.Context(), model, protocolFamily, r.URL.Path)
 	if err != nil {
-		http.Error(w, "resolve failed", http.StatusBadGateway)
+		http.Error(w, err.Error(), statusCode)
 		return
 	}
 
@@ -200,6 +204,44 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 	})
 }
 
+func (h requestHandler) resolveRequest(ctx context.Context, modelStr, protocolFamily, publicPath string) (resolve.Response, int, error) {
+	if h.resolver != nil {
+		resolved, err := h.resolver.Resolve(ctx, resolve.ResolveRequest{
+			Provider:       protocolFamily,
+			Model:          modelStr,
+			ProtocolFamily: protocolFamily,
+			PublicPath:     publicPath,
+		})
+		if err != nil {
+			return resolve.Response{}, http.StatusBadGateway, errors.New("resolve failed")
+		}
+		return resolved, 0, nil
+	}
+
+	if h.modelStore == nil {
+		return resolve.Response{}, http.StatusBadGateway, errors.New("model store unavailable")
+	}
+
+	resolvedModel, err := model.ResolveModel(modelStr, h.modelStore)
+	if err != nil {
+		return resolve.Response{}, http.StatusBadRequest, fmt.Errorf("invalid model: %w", err)
+	}
+	if resolvedModel.IsCombo {
+		return resolve.Response{}, http.StatusBadRequest, errors.New("combo models are not supported")
+	}
+
+	cred, err := readCredentialByProvider(h.credentialsFilePath, resolvedModel.Provider)
+	if err != nil {
+		return resolve.Response{}, http.StatusBadGateway, errors.New("provider credentials not found")
+	}
+
+	return resolve.Response{
+		Provider:           resolvedModel.Provider,
+		Model:              resolvedModel.Model,
+		ChosenConnectionID: cred.ConnectionID,
+	}, 0, nil
+}
+
 func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream bool, _ string, resolved resolve.Response, protocolFamily string) (proxy.ForwardResponse, string, error) {
 	if resolved.ChosenConnectionID == "" {
 		return proxy.ForwardResponse{}, "", fmt.Errorf("missing resolved primary connection")
@@ -215,11 +257,11 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 		if err != nil {
 			continue
 		}
-		upstreamURL := buildUpstreamURL(cred.Provider, r.URL.Path)
-		if upstreamURL == "" {
+		upstreamURL, forwardHeaders, err := h.buildProviderRequest(r, resolved, cred, stream)
+		if err != nil {
 			continue
 		}
-		targets = append(targets, resolvedTarget{connectionID: connectionID, upstreamURL: upstreamURL, credential: cred})
+		targets = append(targets, resolvedTarget{connectionID: connectionID, upstreamURL: upstreamURL, credential: cred, headers: forwardHeaders})
 	}
 	if len(targets) == 0 {
 		return proxy.ForwardResponse{}, "", fmt.Errorf("no routable upstream targets")
@@ -234,17 +276,11 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 			Client:   h.httpClient,
 		}
 
-		forwardHeaders := r.Header.Clone()
-		forwardHeaders.Del("Authorization")
-		forwardHeaders.Del("X-Api-Key")
-		forwardHeaders.Del("x-api-key")
-		applyUpstreamAuth(&forwardHeaders, protocolFamily, target.credential)
-
 		resp, err := forwarder.Forward(r.Context(), proxy.ForwardRequest{
 			Method: r.Method,
-			Path:   r.URL.Path,
+			Path:   "",
 			Query:  r.URL.RawQuery,
-			Header: forwardHeaders,
+			Header: target.headers,
 			Body:   body,
 			APIKey: target.connectionID,
 			Stream: stream,
@@ -269,6 +305,84 @@ type resolvedTarget struct {
 	connectionID string
 	upstreamURL  string
 	credential   credentials.Credential
+	headers      http.Header
+}
+
+func (h requestHandler) buildProviderRequest(r *http.Request, resolved resolve.Response, credential credentials.Credential, stream bool) (string, http.Header, error) {
+	options := provider.BuildOptions{Credential: credential, RegistryHeaders: cloneForwardHeaders(r.Header)}
+	if node, ok := lookupProviderNode(h.modelStore, resolved.Provider); ok {
+		options.BaseURL = node.BaseURL
+	}
+
+	if _, ok := provider.GetConfig(resolved.Provider); !ok && strings.TrimSpace(options.BaseURL) == "" {
+		return "", nil, fmt.Errorf("unknown provider: %s", resolved.Provider)
+	}
+
+	upstreamURL, err := provider.BuildURL(resolved.Provider, resolved.Model, stream, options)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return upstreamURL, provider.BuildHeaders(resolved.Provider, stream, options), nil
+}
+
+func cloneForwardHeaders(header http.Header) http.Header {
+	cloned := header.Clone()
+	cloned.Del("Authorization")
+	cloned.Del("X-Api-Key")
+	cloned.Del("x-api-key")
+	return cloned
+}
+
+func lookupProviderNode(store *model.Store, providerID string) (model.ProviderNode, bool) {
+	if store == nil {
+		return model.ProviderNode{}, false
+	}
+	for _, nodeType := range []string{"openai-compatible", "anthropic-compatible"} {
+		for _, node := range store.ProviderNodesByType(nodeType) {
+			if node.ID == providerID {
+				return node, true
+			}
+		}
+	}
+	return model.ProviderNode{}, false
+}
+
+func readCredentialByProvider(path, providerID string) (credentials.Credential, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return credentials.Credential{}, err
+	}
+
+	var decoded struct {
+		ProviderConnections []struct {
+			ID           string `json:"id"`
+			Provider     string `json:"provider"`
+			AuthType     string `json:"authType"`
+			APIKey       string `json:"apiKey"`
+			AccessToken  string `json:"accessToken"`
+			RefreshToken string `json:"refreshToken"`
+		} `json:"providerConnections"`
+	}
+	if err := json.Unmarshal(content, &decoded); err != nil {
+		return credentials.Credential{}, err
+	}
+
+	for _, connection := range decoded.ProviderConnections {
+		if strings.TrimSpace(connection.Provider) != providerID {
+			continue
+		}
+		return credentials.Credential{
+			ConnectionID: connection.ID,
+			Provider:     connection.Provider,
+			AuthType:     connection.AuthType,
+			APIKey:       connection.APIKey,
+			AccessToken:  connection.AccessToken,
+			RefreshToken: connection.RefreshToken,
+		}, nil
+	}
+
+	return credentials.Credential{}, credentials.ErrConnectionNotFound
 }
 
 func extractResponseEvidence(resp proxy.ForwardResponse) (map[string]any, map[string]any) {
