@@ -4,9 +4,13 @@ import { getAllConnections, getAllModelAliases, getAllCombos, getSettings, getAp
 /**
  * Get cloud URL from settings
  */
-function getCloudUrl() {
-  const url = process.env.NEXT_PUBLIC_CLOUD_URL || "http://localhost:8787";
-  return url.replace(/\/$/, "");
+async function getCloudUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_CLOUD_URL;
+  if (envUrl) return envUrl.replace(/\/$/, "");
+
+  const settings = await getSettings();
+  const firstUrl = settings.cloudUrls?.[0]?.url;
+  return (firstUrl || "http://localhost:8787").replace(/\/$/, "");
 }
 
 /**
@@ -29,7 +33,7 @@ function formatConnection(conn) {
  */
 export async function syncToCloud() {
   const machineId = await getConsistentMachineId();
-  const cloudUrl = getCloudUrl();
+  const cloudUrl = await getCloudUrl();
 
   const connections = await getAllConnections();
   const modelAliases = await getAllModelAliases();

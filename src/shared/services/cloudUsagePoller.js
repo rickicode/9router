@@ -1,12 +1,16 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { getProviderConnections, updateProviderConnection } from "@/lib/localDb";
+import { getProviderConnections, getSettings, updateProviderConnection } from "@/lib/localDb";
 
 /**
  * Get cloud URL from settings
  */
-function getCloudUrl() {
-  const url = process.env.NEXT_PUBLIC_CLOUD_URL || "http://localhost:8787";
-  return url.replace(/\/$/, "");
+async function getCloudUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_CLOUD_URL;
+  if (envUrl) return envUrl.replace(/\/$/, "");
+
+  const settings = await getSettings();
+  const firstUrl = settings.cloudUrls?.[0]?.url;
+  return (firstUrl || "http://localhost:8787").replace(/\/$/, "");
 }
 
 /**
@@ -60,7 +64,7 @@ export class CloudUsagePoller {
   async poll() {
     await this.initializeMachineId();
 
-    const cloudUrl = getCloudUrl();
+    const cloudUrl = await getCloudUrl();
     const response = await fetch(`${cloudUrl}/worker/usage/${this.machineId}`);
 
     if (!response.ok) {

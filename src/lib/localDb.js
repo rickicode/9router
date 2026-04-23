@@ -47,6 +47,9 @@ if (!isCloud && !fs.existsSync(DATA_DIR)) {
 
 const DEFAULT_SETTINGS = {
   cloudEnabled: false,
+  cloudUrls: [
+    { id: 1, url: "", status: "unknown", lastChecked: null }
+  ],
   tunnelEnabled: false,
   tunnelUrl: "",
   tunnelProvider: "cloudflare",
