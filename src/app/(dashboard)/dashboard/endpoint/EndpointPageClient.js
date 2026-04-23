@@ -272,18 +272,6 @@ export default function APIPageClient({ machineId }) {
     }
   };
 
-  const setPrimaryUrl = async (id) => {
-    const res = await fetch("/api/cloud-urls", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, isPrimary: true })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setCloudUrls(data.cloudUrls);
-    }
-  };
-
   const testConnection = async (id, url) => {
     setTestingUrl(id);
     const res = await fetch("/api/cloud-urls/test", {
@@ -958,7 +946,7 @@ export default function APIPageClient({ machineId }) {
                 <div>
                   <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">Cloud Configuration</p>
                   <h3 className="text-lg font-semibold text-text-main">Worker URLs</h3>
-                  <p className="mt-1 max-w-xl text-sm text-text-muted">Manage multiple cloud worker deployments with automatic failover.</p>
+                  <p className="mt-1 max-w-xl text-sm text-text-muted">Monitor your cloud worker endpoints. Add multiple workers to track their health status.</p>
                 </div>
               </div>
 
@@ -980,20 +968,28 @@ export default function APIPageClient({ machineId }) {
                 {cloudUrls.map((url) => (
                   <div key={url.id} className="flex items-center gap-3 rounded-2xl border border-white/8 bg-black/10 px-4 py-3">
                     {/* Status */}
-                    <div className="flex items-center gap-2">
-                      {url.status === "online" && <span className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" />}
-                      {url.status === "offline" && <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />}
-                      {url.status === "unknown" && <span className="h-2 w-2 rounded-full bg-gray-500" />}
+                    <div className="flex min-w-[70px] items-center">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium backdrop-blur-sm ${
+                          url.status === "online"
+                            ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
+                            : url.status === "offline"
+                              ? "border-red-400/30 bg-red-500/10 text-red-300"
+                              : url.status === "testing"
+                                ? "border-amber-400/30 bg-amber-500/10 text-amber-200"
+                                : "border-white/10 bg-white/5 text-text-muted"
+                        }`}
+                      >
+                        {url.status === "online" && "🟢 Online"}
+                        {url.status === "offline" && "🔴 Offline"}
+                        {url.status === "testing" && "🟡 Testing"}
+                        {(!url.status || url.status === "unknown") && "⚪ Unknown"}
+                      </span>
                     </div>
 
                     {/* URL */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-text-main">{url.url}</span>
-                        {url.isPrimary && (
-                          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">Primary</span>
-                        )}
-                      </div>
+                      <span className="text-sm text-text-main">{url.url}</span>
                     </div>
 
                     {/* Actions */}
@@ -1006,11 +1002,6 @@ export default function APIPageClient({ machineId }) {
                       >
                         {testingUrl === url.id ? "Testing..." : "Test"}
                       </Button>
-                      {!url.isPrimary && (
-                        <Button size="sm" variant="ghost" onClick={() => setPrimaryUrl(url.id)}>
-                          Set Primary
-                        </Button>
-                      )}
                       <Button size="sm" variant="ghost" onClick={() => removeCloudUrl(url.id)} className="text-red-500">
                         Remove
                       </Button>
