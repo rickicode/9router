@@ -95,7 +95,7 @@ async function handlePost(request, machineId, env) {
   }
 
   // Add settings validation
-  if (body.settings && typeof body.settings !== 'object') {
+  if (body.settings && (typeof body.settings !== 'object' || body.settings === null)) {
     log.warn("SYNC", "Invalid settings object", { machineId });
     return jsonResponse({ error: "Invalid settings object" }, 400);
   }

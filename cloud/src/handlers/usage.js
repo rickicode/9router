@@ -8,6 +8,16 @@ import * as log from "../utils/logger.js";
  * Return usage stats for all connections
  */
 export async function handleUsage(request, env, machineId) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*"
+      }
+    });
+  }
+
   if (request.method !== "GET") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
