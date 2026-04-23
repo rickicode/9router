@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 )
@@ -88,6 +89,9 @@ func initializeGeminiState(response map[string]any, state *StreamState) bool {
 	state.MessageID = valueOrDefault(stringValue(response["responseId"]), fmt.Sprintf("msg_%d", time.Now().UnixMilli()))
 	state.Model = valueOrDefault(stringValue(response["modelVersion"]), valueOrDefault(state.Model, "gemini"))
 	state.ToolCallIndex = 0
+	if state.ToolCalls == nil {
+		state.ToolCalls = make(map[int]*ToolCall)
+	}
 	return true
 }
 
@@ -112,7 +116,10 @@ func translateGeminiParts(rawParts any, state *StreamState) (map[string]any, boo
 		}
 
 		if functionCall, ok := part["functionCall"].(map[string]any); ok {
-			return createGeminiToolCallChunk(functionCall, state), true
+			if chunk := createGeminiToolCallChunk(functionCall, state); chunk != nil {
+				return chunk, true
+			}
+			return nil, false
 		}
 
 		text := stringValue(part["text"])
@@ -128,6 +135,9 @@ func translateGeminiParts(rawParts any, state *StreamState) (map[string]any, boo
 }
 
 func createGeminiToolCallChunk(functionCall map[string]any, state *StreamState) map[string]any {
+	if state.ToolCalls == nil {
+		state.ToolCalls = make(map[int]*ToolCall)
+	}
 	name := stringValue(functionCall["name"])
 	if state.ToolNameMap != nil {
 		if original, ok := state.ToolNameMap[name]; ok && original != "" {
@@ -135,6 +145,10 @@ func createGeminiToolCallChunk(functionCall map[string]any, state *StreamState) 
 		}
 	}
 	arguments, _ := json.Marshal(functionCall["args"])
+	if !json.Valid(arguments) {
+		log.Printf("translate: skipping malformed Gemini function args for %q", name)
+		return nil
+	}
 	id := valueOrDefault(stringValue(functionCall["id"]), fmt.Sprintf("%s-%d-%d", name, time.Now().UnixMilli(), state.ToolCallIndex))
 	toolCall := &ToolCall{
 		Index: state.ToolCallIndex,

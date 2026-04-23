@@ -162,3 +162,14 @@ func TestGeminiToOpenAI_UsageMetadataAccumulates(t *testing.T) {
 		t.Fatalf("expected reasoning tokens 7, got %#v", completionDetails)
 	}
 }
+
+func TestGeminiToOpenAI_FunctionCallInitializesNilToolCallsMap(t *testing.T) {
+	state := &StreamState{MessageID: "msg_123", Model: "gemini-2.5-pro"}
+	chunk := []byte(`data: {"candidates":[{"content":{"parts":[{"functionCall":{"id":"call_123","name":"get_weather","args":{"city":"SF"}}}]}}]}`)
+	if _, err := GeminiToOpenAIChunk(chunk, state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state.ToolCalls == nil {
+		t.Fatalf("expected ToolCalls map to be initialized")
+	}
+}

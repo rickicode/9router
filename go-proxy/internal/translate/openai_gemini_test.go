@@ -13,7 +13,7 @@ func TestOpenAIToGemini_BasicMessage(t *testing.T) {
 			map[string]any{"role": "user", "content": "Hello"},
 		},
 	}
-	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestOpenAIToGemini_GenerationConfig(t *testing.T) {
 		"top_k":       40,
 		"max_tokens":  1024,
 	}
-	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestOpenAIToGemini_ToolCalls(t *testing.T) {
 			},
 		},
 	}
-	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestOpenAIToGemini_ToolResponsePreservesExistingResult(t *testing.T) {
 			},
 		},
 	}
-	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestOpenAIToGemini_Tools(t *testing.T) {
 			},
 		},
 	}
-	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -205,12 +205,39 @@ func TestOpenAIToGemini_SafetySettings(t *testing.T) {
 			map[string]any{"role": "user", "content": "Hi"},
 		},
 	}
-	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if _, ok := got["safetySettings"]; !ok {
 		t.Fatalf("expected safetySettings field")
+	}
+}
+
+func TestOpenAIToGemini_CustomSafetySettings(t *testing.T) {
+	body := map[string]any{"messages": []any{map[string]any{"role": "user", "content": "Hi"}}}
+	settings := []map[string]any{{"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"}}
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true, TranslateOptions{SafetySettings: settings})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	actual := got["safetySettings"].([]any)
+	if len(actual) != 1 || actual[0].(map[string]any)["threshold"] != "BLOCK_ONLY_HIGH" {
+		t.Fatalf("expected custom safety settings, got %#v", actual)
+	}
+}
+
+func TestSanitizeGeminiFunctionName_PrefixesLeadingDigits(t *testing.T) {
+	if got := sanitizeGeminiFunctionName("123weather"); got != "_123weather" {
+		t.Fatalf("expected leading digit name to be prefixed, got %q", got)
+	}
+}
+
+func TestValidatedGeminiToolResponse_NonStringContent(t *testing.T) {
+	response := validatedGeminiToolResponse(map[string]any{"ok": true}).(map[string]any)
+	result := response["result"].(map[string]any)
+	if result["ok"] != true {
+		t.Fatalf("expected structured result to be preserved, got %#v", response)
 	}
 }

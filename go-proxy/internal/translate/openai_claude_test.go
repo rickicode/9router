@@ -271,3 +271,51 @@ func TestOpenAIToClaude_InvalidImageURLDropped(t *testing.T) {
 		t.Fatalf("expected invalid image-only message to be dropped, got %#v", messages)
 	}
 }
+
+func TestOpenAIToClaude_SystemCacheControlOmitsTTL(t *testing.T) {
+	body := map[string]any{
+		"messages": []any{
+			map[string]any{"role": "system", "content": "rule one"},
+			map[string]any{"role": "user", "content": "Hello"},
+		},
+	}
+	got, err := OpenAIToClaudeRequest("claude-sonnet-4", body, true, TranslateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	system := got["system"].([]any)
+	block := system[len(system)-1].(map[string]any)
+	cacheControl := block["cache_control"].(map[string]any)
+	if _, ok := cacheControl["ttl"]; ok {
+		t.Fatalf("expected system cache_control to omit ttl, got %#v", cacheControl)
+	}
+}
+
+func TestOpenAIToClaude_ToolResultSkipsInvalidIsError(t *testing.T) {
+	parts := convertOpenAIContentParts([]any{map[string]any{
+		"type":        "tool_result",
+		"tool_use_id": "call_123",
+		"content":     "ok",
+		"is_error":    "true",
+	}})
+	block := parts[0].(map[string]any)
+	if _, ok := block["is_error"]; ok {
+		t.Fatalf("expected non-boolean is_error to be skipped, got %#v", block)
+	}
+}
+
+func TestOpenAIToClaude_ToolsCacheControlOmitsTTL(t *testing.T) {
+	body := map[string]any{
+		"messages": []any{map[string]any{"role": "user", "content": "hi"}},
+		"tools": []any{map[string]any{"type": "function", "function": map[string]any{"name": "tool", "parameters": map[string]any{"type": "object"}}}},
+	}
+	got, err := OpenAIToClaudeRequest("claude-sonnet-4", body, true, TranslateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	tool := got["tools"].([]any)[0].(map[string]any)
+	cacheControl := tool["cache_control"].(map[string]any)
+	if _, ok := cacheControl["ttl"]; ok {
+		t.Fatalf("expected tool cache_control to omit ttl, got %#v", cacheControl)
+	}
+}

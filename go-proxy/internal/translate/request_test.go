@@ -209,3 +209,11 @@ func TestTranslateRequest_RemovesMessagesWithOnlyStrippedContent(t *testing.T) {
 		t.Fatalf("expected stripped-only message to be removed, got %d messages", len(messages))
 	}
 }
+
+func TestTranslateRequest_RejectsEmptyMessages(t *testing.T) {
+	body := map[string]any{"messages": []any{}}
+	_, err := TranslateRequest(FormatOpenAI, FormatOpenAI, body, TranslateOptions{Model: "gpt-4", Stream: true})
+	if err == nil || !strings.Contains(err.Error(), "messages array must not be empty") {
+		t.Fatalf("expected clear empty messages error, got %v", err)
+	}
+}

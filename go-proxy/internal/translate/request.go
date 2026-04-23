@@ -9,11 +9,12 @@ import (
 )
 
 type TranslateOptions struct {
-	Model     string
-	Stream    bool
-	StripList []string
-	Provider  string
+	Model              string
+	Stream             bool
+	StripList          []string
+	Provider           string
 	InjectClaudePrompt bool
+	SafetySettings     []map[string]any
 }
 
 // TranslateRequest translates a request body through the OpenAI intermediate format when needed.
@@ -23,9 +24,17 @@ func TranslateRequest(sourceFormat, targetFormat string, body map[string]any, op
 		return nil, err
 	}
 
+	if err := validateMessages(result); err != nil {
+		return nil, err
+	}
+
 	stripContentTypes(result, opts.StripList)
 	ensureToolCallIDs(result)
 	fixMissingToolResponses(result)
+
+	if err := validateMessages(result); err != nil {
+		return nil, err
+	}
 
 	if sourceFormat != targetFormat {
 		if sourceFormat != FormatOpenAI {
@@ -66,7 +75,7 @@ func fromOpenAIRequest(targetFormat, model string, body map[string]any, opts Tra
 	case FormatClaude:
 		return OpenAIToClaudeRequest(model, body, opts.Stream, opts)
 	case FormatGemini, FormatGeminiCLI:
-		return OpenAIToGeminiRequest(model, body, opts.Stream)
+		return OpenAIToGeminiRequest(model, body, opts.Stream, opts)
 	default:
 		return body, nil
 	}
@@ -688,6 +697,21 @@ func cloneMap(input map[string]any) (map[string]any, error) {
 	if input == nil {
 		return map[string]any{}, nil
 	}
+	if len(input) < 10 {
+		out := make(map[string]any, len(input))
+		for k, v := range input {
+			out[k] = v
+		}
+		buf, err := json.Marshal(out)
+		if err != nil {
+			return nil, fmt.Errorf("marshal request body: %w", err)
+		}
+		var decoded map[string]any
+		if err := json.Unmarshal(buf, &decoded); err != nil {
+			return nil, fmt.Errorf("unmarshal request body: %w", err)
+		}
+		return decoded, nil
+	}
 	buf, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request body: %w", err)
@@ -713,17 +737,32 @@ func sanitizeToolID(id string) string {
 }
 
 func generateToolCallID(msgIndex, tcIndex int, toolName string) string {
-	cleanName := ""
+	var cleanName strings.Builder
 	for _, r := range toolName {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
-			cleanName += string(r)
+			cleanName.WriteRune(r)
 		}
 	}
 	suffix := fmt.Sprintf("%d_%06d", time.Now().UnixNano(), rand.Intn(1000000))
-	if cleanName != "" {
-		return fmt.Sprintf("call_msg%d_tc%d_%s_%s", msgIndex, tcIndex, cleanName, suffix)
+	if cleanName.Len() > 0 {
+		return fmt.Sprintf("call_msg%d_tc%d_%s_%s", msgIndex, tcIndex, cleanName.String(), suffix)
 	}
 	return fmt.Sprintf("call_msg%d_tc%d_%s", msgIndex, tcIndex, suffix)
+}
+
+func validateMessages(body map[string]any) error {
+	messages, exists := body["messages"]
+	if !exists {
+		return nil
+	}
+	rawMessages, ok := messages.([]any)
+	if !ok {
+		return nil
+	}
+	if len(rawMessages) == 0 {
+		return fmt.Errorf("messages array must not be empty")
+	}
+	return nil
 }
 
 func contains(items []string, want string) bool {

@@ -14,6 +14,10 @@ type UsageData struct {
 	TotalTokens      int
 }
 
+// StreamState stores incremental translation state for streaming adapters.
+//
+// Not thread-safe: callers must not read or mutate a StreamState from multiple
+// goroutines concurrently without external synchronization.
 type StreamState struct {
 	MessageID            string
 	Model                string

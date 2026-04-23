@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -42,6 +43,9 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 		state.MessageID = valueOrDefault(stringValue(message["id"]), fmt.Sprintf("msg_%d", time.Now().UnixMilli()))
 		state.Model = stringValue(message["model"])
 		state.ToolCallIndex = 0
+		if state.ToolCalls == nil {
+			state.ToolCalls = make(map[int]*ToolCall)
+		}
 		return createOpenAIChunk(state, map[string]any{"role": "assistant"}, nil)
 
 	case "content_block_start":
@@ -67,6 +71,9 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 			state.CurrentBlockIndex = index
 			return createOpenAIChunk(state, map[string]any{"content": "<think>"}, nil)
 		case "tool_use":
+			if state.ToolCalls == nil {
+				state.ToolCalls = make(map[int]*ToolCall)
+			}
 			toolName := stringValue(block["name"])
 			if state.ToolNameMap != nil {
 				if original, ok := state.ToolNameMap[toolName]; ok && original != "" {
@@ -121,6 +128,13 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 			}
 		case "input_json_delta":
 			if partial := stringValue(delta["partial_json"]); partial != "" {
+				if !json.Valid([]byte(partial)) && !isLikelyPartialJSONObject(partial) {
+					log.Printf("translate: skipping malformed Claude input_json_delta for index %d", index)
+					return nil
+				}
+				if state.ToolCalls == nil {
+					state.ToolCalls = make(map[int]*ToolCall)
+				}
 				if toolCall := state.ToolCalls[index]; toolCall != nil {
 					if toolCall.Function == nil {
 						toolCall.Function = map[string]any{"arguments": ""}
@@ -234,6 +248,14 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 	}
 
 	return nil
+}
+
+func isLikelyPartialJSONObject(value string) bool {
+	trimmed := value
+	if trimmed == "" {
+		return false
+	}
+	return strings.ContainsAny(trimmed, "{}[]:\"") || strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")
 }
 
 func createOpenAIChunk(state *StreamState, delta map[string]any, finishReason any) map[string]any {

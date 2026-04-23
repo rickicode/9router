@@ -1,6 +1,9 @@
 package translate
 
-import "strings"
+import (
+	"log"
+	"strings"
+)
 
 var defaultGeminiSafetySettings = []any{
 	map[string]any{"category": "HARM_CATEGORY_HARASSMENT", "threshold": "OFF"},
@@ -10,14 +13,25 @@ var defaultGeminiSafetySettings = []any{
 }
 
 // OpenAIToGeminiRequest converts an OpenAI chat completion request body into Gemini generateContent format.
-func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[string]any, error) {
+// Gemini function names are sanitized to meet provider constraints; names that start with numbers are prefixed with an underscore.
+func OpenAIToGeminiRequest(model string, body map[string]any, stream bool, opts TranslateOptions) (map[string]any, error) {
 	_ = stream
+
+	safetySettings := make([]any, 0, len(defaultGeminiSafetySettings))
+	if len(opts.SafetySettings) > 0 {
+		safetySettings = make([]any, 0, len(opts.SafetySettings))
+		for _, setting := range opts.SafetySettings {
+			safetySettings = append(safetySettings, setting)
+		}
+	} else {
+		safetySettings = append(safetySettings, defaultGeminiSafetySettings...)
+	}
 
 	result := map[string]any{
 		"model":            model,
 		"contents":         []any{},
 		"generationConfig": map[string]any{},
-		"safetySettings":   defaultGeminiSafetySettings,
+		"safetySettings":   safetySettings,
 	}
 
 	generationConfig := result["generationConfig"].(map[string]any)
@@ -66,6 +80,29 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[
 		}
 
 		contents := []any{}
+		systemCount := 0
+		systemTexts := make([]string, 0, 2)
+		for _, raw := range rawMessages {
+			msg, ok := raw.(map[string]any)
+			if !ok || stringValue(msg["role"]) != "system" {
+				continue
+			}
+			systemCount++
+			if text := extractTextContent(msg["content"]); text != "" {
+				systemTexts = append(systemTexts, text)
+			}
+		}
+		if systemCount > 5 {
+			log.Printf("translate: received %d system messages; joining them with newlines for Gemini systemInstruction", systemCount)
+		}
+		joinedSystem := strings.Join(systemTexts, "\n")
+		if joinedSystem != "" && systemCount > 0 && len(rawMessages) > 1 {
+			result["systemInstruction"] = map[string]any{
+				"role":  "user",
+				"parts": []any{map[string]any{"text": joinedSystem}},
+			}
+		}
+
 		for _, raw := range rawMessages {
 			msg, ok := raw.(map[string]any)
 			if !ok {
@@ -77,10 +114,7 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[
 
 			switch {
 			case role == "system" && len(rawMessages) > 1:
-				result["systemInstruction"] = map[string]any{
-					"role": "user",
-					"parts": []any{map[string]any{"text": extractTextContent(content)}},
-				}
+				continue
 			case role == "user" || (role == "system" && len(rawMessages) == 1):
 				parts := convertOpenAIContentToGeminiParts(content)
 				if len(parts) > 0 {
@@ -103,6 +137,10 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[
 							continue
 						}
 						fn, _ := toolCall["function"].(map[string]any)
+						if fn == nil {
+							log.Printf("translate: assistant tool call missing function field for Gemini request")
+							continue
+						}
 						id := stringValue(toolCall["id"])
 						parts = append(parts, map[string]any{
 							"functionCall": map[string]any{
@@ -125,8 +163,8 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[
 					if !ok {
 						continue
 					}
+					responseValue := validatedGeminiToolResponse(resp)
 					parsed := tryParseJSON(resp)
-					responseValue := any(map[string]any{"result": resp})
 					if parsed != nil {
 						switch value := parsed.(type) {
 						case map[string]any:
@@ -246,10 +284,46 @@ func sanitizeGeminiFunctionName(name string) string {
 		}
 	}
 	sanitized := builder.String()
+	if sanitized == "" {
+		return "_unknown"
+	}
 	if len(sanitized) > 64 {
 		return sanitized[:64]
 	}
 	return sanitized
+}
+
+func validatedGeminiToolResponse(resp any) any {
+	switch value := resp.(type) {
+	case nil:
+		return map[string]any{"result": ""}
+	case string:
+		parsed := tryParseJSON(value)
+		if parsed == nil {
+			return map[string]any{"result": value}
+		}
+		switch parsedValue := parsed.(type) {
+		case map[string]any:
+			if _, hasResult := parsedValue["result"]; hasResult {
+				return parsedValue
+			}
+			return map[string]any{"result": parsedValue}
+		case []any, bool, float64:
+			return map[string]any{"result": parsedValue}
+		default:
+			return map[string]any{"result": parsedValue}
+		}
+	case map[string]any:
+		if _, hasResult := value["result"]; hasResult {
+			return value
+		}
+		return map[string]any{"result": value}
+	case []any, bool, float64, int, int64, int32, uint, uint64, uint32:
+		return map[string]any{"result": value}
+	default:
+		log.Printf("translate: unsupported Gemini tool response content type %T; coercing to string", resp)
+		return map[string]any{"result": stringifyToolResult(resp)}
+	}
 }
 
 func valueOrDefaultMap(value any) map[string]any {

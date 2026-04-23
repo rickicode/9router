@@ -198,3 +198,14 @@ func TestClaudeToOpenAI_NegativeIndexIgnored(t *testing.T) {
 		t.Fatalf("expected negative index chunk to be ignored, got %s", string(got))
 	}
 }
+
+func TestClaudeToOpenAI_InputJSONDeltaInitializesNilToolCallsMap(t *testing.T) {
+	state := &StreamState{MessageID: "msg_123", Model: "claude-sonnet-4"}
+	startChunk := []byte(`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"call_123","name":"get_weather"}}`)
+	if _, err := ClaudeToOpenAIChunk(startChunk, state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state.ToolCalls == nil {
+		t.Fatalf("expected ToolCalls map to be initialized")
+	}
+}

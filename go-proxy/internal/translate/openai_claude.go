@@ -42,6 +42,9 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool, opts 
 				systemParts = append(systemParts, extractTextContent(msg["content"]))
 			}
 		}
+		if len(systemParts) > 5 {
+			log.Printf("translate: received %d system messages; joining them with newlines for Claude system blocks", len(systemParts))
+		}
 
 		nonSystem := []map[string]any{}
 		for _, raw := range rawMessages {
@@ -144,7 +147,7 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool, opts 
 		systemBlocks = append(systemBlocks, map[string]any{"type": "text", "text": claudeSystemPrompt})
 	}
 	if len(systemParts) > 0 {
-		systemBlocks = append(systemBlocks, map[string]any{"type": "text", "text": strings.Join(systemParts, "\n"), "cache_control": map[string]any{"type": "ephemeral", "ttl": "1h"}})
+		systemBlocks = append(systemBlocks, map[string]any{"type": "text", "text": strings.Join(systemParts, "\n"), "cache_control": map[string]any{"type": "ephemeral"}})
 	}
 	if len(systemBlocks) > 0 {
 		result["system"] = systemBlocks
@@ -186,7 +189,7 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool, opts 
 		}
 		if len(tools) > 0 {
 			last := tools[len(tools)-1].(map[string]any)
-			last["cache_control"] = map[string]any{"type": "ephemeral", "ttl": "1h"}
+			last["cache_control"] = map[string]any{"type": "ephemeral"}
 			result["tools"] = tools
 		}
 	}
@@ -237,6 +240,10 @@ func getContentBlocksFromMessage(msg map[string]any, toolNameMap map[string]stri
 					continue
 				}
 				fn, _ := toolCall["function"].(map[string]any)
+				if fn == nil {
+					log.Printf("translate: assistant tool call missing function field for Claude request")
+					continue
+				}
 				blocks = append(blocks, map[string]any{
 					"type":  "tool_use",
 					"id":    toolCall["id"],
@@ -269,9 +276,20 @@ func convertOpenAIContentParts(content any) []any {
 					blocks = append(blocks, map[string]any{"type": "text", "text": text})
 				}
 			case "tool_result":
-				block := map[string]any{"type": "tool_result", "tool_use_id": part["tool_use_id"], "content": part["content"]}
+				content := part["content"]
+				switch content.(type) {
+				case nil, string, []any, map[string]any, bool, float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+				default:
+					log.Printf("translate: unsupported Claude tool_result content type %T; stringifying", content)
+					content = stringifyToolResult(content)
+				}
+				block := map[string]any{"type": "tool_result", "tool_use_id": part["tool_use_id"], "content": content}
 				if isError, ok := part["is_error"]; ok {
-					block["is_error"] = isError
+					if boolValue, ok := isError.(bool); ok {
+						block["is_error"] = boolValue
+					} else {
+						log.Printf("translate: skipping non-boolean is_error value of type %T", isError)
+					}
 				}
 				blocks = append(blocks, block)
 			case "image_url":
