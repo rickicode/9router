@@ -315,8 +315,12 @@ export class QuotaRefreshScheduler {
           const { isCloudEnabled } = await import("@/lib/localDb");
           const { syncToCloud } = await import("@/lib/cloudSync");
           if (await isCloudEnabled()) {
-            await syncToCloud();
-            this.logger?.log?.("[QuotaRefreshScheduler] Cloud sync triggered after quota check");
+            try {
+              await syncToCloud();
+              this.logger?.log?.("[QuotaRefreshScheduler] Cloud sync triggered after quota check");
+            } catch (error) {
+              this.logger?.error?.("[QuotaRefreshScheduler] Cloud sync failed, will retry next cycle:", error);
+            }
           }
         } catch (error) {
           this.logger?.error?.("[QuotaRefreshScheduler] Cloud sync failed:", error);

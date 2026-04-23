@@ -65,6 +65,7 @@ export async function syncToCloud() {
       Authorization: `Bearer ${await getFirstApiKey()}`,
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(10000),
   });
 
   if (!response.ok) {

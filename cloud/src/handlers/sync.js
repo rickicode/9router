@@ -1,6 +1,9 @@
 import * as log from "../utils/logger.js";
 import { getMachineData, saveMachineData, deleteMachineData } from "../services/storage.js";
 import { updateLastSync } from "../services/state.js";
+import { errorResponse } from "open-sse/utils/error.js";
+import { HTTP_STATUS } from "open-sse/config/runtimeConfig.js";
+import { validateApiKey } from "./chat.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -66,6 +69,17 @@ async function handleGet(machineId, env) {
  * providers stored by ID (supports multiple connections per provider)
  */
 async function handlePost(request, machineId, env) {
+  // Allow sync without auth if no apiKeys exist yet (bootstrap)
+  const data = await getMachineData(machineId, env);
+  const hasApiKeys = data?.apiKeys?.length > 0;
+
+  if (hasApiKeys) {
+    // Validate auth only if keys exist
+    if (!await validateApiKey(request, machineId, env)) {
+      return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
+    }
+  }
+
   let body;
   try {
     body = await request.json();
@@ -86,7 +100,7 @@ async function handlePost(request, machineId, env) {
     return jsonResponse({ error: "Invalid settings object" }, 400);
   }
 
-  const existingData = await getMachineData(machineId, env) || { providers: {}, modelAliases: {}, apiKeys: [] };
+  const existingData = data || { providers: {}, modelAliases: {}, apiKeys: [] };
 
   // Merge providers by ID
   const mergedProviders = {};

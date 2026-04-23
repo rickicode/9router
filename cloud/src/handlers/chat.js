@@ -108,6 +108,13 @@ async function handleSingleModelChat(body, modelStr, machineId, env, request) {
     try {
       const apiKey = extractBearerToken(request);
       connection = selectCredential(data, provider, apiKey || 'default');
+      if (!connection?.id) {
+        log.debug("ROUTING", "selectCredential returned connection without id", {
+          provider,
+          machineId,
+          selectedKeys: connection ? Object.keys(connection) : [],
+        });
+      }
     } catch (error) {
       log.warn("ROUTING", error.message);
       return errorResponse(HTTP_STATUS.BAD_REQUEST, error.message);
@@ -216,7 +223,7 @@ async function checkAndRefreshToken(machineId, provider, credentials, env) {
   return credentials;
 }
 
-async function validateApiKey(request, machineId, env) {
+export async function validateApiKey(request, machineId, env) {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return false;
 

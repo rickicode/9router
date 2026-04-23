@@ -16,16 +16,21 @@ import { handleEmbeddings } from "./handlers/embeddings.js";
 import { handleUsage } from "./handlers/usage.js";
 import { handleHealth } from "./handlers/health.js";
 import { createLandingPageResponse } from "./services/landingPage.js";
+import { cleanupExpiredSessions, limitUsageMapSize } from "./services/state.js";
 
 // Initialize translators at module load (static imports)
 initTranslators();
 
-// Periodic cleanup for memory management
-setInterval(async () => {
-  const { cleanupExpiredSessions, limitUsageMapSize } = await import("./services/state.js");
+let lastMemoryCleanupAt = 0;
+
+function runPeriodicMemoryCleanup() {
+  const now = Date.now();
+  if (now - lastMemoryCleanupAt < 60000) return;
+
   cleanupExpiredSessions();
   limitUsageMapSize(1000);
-}, 60000); // Every 60 seconds
+  lastMemoryCleanupAt = now;
+}
 
 // Helper to add CORS headers to response
 function addCorsHeaders(response) {
@@ -42,11 +47,13 @@ function addCorsHeaders(response) {
 
 const worker = {
   async scheduled(event, env, ctx) {
+    runPeriodicMemoryCleanup();
     const result = await handleCleanup(env);
     log.info("SCHEDULED", "Cleanup completed", result);
   },
 
   async fetch(request, env, ctx) {
+    runPeriodicMemoryCleanup();
     const startTime = Date.now();
     const url = new URL(request.url);
     let path = url.pathname;
