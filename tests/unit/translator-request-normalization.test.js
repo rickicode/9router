@@ -96,6 +96,50 @@ describe("request normalization", () => {
     expect(userMessage.content).toBe("hello\nworld");
   });
 
+  it("translateRequest still inserts missing tool responses before normalization", () => {
+    const body = {
+      messages: [
+        {
+          role: "assistant",
+          content: "",
+          tool_calls: [
+            {
+              id: "call_1",
+              type: "function",
+              function: {
+                name: "lookupWeather",
+                arguments: '{"city":"Paris"}',
+              },
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: "Thanks",
+        },
+      ],
+    };
+
+    const result = translateRequest(
+      FORMATS.OPENAI,
+      FORMATS.OPENAI,
+      "gpt-4o",
+      JSON.parse(JSON.stringify(body)),
+      true,
+    );
+
+    expect(result.messages).toHaveLength(3);
+    expect(result.messages[1]).toEqual({
+      role: "tool",
+      tool_call_id: "call_1",
+      content: "",
+    });
+    expect(result.messages[2]).toEqual({
+      role: "user",
+      content: "Thanks",
+    });
+  });
+
   it("parseSSELine supports provider raw NDJSON stream lines", () => {
     const raw = JSON.stringify({
       model: "gpt-oss:120b",

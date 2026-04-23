@@ -3,7 +3,6 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { getQuotaRefreshScheduler } from "@/lib/quotaRefreshScheduler";
 import { readRuntimeConfig } from "@/lib/runtimeConfig";
-import { setRtkEnabled } from "open-sse/rtk/flag.js";
 import bcrypt from "bcryptjs";
 
 const DEFAULT_QUOTA_EXHAUSTED_THRESHOLD_PERCENT = 10;
@@ -98,10 +97,6 @@ export async function PATCH(request) {
       applyOutboundProxyEnv(settings);
     }
 
-    // Sync RTK toggle immediately (sync cache for request hot path)
-    if (Object.prototype.hasOwnProperty.call(body, "rtkEnabled")) {
-      setRtkEnabled(settings.rtkEnabled);
-    }
     const { password, ...safeSettings } = settings;
     return NextResponse.json(safeSettings);
   } catch (error) {

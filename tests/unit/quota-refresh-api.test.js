@@ -243,4 +243,57 @@ describe("quota refresh api routes", () => {
     expect(getQuotaRefreshScheduler).toHaveBeenCalledTimes(1);
     expect(refreshSchedule).toHaveBeenCalledWith("settings_update");
   });
+
+  it("preserves non-sensitive settings keys in GET responses", async () => {
+    getSettings.mockResolvedValueOnce({
+      cloudEnabled: true,
+      customFlag: true,
+      quotaScheduler: {
+        enabled: true,
+        cadenceMs: 900000,
+      },
+    });
+
+    const { GET } = await import("../../src/app/api/settings/route.js");
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      cloudEnabled: true,
+      customFlag: true,
+    });
+  });
+
+  it("preserves non-sensitive settings keys in PATCH responses and does not reschedule unrelated fields", async () => {
+    updateSettings.mockResolvedValueOnce({
+      cloudEnabled: true,
+      customFlag: true,
+      quotaScheduler: {
+        enabled: true,
+        cadenceMs: 900000,
+      },
+    });
+
+    const { PATCH } = await import("../../src/app/api/settings/route.js");
+    const response = await PATCH(new Request("http://localhost/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        cloudEnabled: true,
+        customFlag: true,
+      }),
+      headers: { "content-type": "application/json" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(updateSettings).toHaveBeenCalledWith({
+      cloudEnabled: true,
+      customFlag: true,
+    });
+    expect(response.body).toMatchObject({
+      cloudEnabled: true,
+      customFlag: true,
+    });
+    expect(getQuotaRefreshScheduler).not.toHaveBeenCalled();
+    expect(refreshSchedule).not.toHaveBeenCalled();
+  });
 });

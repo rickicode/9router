@@ -75,7 +75,9 @@ describe("localDb quota scheduler settings", () => {
   it("returns quota scheduler defaults for a fresh database", async () => {
     const localDb = await loadLocalDb();
 
-    await expect(localDb.getSettings()).resolves.toMatchObject({
+    const settings = await localDb.getSettings();
+
+    expect(settings).toMatchObject({
       quotaExhaustedThresholdPercent: 10,
       quotaScheduler: {
         enabled: true,
@@ -85,6 +87,48 @@ describe("localDb quota scheduler settings", () => {
         exhaustedTtlMs: 60000,
         batchSize: 25,
       },
+    });
+  });
+
+  it("preserves unknown settings keys on import, read, and update", async () => {
+    const localDb = await loadLocalDb();
+
+    await localDb.importDb({
+      providerConnections: [],
+      providerNodes: [],
+      proxyPools: [],
+      modelAliases: {},
+      customModels: [],
+      mitmAlias: {},
+      combos: [],
+      apiKeys: [],
+      pricing: {},
+      settings: {
+        customFlag: true,
+        quotaExhaustedThresholdPercent: 12,
+      },
+    });
+
+    const initial = await localDb.getSettings();
+    expect(initial).toMatchObject({
+      customFlag: true,
+      quotaExhaustedThresholdPercent: 12,
+    });
+
+    const updated = await localDb.updateSettings({
+      cloudEnabled: true,
+      customFlag: false,
+    });
+
+    expect(updated).toMatchObject({
+      cloudEnabled: true,
+      customFlag: false,
+    });
+
+    await expect(localDb.getSettings()).resolves.toMatchObject({
+      cloudEnabled: true,
+      customFlag: false,
+      quotaExhaustedThresholdPercent: 12,
     });
   });
 

@@ -45,7 +45,6 @@ const DEFAULT_SETTINGS = {
   outboundNoProxy: "",
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   quotaExhaustedThresholdPercent: 10,
-  rtkEnabled: false,
 };
 
 const CANONICAL_STATUS_KEYS = ["routingStatus", "healthStatus", "quotaState", "authState"];
@@ -87,19 +86,23 @@ function normalizeQuotaExhaustedThresholdPercent(value) {
 }
 
 function mergeSettingsWithDefaults(settings = {}) {
+  const sourceSettings = settings && typeof settings === "object" && !Array.isArray(settings)
+    ? { ...settings }
+    : {};
+
   const merged = {
     ...DEFAULT_SETTINGS,
-    ...(settings && typeof settings === "object" && !Array.isArray(settings) ? settings : {}),
+    ...sourceSettings,
   };
 
   merged.quotaExhaustedThresholdPercent = normalizeQuotaExhaustedThresholdPercent(
-    settings?.quotaExhaustedThresholdPercent
+    sourceSettings?.quotaExhaustedThresholdPercent
   );
 
   merged.quotaScheduler = {
     ...normalizeQuotaSchedulerSettings(
-      settings?.quotaScheduler && typeof settings.quotaScheduler === "object" && !Array.isArray(settings.quotaScheduler)
-        ? settings.quotaScheduler
+      sourceSettings?.quotaScheduler && typeof sourceSettings.quotaScheduler === "object" && !Array.isArray(sourceSettings.quotaScheduler)
+        ? sourceSettings.quotaScheduler
         : {}
     ),
   };
@@ -932,12 +935,16 @@ export async function touchOpenCodeTokenLastUsedAt(tokenId, usedAt = new Date().
 
 export async function updateSettings(updates) {
   const db = await getDb();
+  const nextUpdates = updates && typeof updates === "object" && !Array.isArray(updates)
+    ? { ...updates }
+    : {};
+
   db.data.settings = mergeSettingsWithDefaults({
     ...db.data.settings,
-    ...updates,
+    ...nextUpdates,
     quotaScheduler: {
       ...(db.data.settings?.quotaScheduler || {}),
-      ...(updates?.quotaScheduler || {}),
+      ...(nextUpdates?.quotaScheduler || {}),
     },
   });
   await safeWrite(db);
