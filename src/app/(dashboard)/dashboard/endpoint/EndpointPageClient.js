@@ -196,10 +196,13 @@ export default function APIPageClient({ machineId }) {
   useEffect(() => {
     if (!machineId || cloudUrls.length === 0) return;
 
-    checkCloudHealth();
+    const initialDelay = setTimeout(checkCloudHealth, 2000);
     const interval = setInterval(checkCloudHealth, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialDelay);
+      clearInterval(interval);
+    };
   }, [machineId, cloudUrls]);
 
   const handleTunnelDashboardAccess = async (value) => {

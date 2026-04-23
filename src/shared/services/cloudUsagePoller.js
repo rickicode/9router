@@ -12,6 +12,7 @@ export class CloudUsagePoller {
     this.intervalMs = intervalMs;
     this.intervalId = null;
     this.machineIdPromise = null;
+    this.lastError = null;
   }
 
   /**
@@ -65,6 +66,7 @@ export class CloudUsagePoller {
     try {
       cloudUrl = await getCloudUrl();
     } catch (error) {
+      this.lastError = error?.message || "Cloud URL unavailable";
       console.error("[USAGE_POLL] Cloud URL unavailable:", error);
       return;
     }
@@ -74,9 +76,12 @@ export class CloudUsagePoller {
     });
 
     if (!response.ok) {
+      this.lastError = `Poll failed: ${response.statusText}`;
       console.error("[USAGE_POLL] Failed:", response.statusText);
       return;
     }
+
+    this.lastError = null;
 
     const data = await response.json();
 

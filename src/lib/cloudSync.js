@@ -16,7 +16,6 @@ function formatConnection(conn) {
   return {
     id: conn.id,
     provider: conn.provider,
-    accountId: conn.accountId || conn.email,
     accessToken: conn.accessToken,
     refreshToken: conn.refreshToken,
     expiresAt: conn.expiresAt,
