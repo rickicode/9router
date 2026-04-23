@@ -90,3 +90,4 @@ context-snapshot.json
 .claude/
 .pi/agents/supervisor.md
 .pi/taskplane.json
+state.md
