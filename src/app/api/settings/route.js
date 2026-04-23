@@ -111,6 +111,20 @@ export async function PATCH(request) {
 
     const settings = await updateSettings(updates);
 
+    // Trigger immediate cloud sync if cloud is enabled
+    const { isCloudEnabled } = await import("@/lib/localDb");
+    const { syncToCloud } = await import("@/lib/cloudSync");
+
+    if (await isCloudEnabled()) {
+      try {
+        await syncToCloud();
+        console.log("[API] Settings synced to cloud worker");
+      } catch (error) {
+        console.error("[API] Failed to sync settings to cloud:", error.message);
+        // Don't fail the request, sync will retry on schedule
+      }
+    }
+
     const shouldRefreshQuotaScheduler = (
       Object.prototype.hasOwnProperty.call(body, "quotaScheduler")
       || Object.prototype.hasOwnProperty.call(body, "quotaExhaustedThresholdPercent")

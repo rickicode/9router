@@ -30,6 +30,8 @@ export default function APIPageClient({ machineId }) {
     sticky: false,
     stickyDuration: 300
   });
+  const [saveStatus, setSaveStatus] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   // Cloudflare Tunnel state
   const [tunnelChecking, setTunnelChecking] = useState(true);
@@ -210,6 +212,8 @@ export default function APIPageClient({ machineId }) {
   };
 
   const saveWorkerSettings = async () => {
+    setSaving(true);
+    setSaveStatus(null);
     try {
       const res = await fetch("/api/settings", {
         method: "PATCH",
@@ -218,10 +222,16 @@ export default function APIPageClient({ machineId }) {
       });
 
       if (res.ok) {
-        console.log("Worker settings saved");
+        setSaveStatus({ type: "success", message: "Settings saved and synced to worker" });
+        setTimeout(() => setSaveStatus(null), 3000);
+      } else {
+        const data = await res.json();
+        setSaveStatus({ type: "error", message: data.error || "Failed to save settings" });
       }
     } catch (err) {
-      console.error("Failed to save worker settings:", err);
+      setSaveStatus({ type: "error", message: err.message });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -830,20 +840,47 @@ export default function APIPageClient({ machineId }) {
                     <Input
                       label="Sticky Duration (seconds)"
                       type="number"
+                      min="1"
+                      max="86400"
                       value={workerSettings.stickyDuration}
-                      onChange={(e) => setWorkerSettings((prev) => ({ ...prev, stickyDuration: parseInt(e.target.value) || 300 }))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setWorkerSettings((prev) => ({ ...prev, stickyDuration: 300 }));
+                          return;
+                        }
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num)) {
+                          setWorkerSettings((prev) => ({
+                            ...prev,
+                            stickyDuration: Math.max(1, Math.min(86400, num))
+                          }));
+                        }
+                      }}
                       className="mb-0"
                       inputClassName="mt-2 bg-white/5 dark:bg-white/5 border-white/10"
-                      hint="Defines how long a client stays pinned to the same credential."
+                      hint="Defines how long a client stays pinned to the same credential (1-86400 seconds)."
                     />
                   </div>
                 )}
               </div>
 
               <div className="mt-5 flex items-center justify-end border-t border-white/8 pt-4">
-                <Button onClick={saveWorkerSettings} variant="primary" className="bg-linear-to-r from-primary via-blue-500 to-violet-500 shadow-[0_14px_32px_-18px_rgba(59,130,246,0.9)] hover:scale-[1.01]">
-                  Save Settings
-                </Button>
+                <div>
+                  <Button
+                    onClick={saveWorkerSettings}
+                    variant="primary"
+                    disabled={loading || saving}
+                    className="bg-linear-to-r from-primary via-blue-500 to-violet-500 shadow-[0_14px_32px_-18px_rgba(59,130,246,0.9)] hover:scale-[1.01]"
+                  >
+                    {saving ? "Saving..." : "Save Settings"}
+                  </Button>
+                  {saveStatus && (
+                    <div className={`mt-2 text-sm ${saveStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                      {saveStatus.message}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </Card>
