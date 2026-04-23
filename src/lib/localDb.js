@@ -74,6 +74,12 @@ const DEFAULT_SETTINGS = {
   outboundNoProxy: "",
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   quotaExhaustedThresholdPercent: 10,
+  
+  // Security settings
+  ipWhitelist: ["127.0.0.1", "::1", "172.17.0.0/16"],
+  trustedProxyEnabled: false,
+  auditLogEnabled: true,
+  auditLogMaxSize: 10485760, // 10MB
 };
 
 const LEGACY_REMOVED_SETTINGS_KEYS = [
