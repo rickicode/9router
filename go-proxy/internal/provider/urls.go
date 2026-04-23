@@ -2,6 +2,8 @@ package provider
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"strings"
 )
 
@@ -44,6 +46,9 @@ func BuildURL(provider, model string, stream bool, options BuildOptions) (string
 		return trimTrailingSlash(config.BaseURL) + ":" + action, nil
 	case "antigravity":
 		baseURL := config.BaseURL
+		if len(config.BaseURLs) == 0 && strings.TrimSpace(baseURL) == "" {
+			return "", fmt.Errorf("provider %s has no base URL", provider)
+		}
 		if len(config.BaseURLs) > 0 {
 			index := options.BaseURLIndex
 			if index < 0 || index >= len(config.BaseURLs) {
@@ -57,7 +62,7 @@ func BuildURL(provider, model string, stream bool, options BuildOptions) (string
 		}
 		return trimTrailingSlash(baseURL) + path, nil
 	case "qwen":
-		return buildQwenURL(config.BaseURL, options.QwenResourceURL), nil
+		return buildQwenURL(config.BaseURL, options.QwenResourceURL)
 	default:
 		if config.BaseURL != "" {
 			return trimTrailingSlash(config.BaseURL), nil
@@ -69,12 +74,57 @@ func BuildURL(provider, model string, stream bool, options BuildOptions) (string
 	}
 }
 
-func buildQwenURL(fallbackBaseURL, resourceURL string) string {
+func buildQwenURL(fallbackBaseURL, resourceURL string) (string, error) {
 	baseURL := trimQwenPath(firstNonEmpty(resourceURL, fallbackBaseURL))
 	if resourceURL != "" && !strings.HasPrefix(strings.TrimSpace(resourceURL), "http://") && !strings.HasPrefix(strings.TrimSpace(resourceURL), "https://") {
 		baseURL = "https://" + strings.TrimSuffix(strings.TrimRight(strings.TrimSpace(resourceURL), "/"), "/v1") + "/v1"
 	}
-	return trimTrailingSlash(baseURL) + "/chat/completions"
+	if err := validateQwenResourceURL(baseURL); err != nil {
+		return "", err
+	}
+	return trimTrailingSlash(baseURL) + "/chat/completions", nil
+}
+
+func validateQwenResourceURL(raw string) error {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return fmt.Errorf("invalid qwen resource URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("qwen resource URL must use http or https")
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return fmt.Errorf("qwen resource URL must include a host")
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return nil
+	}
+	if isPrivateOrLocalIP(ip) {
+		return fmt.Errorf("qwen resource URL host is not allowed")
+	}
+	return nil
+}
+
+func isPrivateOrLocalIP(ip net.IP) bool {
+	privateCIDRs := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"127.0.0.0/8",
+		"169.254.0.0/16",
+	}
+	for _, cidr := range privateCIDRs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func trimQwenPath(raw string) string {

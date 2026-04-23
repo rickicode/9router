@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"os"
 	"strings"
 	"time"
@@ -28,6 +29,19 @@ const (
 	routeResponses       = "/v1/responses"
 	routeMessages        = "/v1/messages"
 	reportTimeout        = 3 * time.Second
+)
+
+var (
+	clientErrorURLPattern    = regexp.MustCompile(`https?://[^\s"']+`)
+	clientErrorIPPattern     = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
+	clientErrorBearerPattern = regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+\-/=]+`)
+	clientErrorSKPattern     = regexp.MustCompile(`\bsk-[A-Za-z0-9._\-]+\b`)
+	allowedForwardHeaders    = map[string]struct{}{
+		"accept":          {},
+		"accept-encoding": {},
+		"content-type":    {},
+		"user-agent":      {},
+	}
 )
 
 // NewRoutes returns the HTTP routes for the Go data-plane proxy.
@@ -153,7 +167,7 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 			Quotas:            quotasEvidence,
 			Error:             mapForwardError(normalized.Error),
 		})
-		http.Error(w, "upstream forwarding failed", http.StatusBadGateway)
+		http.Error(w, sanitizeClientErrorMessage(err.Error()), http.StatusBadGateway)
 		return
 	}
 
@@ -327,12 +341,39 @@ func (h requestHandler) buildProviderRequest(r *http.Request, resolved resolve.R
 }
 
 func cloneForwardHeaders(header http.Header) http.Header {
-	cloned := header.Clone()
-	cloned.Del("Authorization")
-	cloned.Del("X-Api-Key")
-	cloned.Del("x-api-key")
+	cloned := make(http.Header)
+	for key, values := range header {
+		if _, ok := allowedForwardHeaders[strings.ToLower(strings.TrimSpace(key))]; !ok {
+			continue
+		}
+		cloned[key] = append([]string(nil), values...)
+	}
 	return cloned
 }
+
+func sanitizeClientErrorMessage(message string) string {
+	sanitized := strings.TrimSpace(message)
+	if sanitized == "" {
+		return "upstream forwarding failed"
+	}
+	sanitized = clientErrorURLPattern.ReplaceAllString(sanitized, "[redacted-url]")
+	sanitized = clientErrorIPPattern.ReplaceAllString(sanitized, "[redacted-ip]")
+	sanitized = clientErrorBearerPattern.ReplaceAllString(sanitized, "Bearer [redacted-token]")
+	sanitized = clientErrorSKPattern.ReplaceAllString(sanitized, "[redacted-token]")
+	fields := strings.Fields(sanitized)
+	if len(fields) == 0 {
+		return "upstream forwarding failed"
+	}
+	if len(fields) > 12 {
+		fields = fields[:12]
+	}
+	sanitized = strings.Join(fields, " ")
+	if sanitized == "" || sanitized == "[redacted-url]" || sanitized == "[redacted-ip]" {
+		return "upstream forwarding failed"
+	}
+	return sanitized
+}
+
 
 func lookupProviderNode(store *model.Store, providerID string) (model.ProviderNode, bool) {
 	if store == nil {

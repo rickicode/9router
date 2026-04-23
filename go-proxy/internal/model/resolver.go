@@ -16,6 +16,9 @@ func ResolveModel(modelStr string, store *Store) (Resolution, error) {
 }
 
 func resolveModelWithDepth(modelStr string, store *Store, depth int) (Resolution, error) {
+	if store == nil {
+		return Resolution{}, fmt.Errorf("model store is nil")
+	}
 	if depth > 10 {
 		return Resolution{}, fmt.Errorf("alias resolution depth exceeded")
 	}

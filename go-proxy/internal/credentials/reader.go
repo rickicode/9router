@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
+	"time"
 )
 
 var ErrConnectionNotFound = errors.New("connection not found")
@@ -22,6 +24,9 @@ type Credential struct {
 // Reader loads credentials from the existing 9router local DB JSON file.
 type Reader struct {
 	filePath string
+	mu       sync.RWMutex
+	cache    dbShape
+	modTime  time.Time
 }
 
 func NewReader(filePath string) *Reader {
@@ -42,14 +47,9 @@ type providerConnection struct {
 }
 
 func (r *Reader) ReadByConnectionID(connectionID string) (Credential, error) {
-	content, err := os.ReadFile(r.filePath)
+	db, err := r.loadDB()
 	if err != nil {
-		return Credential{}, fmt.Errorf("read credentials file: %w", err)
-	}
-
-	var db dbShape
-	if err := json.Unmarshal(content, &db); err != nil {
-		return Credential{}, fmt.Errorf("decode credentials file: %w", err)
+		return Credential{}, err
 	}
 
 	for _, c := range db.ProviderConnections {
@@ -67,4 +67,39 @@ func (r *Reader) ReadByConnectionID(connectionID string) (Credential, error) {
 	}
 
 	return Credential{}, fmt.Errorf("%w: %s", ErrConnectionNotFound, connectionID)
+}
+
+func (r *Reader) loadDB() (dbShape, error) {
+	info, err := os.Stat(r.filePath)
+	if err != nil {
+		return dbShape{}, fmt.Errorf("stat credentials file: %w", err)
+	}
+
+	r.mu.RLock()
+	if !r.modTime.IsZero() && info.ModTime().Equal(r.modTime) {
+		cached := r.cache
+		r.mu.RUnlock()
+		return cached, nil
+	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.modTime.IsZero() && info.ModTime().Equal(r.modTime) {
+		return r.cache, nil
+	}
+
+	content, err := os.ReadFile(r.filePath)
+	if err != nil {
+		return dbShape{}, fmt.Errorf("read credentials file: %w", err)
+	}
+
+	var db dbShape
+	if err := json.Unmarshal(content, &db); err != nil {
+		return dbShape{}, fmt.Errorf("decode credentials file: %w", err)
+	}
+
+	r.cache = db
+	r.modTime = info.ModTime()
+	return db, nil
 }

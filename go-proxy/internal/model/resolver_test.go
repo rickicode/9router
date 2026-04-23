@@ -139,3 +139,9 @@ func TestResolveModel_AliasResolutionDepthExceeded(t *testing.T) {
 		t.Fatal("expected alias depth limit error")
 	}
 }
+
+func TestResolveModel_NilStoreErrors(t *testing.T) {
+	if _, err := ResolveModel("openai/gpt-4.1", nil); err == nil {
+		t.Fatal("expected error for nil store")
+	}
+}

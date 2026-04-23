@@ -605,6 +605,44 @@ func TestHandleProxy_ComboModelReturnsBadRequest(t *testing.T) {
 	}
 }
 
+func TestCloneForwardHeaders_FiltersUnsafeHeaders(t *testing.T) {
+	headers := cloneForwardHeaders(http.Header{
+		"Content-Type":      []string{"application/json"},
+		"Accept":            []string{"application/json"},
+		"Accept-Encoding":   []string{"gzip"},
+		"User-Agent":        []string{"test-agent"},
+		"Authorization":     []string{"Bearer secret"},
+		"X-Api-Key":         []string{"secret-key"},
+		"X-Goog-Api-Key":    []string{"goog-secret"},
+		"Cookie":            []string{"session=secret"},
+		"Host":              []string{"internal.example"},
+		"Transfer-Encoding": []string{"chunked"},
+		"Content-Length":    []string{"999"},
+		"X-Forwarded-For":   []string{"1.2.3.4"},
+	})
+
+	if got := headers.Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected allowed content-type header, got %q", got)
+	}
+	for _, blocked := range []string{"Authorization", "X-Api-Key", "X-Goog-Api-Key", "Cookie", "Host", "Transfer-Encoding", "Content-Length", "X-Forwarded-For"} {
+		if got := headers.Get(blocked); got != "" {
+			t.Fatalf("expected blocked header %s to be removed, got %q", blocked, got)
+		}
+	}
+}
+
+func TestSanitizeClientErrorMessage_RedactsSensitiveValues(t *testing.T) {
+	msg := sanitizeClientErrorMessage("upstream Bearer secret-token failed for sk-abc123 at http://10.0.0.1:8080/v1/chat/completions")
+	for _, forbidden := range []string{"Bearer secret-token", "sk-abc123", "10.0.0.1", "http://10.0.0.1:8080/v1/chat/completions"} {
+		if strings.Contains(msg, forbidden) {
+			t.Fatalf("expected sanitized message to remove %q, got %q", forbidden, msg)
+		}
+	}
+	if msg == "" {
+		t.Fatal("expected non-empty sanitized message")
+	}
+}
+
 func credentialsReaderForTest(path string) *credentials.Reader {
 	return credentials.NewReader(path)
 }

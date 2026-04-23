@@ -29,3 +29,7 @@ Fix the provider dashboard so 800+ Codex provider accounts no longer appear as "
 
 ## Errors Encountered
 - None yet.
+
+## Additional Phase — Go proxy documentation
+- [completed] Pelajari alur kerja Go proxy untuk routing OpenAI-compatible dan Anthropic-compatible.
+- [completed] Tulis satu file markdown yang menjelaskan startup, resolve, credential lookup, forwarding, fallback, streaming, dan reporting.

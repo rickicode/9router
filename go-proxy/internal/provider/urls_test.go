@@ -1,6 +1,9 @@
 package provider
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBuildURL_OpenAICompatibleChat(t *testing.T) {
 	got, err := BuildURL("openai-compatible-local", "gpt-4.1", true, BuildOptions{BaseURL: "https://example.com/v1/"})
@@ -60,6 +63,28 @@ func TestBuildURL_AntigravityIndexedBaseURLs(t *testing.T) {
 	}
 }
 
+func TestBuildURL_AntigravityWithoutBaseURLsErrors(t *testing.T) {
+	config, ok := GetConfig("antigravity")
+	if !ok {
+		t.Fatal("expected antigravity config")
+	}
+	originalBaseURLs := append([]string(nil), config.BaseURLs...)
+	originalBaseURL := config.BaseURL
+	config.BaseURLs = nil
+	config.BaseURL = ""
+	registry["antigravity"] = config
+	defer func() {
+		config.BaseURLs = originalBaseURLs
+		config.BaseURL = originalBaseURL
+		registry["antigravity"] = config
+	}()
+
+	_, err := BuildURL("antigravity", "", false, BuildOptions{})
+	if err == nil {
+		t.Fatal("expected error when antigravity has no base URLs")
+	}
+}
+
 func TestBuildURL_QwenResourceURLNormalization(t *testing.T) {
 	got, err := BuildURL("qwen", "", true, BuildOptions{QwenResourceURL: "https://custom.qwen.example/v1/chat/completions/"})
 	if err != nil {
@@ -67,6 +92,16 @@ func TestBuildURL_QwenResourceURLNormalization(t *testing.T) {
 	}
 	if got != "https://custom.qwen.example/v1/chat/completions" {
 		t.Fatalf("unexpected URL: %q", got)
+	}
+}
+
+func TestBuildURL_QwenRejectsPrivateResourceURL(t *testing.T) {
+	_, err := BuildURL("qwen", "", true, BuildOptions{QwenResourceURL: "http://127.0.0.1:8080/v1"})
+	if err == nil {
+		t.Fatal("expected error for private resource URL")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "resource url") {
+		t.Fatalf("expected resource url validation error, got %v", err)
 	}
 }
 
