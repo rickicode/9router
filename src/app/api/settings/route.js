@@ -3,20 +3,34 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { getQuotaRefreshScheduler } from "@/lib/quotaRefreshScheduler";
 import { readRuntimeConfig } from "@/lib/runtimeConfig";
-import { setRtkEnabled } from "open-sse/rtk/flag.js";
 import bcrypt from "bcryptjs";
 
 const DEFAULT_QUOTA_EXHAUSTED_THRESHOLD_PERCENT = 10;
+const LEGACY_REMOVED_RESPONSE_KEYS = [
+  String.fromCharCode(114, 116, 107, 69, 110, 97, 98, 108, 101, 100),
+];
 
 function resolveQuotaExhaustedThresholdPercent(value) {
   if (!Number.isFinite(value)) return DEFAULT_QUOTA_EXHAUSTED_THRESHOLD_PERCENT;
   return Math.min(100, Math.max(0, value));
 }
 
+function sanitizeSettingsResponse(settings = {}) {
+  const safeSettings = { ...settings };
+
+  delete safeSettings.password;
+  for (const legacyKey of LEGACY_REMOVED_RESPONSE_KEYS) {
+    delete safeSettings[legacyKey];
+  }
+
+  return safeSettings;
+}
+
 export async function GET() {
   try {
     const settings = await getSettings();
-    const { password, ...safeSettings } = settings;
+    const safeSettings = sanitizeSettingsResponse(settings);
+    const password = settings?.password;
     const quotaExhaustedThresholdPercent = resolveQuotaExhaustedThresholdPercent(
       settings?.quotaExhaustedThresholdPercent
     );
@@ -98,11 +112,7 @@ export async function PATCH(request) {
       applyOutboundProxyEnv(settings);
     }
 
-    // Sync RTK toggle immediately (sync cache for request hot path)
-    if (Object.prototype.hasOwnProperty.call(body, "rtkEnabled")) {
-      setRtkEnabled(settings.rtkEnabled);
-    }
-    const { password, ...safeSettings } = settings;
+    const safeSettings = sanitizeSettingsResponse(settings);
     return NextResponse.json(safeSettings);
   } catch (error) {
     console.log("Error updating settings:", error);

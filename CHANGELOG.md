@@ -1,8 +1,5 @@
 # v0.3.98 (2026-04-22)
 
-## Features
-- Add RTK — filter context (ls/grep/find/.....) before sending to LLM to save tokens
-
 # v0.3.97 (2026-04-22)
 
 ## Features

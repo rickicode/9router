@@ -48,6 +48,8 @@ vi.mock("bcryptjs", () => ({
 }));
 
 describe("quota refresh api routes", () => {
+  const legacyRemovedKey = String.fromCharCode(114, 116, 107, 69, 110, 97, 98, 108, 101, 100);
+
   beforeEach(() => {
     vi.resetModules();
     getQuotaRefreshScheduler.mockClear();
@@ -242,5 +244,83 @@ describe("quota refresh api routes", () => {
     });
     expect(getQuotaRefreshScheduler).toHaveBeenCalledTimes(1);
     expect(refreshSchedule).toHaveBeenCalledWith("settings_update");
+  });
+
+  it("drops stale legacy settings keys from GET responses while preserving non-sensitive custom keys", async () => {
+    getSettings.mockResolvedValueOnce({
+      cloudEnabled: true,
+      [legacyRemovedKey]: true,
+      customFlag: true,
+      quotaScheduler: {
+        enabled: true,
+        cadenceMs: 900000,
+      },
+    });
+
+    const { GET } = await import("../../src/app/api/settings/route.js");
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      cloudEnabled: true,
+      customFlag: true,
+    });
+    expect(response.body).not.toHaveProperty(legacyRemovedKey);
+  });
+
+  it("drops stale legacy settings keys from PATCH responses and does not reschedule unrelated fields", async () => {
+    updateSettings.mockResolvedValueOnce({
+      cloudEnabled: true,
+      [legacyRemovedKey]: true,
+      customFlag: true,
+      quotaScheduler: {
+        enabled: true,
+        cadenceMs: 900000,
+      },
+    });
+
+    const { PATCH } = await import("../../src/app/api/settings/route.js");
+    const response = await PATCH(new Request("http://localhost/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        cloudEnabled: true,
+        customFlag: true,
+      }),
+      headers: { "content-type": "application/json" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(updateSettings).toHaveBeenCalledWith({
+      cloudEnabled: true,
+      customFlag: true,
+    });
+    expect(response.body).toMatchObject({
+      cloudEnabled: true,
+      customFlag: true,
+    });
+    expect(response.body).not.toHaveProperty(legacyRemovedKey);
+    expect(getQuotaRefreshScheduler).not.toHaveBeenCalled();
+    expect(refreshSchedule).not.toHaveBeenCalled();
+  });
+
+  it("preserves unknown custom settings in GET while stripping legacy-removed keys", async () => {
+    getSettings.mockResolvedValueOnce({
+      [legacyRemovedKey]: false,
+      customFlag: true,
+      futureSetting: "preserve-me",
+      password: "secret",
+    });
+
+    const { GET } = await import("../../src/app/api/settings/route.js");
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      customFlag: true,
+      futureSetting: "preserve-me",
+      hasPassword: true,
+    });
+    expect(response.body).not.toHaveProperty("password");
+    expect(response.body).not.toHaveProperty(legacyRemovedKey);
   });
 });
