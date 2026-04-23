@@ -1,10 +1,6 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { isCloudEnabled } from "@/lib/localDb";
-
-const INTERNAL_BASE_URL =
-  process.env.BASE_URL ||
-  process.env.NEXT_PUBLIC_BASE_URL ||
-  "http://localhost:20128";
+import { syncToCloud } from "@/lib/cloudSync";
 
 /**
  * Cloud sync scheduler
@@ -76,31 +72,22 @@ export class CloudSyncScheduler {
   }
 
   /**
-   * Perform sync via internal API route (handles token update to db.json)
+   * Perform sync via cloud sync module
    */
   async sync() {
-    // Check if cloud is enabled
     const enabled = await isCloudEnabled();
     if (!enabled) {
       return null;
     }
 
     await this.initializeMachineId();
-    
-    // Call internal API route which handles both sync and token update
-    const response = await fetch(`${INTERNAL_BASE_URL}/api/sync/cloud`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ machineId: this.machineId, action: "sync" })
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Sync failed");
+    try {
+      const result = await syncToCloud();
+      return result;
+    } catch (error) {
+      throw new Error(error.message || "Sync failed");
     }
-
-    const result = await response.json();
-    return result;
   }
 
   /**

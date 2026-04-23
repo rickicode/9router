@@ -1,7 +1,8 @@
-import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
+import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys, isCloudEnabled } from "@/lib/localDb";
 import { getQuotaRefreshScheduler } from "@/lib/quotaRefreshScheduler";
 import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
 import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
+import { getCloudUsagePoller } from "@/shared/services/cloudUsagePoller";
 import * as mitmManager from "@/mitm/manager";
 
 const { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks } = mitmManager;
@@ -97,6 +98,13 @@ export async function initializeApp() {
 
     // Start quota scheduler scaffold once per process/hot reload lifecycle
     await getQuotaRefreshScheduler().start();
+
+    // Start cloud usage poller if enabled
+    if (await isCloudEnabled()) {
+      const usagePoller = await getCloudUsagePoller();
+      await usagePoller.start();
+      console.log('[INIT] Cloud usage poller started');
+    }
 
     // Auto-start MITM if it was enabled before restart
     autoStartMitm();
