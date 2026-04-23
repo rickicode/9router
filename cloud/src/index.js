@@ -20,6 +20,13 @@ import { createLandingPageResponse } from "./services/landingPage.js";
 // Initialize translators at module load (static imports)
 initTranslators();
 
+// Periodic cleanup for memory management
+setInterval(async () => {
+  const { cleanupExpiredSessions, limitUsageMapSize } = await import("./services/state.js");
+  cleanupExpiredSessions();
+  limitUsageMapSize(1000);
+}, 60000); // Every 60 seconds
+
 // Helper to add CORS headers to response
 function addCorsHeaders(response) {
   const newHeaders = new Headers(response.headers);

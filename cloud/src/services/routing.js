@@ -36,11 +36,17 @@ export function selectCredential(machineData, provider, apiKey) {
   // 2. Check sticky session
   if (settings.sticky) {
     const sticky = state.stickyMap.get(apiKey);
-    if (sticky && sticky.expiresAt > Date.now()) {
-      const found = candidates.find(c => c.id === sticky.connectionId);
-      if (found) {
-        log.debug("ROUTING", `Sticky session for ${provider}: ${found.id}`);
-        return found;
+    if (sticky) {
+      if (sticky.expiresAt > Date.now()) {
+        const found = candidates.find(c => c.id === sticky.connectionId);
+        if (found) {
+          log.debug("ROUTING", `Sticky session for ${provider}: ${found.id}`);
+          return found;
+        }
+      } else {
+        // Clean up expired session
+        state.stickyMap.delete(apiKey);
+        log.debug("ROUTING", `Removed expired sticky session for ${apiKey}`);
       }
     }
   }
@@ -51,8 +57,9 @@ export function selectCredential(machineData, provider, apiKey) {
     const index = state.roundRobinIndexes.get(key) || 0;
     const selected = candidates[index % candidates.length];
 
-    // Update index for next request
-    state.roundRobinIndexes.set(key, index + 1);
+    // Update index with overflow protection
+    const nextIndex = (index + 1) % (candidates.length * 1000);
+    state.roundRobinIndexes.set(key, nextIndex);
 
     log.debug("ROUTING", `Round-robin for ${provider}: ${selected.id} (index ${index})`);
 
