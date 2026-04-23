@@ -1,17 +1,6 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { getAllConnections, getAllModelAliases, getAllCombos, getSettings, getApiKeys } from "./localDb.js";
-
-/**
- * Get cloud URL from settings
- */
-async function getCloudUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_CLOUD_URL;
-  if (envUrl) return envUrl.replace(/\/$/, "");
-
-  const settings = await getSettings();
-  const firstUrl = settings.cloudUrls?.[0]?.url;
-  return (firstUrl || "http://localhost:8787").replace(/\/$/, "");
-}
+import { getCloudUrl } from "./cloudUrlResolver.js";
 
 /**
  * Format connection for cloud sync

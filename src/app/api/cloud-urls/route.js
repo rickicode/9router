@@ -78,6 +78,41 @@ export async function POST(request) {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    const body = await request.json();
+    const { id, status, lastChecked } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Valid cloud URL id is required" }, { status: 400 });
+    }
+
+    if (status && !VALID_STATUSES.has(status)) {
+      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    }
+
+    const updatedUrls = await writeCloudUrls((cloudUrls) => {
+      const index = cloudUrls.findIndex((entry) => entry.id === id);
+      if (index === -1) throw new Error("Cloud URL not found");
+
+      if (status) cloudUrls[index].status = status;
+      if (lastChecked) cloudUrls[index].lastChecked = lastChecked;
+
+      return cloudUrls;
+    });
+
+    return NextResponse.json({ success: true, cloudUrls: updatedUrls });
+  } catch (error) {
+    const statusMap = {
+      "Cloud URL not found": 404,
+    };
+    return NextResponse.json(
+      { error: error.message || "Failed to update cloud URL" },
+      { status: statusMap[error.message] || 500 }
+    );
+  }
+}
+
 export async function DELETE(request) {
   try {
     const body = await request.json();

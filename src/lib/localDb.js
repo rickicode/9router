@@ -236,6 +236,11 @@ function ensureDbShape(data) {
         next.settings = mergedSettings;
         changed = true;
       }
+
+      if (!Array.isArray(next.settings.cloudUrls) || next.settings.cloudUrls.length === 0) {
+        next.settings.cloudUrls = [{ id: 1, url: "", status: "unknown", lastChecked: null }];
+        changed = true;
+      }
     }
 
     // Migrate existing API keys to have isActive

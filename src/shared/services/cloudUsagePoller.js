@@ -1,17 +1,6 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { getProviderConnections, getSettings, updateProviderConnection } from "@/lib/localDb";
-
-/**
- * Get cloud URL from settings
- */
-async function getCloudUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_CLOUD_URL;
-  if (envUrl) return envUrl.replace(/\/$/, "");
-
-  const settings = await getSettings();
-  const firstUrl = settings.cloudUrls?.[0]?.url;
-  return (firstUrl || "http://localhost:8787").replace(/\/$/, "");
-}
+import { getProviderConnections, updateProviderConnection } from "@/lib/localDb";
+import { getCloudUrl } from "@/lib/cloudUrlResolver";
 
 /**
  * Cloud usage poller

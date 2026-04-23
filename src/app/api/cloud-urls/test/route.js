@@ -47,6 +47,6 @@ export async function POST(request) {
       status: "error",
       latency: null,
       error: error.name === "TimeoutError" ? "Request timed out" : (error.message || "Health check failed"),
-    }, { status: 200 });
+    }, { status: 503 });
   }
 }

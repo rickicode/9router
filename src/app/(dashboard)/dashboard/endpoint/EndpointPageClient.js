@@ -274,18 +274,34 @@ export default function APIPageClient({ machineId }) {
 
   const testConnection = async (id, url) => {
     setTestingUrl(id);
-    const res = await fetch("/api/cloud-urls/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setCloudUrls((prev) => prev.map((u) =>
-        u.id === id ? { ...u, status: data.status } : u
-      ));
+    try {
+      const res = await fetch("/api/cloud-urls/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const checkedAt = new Date().toISOString();
+
+        await fetch("/api/cloud-urls", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            status: data.status,
+            lastChecked: checkedAt,
+          }),
+        });
+
+        setCloudUrls((prev) => prev.map((u) =>
+          u.id === id ? { ...u, status: data.status, lastChecked: checkedAt } : u
+        ));
+      }
+    } finally {
+      setTestingUrl(null);
     }
-    setTestingUrl(null);
   };
 
   const fetchData = async () => {
