@@ -30,6 +30,9 @@ export default function APIPageClient({ machineId }) {
     sticky: false,
     stickyDuration: 300
   });
+  const [cloudUrls, setCloudUrls] = useState([]);
+  const [newCloudUrl, setNewCloudUrl] = useState("");
+  const [testingUrl, setTestingUrl] = useState(null);
   const [saveStatus, setSaveStatus] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -95,6 +98,14 @@ export default function APIPageClient({ machineId }) {
           stickyDuration: data.stickyDuration || 300
         });
       }
+
+      // Load cloud URLs
+      const cloudUrlsRes = await fetch("/api/cloud-urls");
+      if (cloudUrlsRes.ok) {
+        const data = await cloudUrlsRes.json();
+        setCloudUrls(data.cloudUrls || []);
+      }
+
       if (statusRes.ok) {
         const data = await statusRes.json();
         const tEnabled = data.tunnel?.enabled || false;
@@ -233,6 +244,60 @@ export default function APIPageClient({ machineId }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addCloudUrl = async () => {
+    if (!newCloudUrl.trim()) return;
+    const res = await fetch("/api/cloud-urls", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: newCloudUrl })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCloudUrls(data.cloudUrls);
+      setNewCloudUrl("");
+    }
+  };
+
+  const removeCloudUrl = async (id) => {
+    const res = await fetch("/api/cloud-urls", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCloudUrls(data.cloudUrls);
+    }
+  };
+
+  const setPrimaryUrl = async (id) => {
+    const res = await fetch("/api/cloud-urls", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, isPrimary: true })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCloudUrls(data.cloudUrls);
+    }
+  };
+
+  const testConnection = async (id, url) => {
+    setTestingUrl(id);
+    const res = await fetch("/api/cloud-urls/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setCloudUrls((prev) => prev.map((u) =>
+        u.id === id ? { ...u, status: data.status } : u
+      ));
+    }
+    setTestingUrl(null);
   };
 
   const fetchData = async () => {
@@ -881,6 +946,77 @@ export default function APIPageClient({ machineId }) {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Cloud Worker URLs */}
+          <Card className="relative mt-4 overflow-hidden border border-white/10 bg-surface/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+            <div className="pointer-events-none absolute inset-0 rounded-lg bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.14),transparent_30%)]" />
+            <div className="relative p-6">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">Cloud Configuration</p>
+                  <h3 className="text-lg font-semibold text-text-main">Worker URLs</h3>
+                  <p className="mt-1 max-w-xl text-sm text-text-muted">Manage multiple cloud worker deployments with automatic failover.</p>
+                </div>
+              </div>
+
+              {/* Add URL */}
+              <div className="mb-4 flex gap-2">
+                <Input
+                  placeholder="https://9router.your-subdomain.workers.dev"
+                  value={newCloudUrl}
+                  onChange={(e) => setNewCloudUrl(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={addCloudUrl} variant="primary">
+                  Add URL
+                </Button>
+              </div>
+
+              {/* URL List */}
+              <div className="space-y-2">
+                {cloudUrls.map((url) => (
+                  <div key={url.id} className="flex items-center gap-3 rounded-2xl border border-white/8 bg-black/10 px-4 py-3">
+                    {/* Status */}
+                    <div className="flex items-center gap-2">
+                      {url.status === "online" && <span className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" />}
+                      {url.status === "offline" && <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />}
+                      {url.status === "unknown" && <span className="h-2 w-2 rounded-full bg-gray-500" />}
+                    </div>
+
+                    {/* URL */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-text-main">{url.url}</span>
+                        {url.isPrimary && (
+                          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">Primary</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => testConnection(url.id, url.url)}
+                        disabled={testingUrl === url.id}
+                      >
+                        {testingUrl === url.id ? "Testing..." : "Test"}
+                      </Button>
+                      {!url.isPrimary && (
+                        <Button size="sm" variant="ghost" onClick={() => setPrimaryUrl(url.id)}>
+                          Set Primary
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => removeCloudUrl(url.id)} className="text-red-500">
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </Card>
