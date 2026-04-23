@@ -339,19 +339,26 @@ NEXT_PUBLIC_CLOUD_URL=https://9router.workers.dev
 
 ### Data Structure
 
-```typescript
-interface CloudUrl {
-  id: number;
-  url: string;
-  isPrimary: boolean;
-  status: "online" | "offline" | "unknown";
-  lastChecked?: string;
-}
-
-interface Settings {
-  cloudUrls: CloudUrl[];
+```javascript
+{
+  cloudUrls: [
+    {
+      id: 1,
+      url: "https://9router.worker1.workers.dev",
+      status: "online",
+      lastChecked: "2026-04-23T18:00:00Z"
+    },
+    {
+      id: 2,
+      url: "https://9router.worker2.workers.dev",
+      status: "offline",
+      lastChecked: "2026-04-23T17:55:00Z"
+    }
+  ]
 }
 ```
+
+**Note:** No `isPrimary` field - URLs are for monitoring only.
 
 ### Status Values
 
