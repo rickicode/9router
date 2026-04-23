@@ -25,6 +25,11 @@ export default function APIPageClient({ machineId }) {
   const [requireLogin, setRequireLogin] = useState(true);
   const [hasPassword, setHasPassword] = useState(true);
   const [tunnelDashboardAccess, setTunnelDashboardAccess] = useState(false);
+  const [workerSettings, setWorkerSettings] = useState({
+    roundRobin: false,
+    sticky: false,
+    stickyDuration: 300
+  });
 
   // Cloudflare Tunnel state
   const [tunnelChecking, setTunnelChecking] = useState(true);
@@ -82,6 +87,11 @@ export default function APIPageClient({ machineId }) {
         setRequireLogin(data.requireLogin !== false);
         setHasPassword(data.hasPassword || false);
         setTunnelDashboardAccess(data.tunnelDashboardAccess || false);
+        setWorkerSettings({
+          roundRobin: data.roundRobin || false,
+          sticky: data.sticky || false,
+          stickyDuration: data.stickyDuration || 300
+        });
       }
       if (statusRes.ok) {
         const data = await statusRes.json();
@@ -196,6 +206,22 @@ export default function APIPageClient({ machineId }) {
       if (res.ok) setRequireApiKey(value);
     } catch (error) {
       console.log("Error updating requireApiKey:", error);
+    }
+  };
+
+  const saveWorkerSettings = async () => {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(workerSettings)
+      });
+
+      if (res.ok) {
+        console.log("Worker settings saved");
+      }
+    } catch (err) {
+      console.error("Failed to save worker settings:", err);
     }
   };
 
@@ -759,6 +785,69 @@ export default function APIPageClient({ machineId }) {
               )}
             </div>
           )}
+
+          {/* Cloud Worker Settings */}
+          <Card className="mt-4 border-white/10 bg-linear-to-br from-white/[0.06] via-white/[0.03] to-transparent shadow-[0_18px_50px_-24px_rgba(59,130,246,0.45)] backdrop-blur-md">
+            <div className="pointer-events-none absolute inset-0 rounded-lg bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.14),transparent_30%)]" />
+            <div className="relative p-6">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">Cloud Worker Settings</p>
+                  <h3 className="text-lg font-semibold text-text-main">Cloud Worker Routing</h3>
+                  <p className="mt-1 max-w-xl text-sm text-text-muted">Fine-tune how requests are distributed across credentials for a more controlled edge routing experience.</p>
+                </div>
+                <div className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-text-muted md:flex md:items-center md:gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_12px_rgba(59,130,246,0.9)]" />
+                  Worker policy
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-black/10 px-4 py-4 shadow-inner shadow-black/10 backdrop-blur-sm">
+                  <div>
+                    <label className="font-medium text-text-main">Round-Robin</label>
+                    <p className="text-sm text-text-muted">Distribute requests across multiple credentials</p>
+                  </div>
+                  <Toggle
+                    checked={workerSettings.roundRobin}
+                    onChange={(checked) => setWorkerSettings((prev) => ({ ...prev, roundRobin: checked }))}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-black/10 px-4 py-4 shadow-inner shadow-black/10 backdrop-blur-sm">
+                  <div>
+                    <label className="font-medium text-text-main">Sticky Sessions</label>
+                    <p className="text-sm text-text-muted">Maintain consistent routing per client</p>
+                  </div>
+                  <Toggle
+                    checked={workerSettings.sticky}
+                    onChange={(checked) => setWorkerSettings((prev) => ({ ...prev, sticky: checked }))}
+                  />
+                </div>
+
+                {workerSettings.sticky && (
+                  <div className="rounded-2xl border border-white/8 bg-black/10 p-4 shadow-inner shadow-black/10 backdrop-blur-sm">
+                    <Input
+                      label="Sticky Duration (seconds)"
+                      type="number"
+                      value={workerSettings.stickyDuration}
+                      onChange={(e) => setWorkerSettings((prev) => ({ ...prev, stickyDuration: parseInt(e.target.value) || 300 }))}
+                      className="mb-0"
+                      inputClassName="mt-2 bg-white/5 dark:bg-white/5 border-white/10"
+                      hint="Defines how long a client stays pinned to the same credential."
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 flex items-center justify-end border-t border-white/8 pt-4">
+                <Button onClick={saveWorkerSettings} variant="primary" className="bg-linear-to-r from-primary via-blue-500 to-violet-500 shadow-[0_14px_32px_-18px_rgba(59,130,246,0.9)] hover:scale-[1.01]">
+                  Save Settings
+                </Button>
+              </div>
+            </div>
+          </Card>
+
           {/* Tailscale */}
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${
