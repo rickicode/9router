@@ -31,6 +31,9 @@ export async function GET() {
     const settings = await getSettings();
     const safeSettings = sanitizeSettingsResponse(settings);
     const password = settings?.password;
+    const roundRobin = settings?.roundRobin;
+    const sticky = settings?.sticky;
+    const stickyDuration = settings?.stickyDuration;
     const quotaExhaustedThresholdPercent = resolveQuotaExhaustedThresholdPercent(
       settings?.quotaExhaustedThresholdPercent
     );
@@ -43,6 +46,9 @@ export async function GET() {
 
     return NextResponse.json({
       ...safeSettings,
+      roundRobin,
+      sticky,
+      stickyDuration,
       quotaExhaustedThresholdPercent,
       enableRequestLogs,
       enableTranslator,
@@ -63,6 +69,7 @@ export async function GET() {
 export async function PATCH(request) {
   try {
     const body = await request.json();
+    const updates = { ...body };
 
     // If updating password, hash it
     if (body.newPassword) {
@@ -87,12 +94,22 @@ export async function PATCH(request) {
       }
 
       const salt = await bcrypt.genSalt(10);
-      body.password = await bcrypt.hash(body.newPassword, salt);
-      delete body.newPassword;
-      delete body.currentPassword;
+      updates.password = await bcrypt.hash(body.newPassword, salt);
+      delete updates.newPassword;
+      delete updates.currentPassword;
     }
 
-    const settings = await updateSettings(body);
+    if (body.roundRobin !== undefined) {
+      updates.roundRobin = body.roundRobin;
+    }
+    if (body.sticky !== undefined) {
+      updates.sticky = body.sticky;
+    }
+    if (body.stickyDuration !== undefined) {
+      updates.stickyDuration = body.stickyDuration;
+    }
+
+    const settings = await updateSettings(updates);
 
     const shouldRefreshQuotaScheduler = (
       Object.prototype.hasOwnProperty.call(body, "quotaScheduler")
