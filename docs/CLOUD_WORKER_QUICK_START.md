@@ -8,11 +8,10 @@
 cd cloud
 npm install
 wrangler login
-wrangler kv namespace create KV
 wrangler d1 create 9router-db
 ```
 
-Edit `wrangler.toml` dengan ID yang dihasilkan, lalu:
+Edit `wrangler.toml` dengan D1 ID yang dihasilkan, lalu:
 
 ```bash
 wrangler d1 execute 9router-db --remote --file=./migrations/0001_init.sql

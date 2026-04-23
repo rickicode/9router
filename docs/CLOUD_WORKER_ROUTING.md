@@ -98,8 +98,7 @@ wrangler login
 cd cloud
 npm install
 
-# Buat KV & D1 namespace
-wrangler kv namespace create KV
+# Buat D1 database
 wrangler d1 create 9router-db
 
 # Copy ID yang dihasilkan ke wrangler.toml
@@ -107,10 +106,6 @@ wrangler d1 create 9router-db
 
 Edit `cloud/wrangler.toml`:
 ```toml
-[[kv_namespaces]]
-binding = "KV"
-id = "YOUR_KV_NAMESPACE_ID"  # Paste ID dari command di atas
-
 [[d1_databases]]
 binding = "DB"
 database_name = "9router-db"

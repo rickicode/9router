@@ -35,14 +35,16 @@ npm install -g wrangler
 wrangler login
 
 # 2. Install dependencies
-cd app/cloud
+cd cloud
 npm install
 
-# 3. Create KV & D1, then paste IDs into wrangler.toml
-wrangler kv namespace create KV
+# 3. Create D1 database
 wrangler d1 create proxy-db
 
-# 4. Init database & deploy
+# 4. Paste D1 ID into wrangler.toml
+# Edit wrangler.toml and replace YOUR_D1_DATABASE_ID
+
+# 5. Init database & deploy
 wrangler d1 execute proxy-db --remote --file=./migrations/0001_init.sql
 npm run deploy
 ```
