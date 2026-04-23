@@ -64,7 +64,7 @@ func TestResolveModel_InferProviderWhenAliasMissing(t *testing.T) {
 		"gemini-2.5-pro":    "gemini",
 		"gpt-4.1":           "openai",
 		"o3-mini":           "openai",
-		"deepseek-r1":       "openrouter",
+		"deepseek-r1":       "deepseek",
 		"unknown-model":     "openai",
 	}
 	for input, wantProvider := range cases {
@@ -106,7 +106,7 @@ func TestInferProvider(t *testing.T) {
 		"gemini-2.5-pro":    "gemini",
 		"gpt-4.1":           "openai",
 		"o3-mini":           "openai",
-		"deepseek-r1":       "openrouter",
+		"deepseek-r1":       "deepseek",
 		"unknown-model":     "openai",
 	}
 
@@ -114,5 +114,28 @@ func TestInferProvider(t *testing.T) {
 		if got := InferProvider(input); got != want {
 			t.Fatalf("input %s: expected %s, got %s", input, want, got)
 		}
+	}
+}
+
+func TestResolveModel_AliasResolutionDepthExceeded(t *testing.T) {
+	store := &Store{
+		aliases: map[string]Alias{
+			"loop-0":  {RawString: "loop-1"},
+			"loop-1":  {RawString: "loop-2"},
+			"loop-2":  {RawString: "loop-3"},
+			"loop-3":  {RawString: "loop-4"},
+			"loop-4":  {RawString: "loop-5"},
+			"loop-5":  {RawString: "loop-6"},
+			"loop-6":  {RawString: "loop-7"},
+			"loop-7":  {RawString: "loop-8"},
+			"loop-8":  {RawString: "loop-9"},
+			"loop-9":  {RawString: "loop-10"},
+			"loop-10": {RawString: "loop-11"},
+			"loop-11": {RawString: "loop-0"},
+		},
+	}
+
+	if _, err := ResolveModel("loop-0", store); err == nil {
+		t.Fatal("expected alias depth limit error")
 	}
 }
