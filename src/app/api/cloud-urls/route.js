@@ -9,13 +9,49 @@ function normalizeUrl(value) {
   return value.trim().replace(/\/$/, "");
 }
 
-function isValidHttpUrl(value) {
+function validateUrl(urlString) {
   try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
+    const url = new URL(urlString);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("URL must be a valid HTTP or HTTPS address");
+    }
+
+    const isProduction = process.env.NODE_ENV === "production";
+    const isDevelopment = process.env.NODE_ENV === "development";
+    const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+
+    if (isProduction && url.protocol === "http:" && !isLocalhost) {
+      throw new Error("HTTPS required for production URLs");
+    }
+
+    const hostname = url.hostname;
+    const privateIpPatterns = [
+      /^127\./,
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^192\.168\./,
+      /^169\.254\./,
+      /^::1$/,
+      /^fe80:/i,
+      /^fc00:/i,
+    ];
+
+    if (!isDevelopment && privateIpPatterns.some((pattern) => pattern.test(hostname)) && !isLocalhost) {
+      throw new Error("Private IP addresses not allowed");
+    }
+
+    return url.toString();
+  } catch (error) {
+    throw new Error(error.message || "Invalid URL format");
   }
+}
+
+function hasValidOrigin(request) {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+
+  return !origin || !host || origin.includes(host);
 }
 
 async function readCloudUrls() {
@@ -46,8 +82,12 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    if (!hasValidOrigin(request)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+    }
+
     const body = await request.json();
-    const url = normalizeUrl(body?.url);
+    const rawUrl = normalizeUrl(body?.url);
     let lastChecked = body?.lastChecked ?? null;
 
     if (lastChecked) {
@@ -57,12 +97,11 @@ export async function POST(request) {
       }
     }
 
-    if (!url) {
+    if (!rawUrl) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
-    if (!isValidHttpUrl(url)) {
-      return NextResponse.json({ error: "URL must be a valid HTTP or HTTPS address" }, { status: 400 });
-    }
+
+    const url = validateUrl(rawUrl);
 
     const updated = await writeCloudUrls((cloudUrls) => {
       if (cloudUrls.some((entry) => normalizeUrl(entry.url) === url)) {
@@ -88,6 +127,10 @@ export async function POST(request) {
 
 export async function PATCH(request) {
   try {
+    if (!hasValidOrigin(request)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, status } = body;
     let lastChecked = body?.lastChecked ?? null;
@@ -131,6 +174,10 @@ export async function PATCH(request) {
 
 export async function DELETE(request) {
   try {
+    if (!hasValidOrigin(request)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+    }
+
     const body = await request.json();
     const id = String(body?.id ?? "").trim();
 
