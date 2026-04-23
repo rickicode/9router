@@ -3,6 +3,7 @@ package translate
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -12,6 +13,7 @@ type TranslateOptions struct {
 	Stream    bool
 	StripList []string
 	Provider  string
+	InjectClaudePrompt bool
 }
 
 // TranslateRequest translates a request body through the OpenAI intermediate format when needed.
@@ -34,7 +36,7 @@ func TranslateRequest(sourceFormat, targetFormat string, body map[string]any, op
 		}
 
 		if targetFormat != FormatOpenAI {
-			result, err = fromOpenAIRequest(targetFormat, opts.Model, result, opts.Stream)
+			result, err = fromOpenAIRequest(targetFormat, opts.Model, result, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -59,12 +61,12 @@ func toOpenAIRequest(sourceFormat, model string, body map[string]any, stream boo
 	}
 }
 
-func fromOpenAIRequest(targetFormat, model string, body map[string]any, stream bool) (map[string]any, error) {
+func fromOpenAIRequest(targetFormat, model string, body map[string]any, opts TranslateOptions) (map[string]any, error) {
 	switch targetFormat {
 	case FormatClaude:
-		return OpenAIToClaudeRequest(model, body, stream)
+		return OpenAIToClaudeRequest(model, body, opts.Stream, opts)
 	case FormatGemini, FormatGeminiCLI:
-		return OpenAIToGeminiRequest(model, body, stream)
+		return OpenAIToGeminiRequest(model, body, opts.Stream)
 	default:
 		return body, nil
 	}
@@ -282,8 +284,14 @@ func ensureToolCallIDs(body map[string]any) {
 					if !ok {
 						continue
 					}
-					if id := sanitizeToolID(stringValue(toolCall["id"])); id != "" {
+					originalID := stringValue(toolCall["id"])
+					if id := sanitizeToolID(originalID); id != "" {
 						toolCall["id"] = id
+					} else if originalID != "" {
+						// Keep the original ID when sanitization strips every character; regenerating
+						// would sever the link between an intentionally assigned tool call ID and
+						// any matching tool responses already present in the request.
+						toolCall["id"] = originalID
 					} else {
 						fn, _ := toolCall["function"].(map[string]any)
 						toolCall["id"] = generateToolCallID(i, j, stringValue(fn["name"]))
@@ -318,8 +326,11 @@ func ensureToolCallIDs(body map[string]any) {
 				}
 				switch stringValue(part["type"]) {
 				case "tool_use":
-					if id := sanitizeToolID(stringValue(part["id"])); id != "" {
+					originalID := stringValue(part["id"])
+					if id := sanitizeToolID(originalID); id != "" {
 						part["id"] = id
+					} else if originalID != "" {
+						part["id"] = originalID
 					} else {
 						part["id"] = generateToolCallID(i, j, stringValue(part["name"]))
 					}
@@ -708,10 +719,11 @@ func generateToolCallID(msgIndex, tcIndex int, toolName string) string {
 			cleanName += string(r)
 		}
 	}
+	suffix := fmt.Sprintf("%d_%06d", time.Now().UnixNano(), rand.Intn(1000000))
 	if cleanName != "" {
-		return fmt.Sprintf("call_msg%d_tc%d_%s", msgIndex, tcIndex, cleanName)
+		return fmt.Sprintf("call_msg%d_tc%d_%s_%s", msgIndex, tcIndex, cleanName, suffix)
 	}
-	return fmt.Sprintf("call_msg%d_tc%d", msgIndex, tcIndex)
+	return fmt.Sprintf("call_msg%d_tc%d_%s", msgIndex, tcIndex, suffix)
 }
 
 func contains(items []string, want string) bool {
@@ -749,6 +761,19 @@ func stringifyToolResult(value any) string {
 	switch v := value.(type) {
 	case string:
 		return v
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case float64:
+		return stringifyJSON(v)
+	case float32:
+		return stringifyJSON(v)
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return stringifyJSON(v)
+	case map[string]any:
+		return stringifyJSON(v)
 	case []any:
 		texts := []string{}
 		for _, raw := range v {

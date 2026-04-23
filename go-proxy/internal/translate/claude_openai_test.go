@@ -185,3 +185,16 @@ func TestClaudeToOpenAI_InputJSONDeltaInitializesMissingFunction(t *testing.T) {
 		t.Fatalf("expected arguments to be initialized and accumulated, got %#v", state.ToolCalls[0].Function)
 	}
 }
+
+func TestClaudeToOpenAI_NegativeIndexIgnored(t *testing.T) {
+	state := &StreamState{MessageID: "msg_123", Model: "claude-sonnet-4", ToolCalls: make(map[int]*ToolCall)}
+	chunk := []byte(`{"type":"content_block_delta","index":-1,"delta":{"type":"input_json_delta","partial_json":"{}"}}`)
+
+	got, err := ClaudeToOpenAIChunk(chunk, state)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected negative index chunk to be ignored, got %s", string(got))
+	}
+}

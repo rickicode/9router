@@ -65,8 +65,9 @@ func TestParity_OpenAIToClaudeBasic(t *testing.T) {
 	expected := fixture["expected"].(map[string]any)
 
 	got, err := TranslateRequest(FormatOpenAI, FormatClaude, input, TranslateOptions{
-		Model:  "claude-sonnet-4",
-		Stream: true,
+		Model:    "claude-sonnet-4",
+		Stream:   true,
+		Provider: "claude-cli",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

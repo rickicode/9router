@@ -3,6 +3,7 @@ package translate
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -46,6 +47,13 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 	case "content_block_start":
 		block, _ := event["content_block"].(map[string]any)
 		index := intValue(event["index"], 0)
+		if index < 0 {
+			log.Printf("translate: ignoring negative Claude content block index %d", index)
+			return nil
+		}
+		if index > 100 {
+			log.Printf("translate: suspicious Claude content block index %d", index)
+		}
 		switch stringValue(block["type"]) {
 		case "server_tool_use":
 			state.ServerToolBlockIndex = index
@@ -91,6 +99,13 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 
 	case "content_block_delta":
 		index := intValue(event["index"], 0)
+		if index < 0 {
+			log.Printf("translate: ignoring negative Claude delta index %d", index)
+			return nil
+		}
+		if index > 100 {
+			log.Printf("translate: suspicious Claude delta index %d", index)
+		}
 		if state.ServerToolBlockActive && index == state.ServerToolBlockIndex {
 			return nil
 		}
@@ -125,6 +140,13 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 
 	case "content_block_stop":
 		index := intValue(event["index"], 0)
+		if index < 0 {
+			log.Printf("translate: ignoring negative Claude stop index %d", index)
+			return nil
+		}
+		if index > 100 {
+			log.Printf("translate: suspicious Claude stop index %d", index)
+		}
 		if state.ServerToolBlockActive && index == state.ServerToolBlockIndex {
 			state.ServerToolBlockIndex = 0
 			state.ServerToolBlockActive = false

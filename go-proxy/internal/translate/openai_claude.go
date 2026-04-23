@@ -3,6 +3,8 @@ package translate
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/url"
 	"strings"
 )
 
@@ -14,7 +16,7 @@ const (
 )
 
 // OpenAIToClaudeRequest converts an OpenAI chat completion request body into Claude messages format.
-func OpenAIToClaudeRequest(model string, body map[string]any, stream bool) (map[string]any, error) {
+func OpenAIToClaudeRequest(model string, body map[string]any, stream bool, opts TranslateOptions) (map[string]any, error) {
 	result := map[string]any{
 		"model":             model,
 		"max_tokens":        adjustMaxTokens(body),
@@ -126,7 +128,7 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool) (map[
 		case "json_schema":
 			if jsonSchema, ok := responseFormat["json_schema"].(map[string]any); ok {
 				if schema, ok := jsonSchema["schema"]; ok {
-					schemaJSON, err := json.MarshalIndent(schema, "", "  ")
+					schemaJSON, err := json.Marshal(schema)
 					if err != nil {
 						return nil, fmt.Errorf("marshal response schema: %w", err)
 					}
@@ -136,14 +138,16 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool) (map[
 		}
 	}
 
-	claudePrompt := map[string]any{"type": "text", "text": claudeSystemPrompt}
+	shouldInjectClaudePrompt := opts.InjectClaudePrompt || strings.Contains(strings.ToLower(opts.Provider), "cli")
+	systemBlocks := make([]any, 0, 2)
+	if shouldInjectClaudePrompt {
+		systemBlocks = append(systemBlocks, map[string]any{"type": "text", "text": claudeSystemPrompt})
+	}
 	if len(systemParts) > 0 {
-		result["system"] = []any{
-			claudePrompt,
-			map[string]any{"type": "text", "text": strings.Join(systemParts, "\n"), "cache_control": map[string]any{"type": "ephemeral", "ttl": "1h"}},
-		}
-	} else {
-		result["system"] = []any{claudePrompt}
+		systemBlocks = append(systemBlocks, map[string]any{"type": "text", "text": strings.Join(systemParts, "\n"), "cache_control": map[string]any{"type": "ephemeral", "ttl": "1h"}})
+	}
+	if len(systemBlocks) > 0 {
+		result["system"] = systemBlocks
 	}
 
 	if rawTools, ok := body["tools"].([]any); ok {
@@ -272,12 +276,12 @@ func convertOpenAIContentParts(content any) []any {
 				blocks = append(blocks, block)
 			case "image_url":
 				if imageURL, ok := part["image_url"].(map[string]any); ok {
-					if url := stringValue(imageURL["url"]); strings.HasPrefix(url, "data:") {
-						if mediaType, data, ok := parseDataURL(url); ok {
+					if imageURLValue := stringValue(imageURL["url"]); strings.HasPrefix(imageURLValue, "data:") {
+						if mediaType, data, ok := parseDataURL(imageURLValue); ok {
 							blocks = append(blocks, map[string]any{"type": "image", "source": map[string]any{"type": "base64", "media_type": mediaType, "data": data}})
 						}
-					} else if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
-						blocks = append(blocks, map[string]any{"type": "image", "source": map[string]any{"type": "url", "url": url}})
+					} else if validatedURL, ok := normalizeImageURL(imageURLValue); ok {
+						blocks = append(blocks, map[string]any{"type": "image", "source": map[string]any{"type": "url", "url": validatedURL}})
 					}
 				}
 			case "image":
@@ -341,11 +345,37 @@ func convertOpenAIToolChoice(choice any) map[string]any {
 		switch choiceStr {
 		case "required":
 			return map[string]any{"type": "any"}
-		case "auto", "none":
+		case "auto":
 			return map[string]any{"type": "auto"}
+		case "none":
+			return map[string]any{"type": "none"}
 		}
 	}
 	return map[string]any{"type": "auto"}
+}
+
+func normalizeImageURL(raw string) (string, bool) {
+	if raw == "" {
+		return "", false
+	}
+	if strings.HasPrefix(raw, "file://") {
+		log.Printf("translate: rejecting unsupported file image URL %q", raw)
+		return "", false
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		log.Printf("translate: rejecting invalid image URL %q: %v", raw, err)
+		return "", false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		log.Printf("translate: rejecting unsupported image URL scheme %q", raw)
+		return "", false
+	}
+	if parsed.Host == "" {
+		log.Printf("translate: rejecting relative image URL %q", raw)
+		return "", false
+	}
+	return raw, true
 }
 
 func extractTextContent(content any) string {
