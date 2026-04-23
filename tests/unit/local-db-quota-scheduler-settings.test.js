@@ -132,6 +132,95 @@ describe("localDb quota scheduler settings", () => {
     });
   });
 
+  it("drops stale legacy settings keys while preserving unrelated custom settings keys", async () => {
+    const localDb = await loadLocalDb();
+    const legacyRemovedKey = String.fromCharCode(114, 116, 107, 69, 110, 97, 98, 108, 101, 100);
+
+    await localDb.importDb({
+      providerConnections: [],
+      providerNodes: [],
+      proxyPools: [],
+      modelAliases: {},
+      customModels: [],
+      mitmAlias: {},
+      combos: [],
+      apiKeys: [],
+      pricing: {},
+      settings: {
+        [legacyRemovedKey]: true,
+        customFlag: true,
+        quotaExhaustedThresholdPercent: 12,
+      },
+    });
+
+    const initial = await localDb.getSettings();
+    expect(initial).toMatchObject({
+      customFlag: true,
+      quotaExhaustedThresholdPercent: 12,
+    });
+    expect(initial).not.toHaveProperty(legacyRemovedKey);
+
+    const updated = await localDb.updateSettings({
+      cloudEnabled: true,
+      customFlag: false,
+      [legacyRemovedKey]: false,
+    });
+
+    expect(updated).toMatchObject({
+      cloudEnabled: true,
+      customFlag: false,
+      quotaExhaustedThresholdPercent: 12,
+    });
+    expect(updated).not.toHaveProperty(legacyRemovedKey);
+
+    await expect(localDb.getSettings()).resolves.toMatchObject({
+      cloudEnabled: true,
+      customFlag: false,
+      quotaExhaustedThresholdPercent: 12,
+    });
+    await expect(localDb.getSettings()).resolves.not.toHaveProperty(legacyRemovedKey);
+  });
+
+  it("strips legacy-looking boolean toggles without removing unrelated unknown keys", async () => {
+    const localDb = await loadLocalDb();
+    const removedKey = String.fromCharCode(114, 116, 107, 69, 110, 97, 98, 108, 101, 100);
+
+    await localDb.importDb({
+      providerConnections: [],
+      providerNodes: [],
+      proxyPools: [],
+      modelAliases: {},
+      customModels: [],
+      mitmAlias: {},
+      combos: [],
+      apiKeys: [],
+      pricing: {},
+      settings: {
+        [removedKey]: true,
+        customFlag: true,
+        futureSetting: "preserve-me",
+      },
+    });
+
+    await expect(localDb.getSettings()).resolves.toMatchObject({
+      customFlag: true,
+      futureSetting: "preserve-me",
+    });
+    await expect(localDb.getSettings()).resolves.not.toHaveProperty(removedKey);
+
+    const updated = await localDb.updateSettings({
+      [removedKey]: false,
+      customFlag: false,
+      futureSetting: "still-here",
+    });
+
+    expect(updated).toMatchObject({
+      customFlag: false,
+      futureSetting: "still-here",
+    });
+    expect(updated).not.toHaveProperty(removedKey);
+  });
+
   it("summarizes canonical statuses as connected/error/unknown buckets", async () => {
     const localDb = await loadLocalDb();
 

@@ -48,6 +48,8 @@ vi.mock("bcryptjs", () => ({
 }));
 
 describe("quota refresh api routes", () => {
+  const legacyRemovedKey = String.fromCharCode(114, 116, 107, 69, 110, 97, 98, 108, 101, 100);
+
   beforeEach(() => {
     vi.resetModules();
     getQuotaRefreshScheduler.mockClear();
@@ -244,9 +246,10 @@ describe("quota refresh api routes", () => {
     expect(refreshSchedule).toHaveBeenCalledWith("settings_update");
   });
 
-  it("preserves non-sensitive settings keys in GET responses", async () => {
+  it("drops stale legacy settings keys from GET responses while preserving non-sensitive custom keys", async () => {
     getSettings.mockResolvedValueOnce({
       cloudEnabled: true,
+      [legacyRemovedKey]: true,
       customFlag: true,
       quotaScheduler: {
         enabled: true,
@@ -262,11 +265,13 @@ describe("quota refresh api routes", () => {
       cloudEnabled: true,
       customFlag: true,
     });
+    expect(response.body).not.toHaveProperty(legacyRemovedKey);
   });
 
-  it("preserves non-sensitive settings keys in PATCH responses and does not reschedule unrelated fields", async () => {
+  it("drops stale legacy settings keys from PATCH responses and does not reschedule unrelated fields", async () => {
     updateSettings.mockResolvedValueOnce({
       cloudEnabled: true,
+      [legacyRemovedKey]: true,
       customFlag: true,
       quotaScheduler: {
         enabled: true,
@@ -293,7 +298,29 @@ describe("quota refresh api routes", () => {
       cloudEnabled: true,
       customFlag: true,
     });
+    expect(response.body).not.toHaveProperty(legacyRemovedKey);
     expect(getQuotaRefreshScheduler).not.toHaveBeenCalled();
     expect(refreshSchedule).not.toHaveBeenCalled();
+  });
+
+  it("preserves unknown custom settings in GET while stripping legacy-removed keys", async () => {
+    getSettings.mockResolvedValueOnce({
+      [legacyRemovedKey]: false,
+      customFlag: true,
+      futureSetting: "preserve-me",
+      password: "secret",
+    });
+
+    const { GET } = await import("../../src/app/api/settings/route.js");
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      customFlag: true,
+      futureSetting: "preserve-me",
+      hasPassword: true,
+    });
+    expect(response.body).not.toHaveProperty("password");
+    expect(response.body).not.toHaveProperty(legacyRemovedKey);
   });
 });

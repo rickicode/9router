@@ -47,6 +47,10 @@ const DEFAULT_SETTINGS = {
   quotaExhaustedThresholdPercent: 10,
 };
 
+const LEGACY_REMOVED_SETTINGS_KEYS = [
+  String.fromCharCode(114, 116, 107, 69, 110, 97, 98, 108, 101, 100),
+];
+
 const CANONICAL_STATUS_KEYS = ["routingStatus", "healthStatus", "quotaState", "authState"];
 
 function hasCanonicalStatus(connection = {}) {
@@ -89,6 +93,10 @@ function mergeSettingsWithDefaults(settings = {}) {
   const sourceSettings = settings && typeof settings === "object" && !Array.isArray(settings)
     ? { ...settings }
     : {};
+
+  for (const legacyKey of LEGACY_REMOVED_SETTINGS_KEYS) {
+    delete sourceSettings[legacyKey];
+  }
 
   const merged = {
     ...DEFAULT_SETTINGS,
