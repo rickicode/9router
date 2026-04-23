@@ -697,21 +697,36 @@ export async function setConnectionHotState(connectionId, providerId, updates = 
   }
 
   const sanitizedUpdates = stripLegacyMirrorFields(updates);
-  const providerState = (await getProviderHotState(providerId)) || createEmptyProviderState();
+  const cachedProviderState = (await getProviderHotState(providerId)) || createEmptyProviderState();
+  const providerState = {
+    ...cachedProviderState,
+    connections: new Map(cachedProviderState.connections),
+  };
   const current = providerState.connections.get(connectionId) || {};
   const next = mergeHotState(current, sanitizedUpdates);
 
   providerState.connections.set(connectionId, next);
   recalculateProviderIndexes(providerState);
-  providerStateCache.set(providerId, providerState);
 
   let storedInRedis = false;
   const client = await getRedisClient();
   if (client) {
-    const persisted = await persistConnectionField(providerId, connectionId, sanitizedUpdates);
+    let persisted;
+    try {
+      // Persist first so the in-memory cache never gets ahead of Redis.
+      persisted = await persistConnectionField(providerId, connectionId, sanitizedUpdates);
+    } catch (error) {
+      console.warn(`[Redis] Failed to update hot state cache for provider ${providerId}: ${error?.message || error}`);
+      return { storedInRedis: false, state: null };
+    }
     storedInRedis = persisted.storedInRedis;
+    if (!storedInRedis) {
+      return { storedInRedis: false, state: null };
+    }
+    providerStateCache.set(providerId, persisted.providerState || providerState);
   } else {
     storedInRedis = await persistProviderState(providerId, providerState);
+    providerStateCache.set(providerId, providerState);
   }
 
   const latestProviderState = providerStateCache.get(providerId) || providerState;

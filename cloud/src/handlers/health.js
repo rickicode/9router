@@ -15,6 +15,7 @@ export async function handleHealth(request, env, machineId) {
     });
   }
 
+  // Validate machineId
   if (!machineId || typeof machineId !== "string" || machineId.length < 3) {
     return new Response(JSON.stringify({ error: "Invalid machineId" }), {
       status: 400,

@@ -8,6 +8,7 @@ import * as log from "../utils/logger.js";
  * Return usage stats for all connections
  */
 export async function handleUsage(request, env, machineId) {
+  // CORS preflight support
   if (request.method === "OPTIONS") {
     return new Response(null, {
       headers: {

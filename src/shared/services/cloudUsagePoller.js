@@ -66,7 +66,6 @@ export class CloudUsagePoller {
     try {
       cloudUrl = await getCloudUrl();
     } catch (error) {
-      this.lastError = error?.message || "Cloud URL unavailable";
       console.error("[USAGE_POLL] Cloud URL unavailable:", error);
       return;
     }

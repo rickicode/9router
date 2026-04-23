@@ -158,8 +158,11 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   const excludeConnectionIds = new Set();
   let lastError = null;
   let lastStatus = null;
+  const MAX_FALLBACK_ATTEMPTS = connections.length * 2;
+  let fallbackAttempts = 0;
 
-  while (true) {
+  while (fallbackAttempts < MAX_FALLBACK_ATTEMPTS) {
+    fallbackAttempts += 1;
     const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
 
     // All accounts unavailable
@@ -245,4 +248,16 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
 
     return result.response;
   }
+
+  // Guarantee termination even if selection/fallback state oscillates unexpectedly.
+  log.error("CHAT", "Max fallback attempts reached", {
+    provider,
+    model,
+    attempts: fallbackAttempts,
+    maxAttempts: MAX_FALLBACK_ATTEMPTS,
+  });
+  return errorResponse(
+    HTTP_STATUS.SERVICE_UNAVAILABLE,
+    lastError || `Unable to route ${provider}/${model} after repeated fallback attempts`
+  );
 }

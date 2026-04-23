@@ -1,7 +1,7 @@
 import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings } from "@/lib/localDb";
 import { getEligibleConnections } from "@/lib/providerHotState";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
-import { applyLiveQuotaUpdate, getCodexLiveQuotaSignal, getConnectionAuthBlockedPatch, getConnectionRecoveryPatch, isConfirmedAuthBlockedError, syncUsageStatus } from "../../lib/usageStatus.js";
+import { applyLiveQuotaUpdate, getCodexLiveQuotaSignal, getConnectionAuthBlockedPatch, getConnectionRecoveryPatch, isConfirmedAuthBlockedError, isUpstreamProcessingError, syncUsageStatus } from "../../lib/usageStatus.js";
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
 import * as log from "../utils/logger.js";
@@ -69,14 +69,13 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
   const excludeSet = excludeConnectionIds instanceof Set
     ? excludeConnectionIds
     : (excludeConnectionIds ? new Set([excludeConnectionIds]) : new Set());
-  // Acquire mutex to prevent race conditions
+  // Wait for the current selector before enqueueing the next one so selection/state updates stay atomic.
   const currentMutex = selectionMutex;
+  await currentMutex;
   let resolveMutex;
   selectionMutex = new Promise(resolve => { resolveMutex = resolve; });
 
   try {
-    await currentMutex;
-
     // Resolve alias to provider ID (e.g., "kc" -> "kilocode")
     const providerId = resolveProviderId(provider);
 
@@ -165,6 +164,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     let connection;
     if (strategy === "round-robin") {
       const stickyLimit = providerOverride.stickyRoundRobinLimit || settings.stickyRoundRobinLimit || 3;
+      const selectedAt = new Date().toISOString();
 
       const byRecency = sortByRecencyDesc(selectionPool);
       const current = byRecency[0];
@@ -173,21 +173,30 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       if (current && current.lastUsedAt && currentCount < stickyLimit) {
         // Stay with current account
         connection = current;
-        // Update lastUsedAt and increment count (await to ensure persistence)
-        await updateProviderConnection(connection.id, {
-          lastUsedAt: new Date().toISOString(),
+        // Persist selection state before releasing the mutex so the next request sees the updated winner.
+        connection = {
+          ...connection,
+          lastUsedAt: selectedAt,
           consecutiveUseCount: (connection.consecutiveUseCount || 0) + 1
+        };
+        await updateProviderConnection(connection.id, {
+          lastUsedAt: connection.lastUsedAt,
+          consecutiveUseCount: connection.consecutiveUseCount
         });
       } else {
         // Pick the least recently used (excluding current if possible)
         const sortedByOldest = sortByRecencyAsc(selectionPool);
 
-        connection = sortedByOldest[0];
-
-        // Update lastUsedAt and reset count to 1 (await to ensure persistence)
-        await updateProviderConnection(connection.id, {
-          lastUsedAt: new Date().toISOString(),
+        connection = {
+          ...sortedByOldest[0],
+          lastUsedAt: selectedAt,
           consecutiveUseCount: 1
+        };
+
+        // Persist selection state before releasing the mutex so the next request sees the updated winner.
+        await updateProviderConnection(connection.id, {
+          lastUsedAt: connection.lastUsedAt,
+          consecutiveUseCount: connection.consecutiveUseCount
         });
       }
     } else {
@@ -283,7 +292,10 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
       }
     : null;
 
-  const healthBlockedPatch = !authBlockedPatch && !exhaustedPatch && status >= 500
+  // Generic OpenAI 5xx processing errors often include only a request ID or
+  // broad "error occurred while processing" text. Treat them as upstream
+  // unhealthy so routing blocks the account until recovery.
+  const healthBlockedPatch = !authBlockedPatch && !exhaustedPatch && isUpstreamProcessingError(status, rawError || reason)
     ? {
         routingStatus: "blocked",
         healthStatus: "unhealthy",

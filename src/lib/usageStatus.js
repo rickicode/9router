@@ -31,6 +31,11 @@ const CODEX_LIVE_QUOTA_PATTERNS = [
   "usage limit reached",
   "weekly quota exhausted",
 ];
+const UPSTREAM_PROCESSING_ERROR_PATTERNS = [
+  "error occurred",
+  "request id",
+  "internal error",
+];
 
 export function isAuthExpiredMessage(usage) {
   if (!usage?.message) return false;
@@ -155,6 +160,28 @@ export function getConnectionAuthBlockedPatch(error, { lastCheckedAt = new Date(
     resetAt: null,
     lastCheckedAt,
   };
+}
+
+export function isUpstreamProcessingError(statusCode, errorMessage) {
+  if (!Number.isFinite(Number(statusCode))) {
+    return false;
+  }
+
+  const numericStatusCode = Number(statusCode);
+  if (numericStatusCode < 500 || numericStatusCode > 599) {
+    return false;
+  }
+
+  const message = typeof errorMessage === "string"
+    ? errorMessage
+    : errorMessage?.message || errorMessage?.error || errorMessage?.cause?.message || "";
+
+  if (!message) {
+    return false;
+  }
+
+  const normalized = String(message).toLowerCase();
+  return UPSTREAM_PROCESSING_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
 export function getCodexLiveQuotaSignal(connection, { statusCode, errorText, errorCode } = {}) {
@@ -576,6 +603,22 @@ export async function applyProxyOutcomeReport(report = {}) {
   const errorMessage = report.error?.message || report.error || null;
 
   if (status === "error") {
+    // OpenAI sometimes returns generic 5xx processing failures with a request ID
+    // instead of a more specific auth/quota code. Treat those as upstream unhealthy
+    // so the account is blocked from routing until it recovers.
+    if (isUpstreamProcessingError(statusCode, errorMessage)) {
+      await syncUsageStatus(connection, {
+        routingStatus: "blocked",
+        healthStatus: "unhealthy",
+        quotaState: "ok",
+        authState: "ok",
+        reasonCode: "upstream_unhealthy",
+        reasonDetail: errorMessage || "Upstream processing error",
+        lastCheckedAt: observedAt,
+      });
+      return { ok: true };
+    }
+
     const authPatch = getConnectionAuthBlockedPatch(errorMessage, {
       lastCheckedAt: observedAt,
       statusCode,
