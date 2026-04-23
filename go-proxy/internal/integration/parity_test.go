@@ -235,4 +235,4 @@ func TestParity_ErrorCases(t *testing.T) {
 			t.Fatal("expected missing credential lookup error")
 		}
 	})
-	}
+}
