@@ -299,12 +299,16 @@ export default function APIPageClient({ machineId }) {
             break;
           }
 
-          if (i < retries - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
+          if (i === retries - 1) {
+            throw new Error("Cloud URL test failed after retries");
           }
-        } catch (err) {
-          if (i === retries - 1) throw err;
-          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
+
+          const delay = 1000 * Math.pow(2, i);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } catch (error) {
+          if (i === retries - 1) throw error;
+          const delay = 1000 * Math.pow(2, i);
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
 

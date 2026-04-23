@@ -69,7 +69,9 @@ export async function syncToCloud() {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || `Sync failed: ${response.statusText}`);
+    const errorMsg = error.error || error.message || `Sync failed: ${response.statusText}`;
+    console.error("[CloudSync] Sync failed:", errorMsg);
+    throw new Error(errorMsg);
   }
 
   return await response.json();

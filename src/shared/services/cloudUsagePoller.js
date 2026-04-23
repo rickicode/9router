@@ -7,7 +7,7 @@ import { getCloudUrl } from "@/lib/cloudUrlResolver";
  * Polls worker usage endpoint every interval
  */
 export class CloudUsagePoller {
-  constructor(machineId = null, intervalMs = 1000) {
+  constructor(machineId = null, intervalMs = 3000) {
     this.machineId = machineId;
     this.intervalMs = intervalMs;
     this.intervalId = null;
