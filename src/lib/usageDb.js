@@ -277,8 +277,10 @@ export async function getUsageDb() {
 /**
  * Save request usage
  * @param {object} entry - Usage entry { provider, model, tokens: { prompt_tokens, completion_tokens, ... }, connectionId?, apiKey? }
+ * @param {object} [options]
+ * @param {boolean} [options.propagateError=false] - Re-throw persistence errors instead of swallowing
  */
-export async function saveRequestUsage(entry) {
+export async function saveRequestUsage(entry, options = {}) {
   if (isCloud) return; // Skip saving in Workers
 
   try {
@@ -314,6 +316,9 @@ export async function saveRequestUsage(entry) {
     statsEmitter.emit("update");
   } catch (error) {
     console.error("Failed to save usage stats:", error);
+    if (options.propagateError) {
+      throw error;
+    }
   }
 }
 

@@ -2,3 +2,6 @@ node_modules/
 package-lock.json
 .vite/
 coverage/
+
+# AI assistant artifacts
+context-snapshot.json
