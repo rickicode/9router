@@ -1,5 +1,5 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { updateProviderConnection } from "@/lib/localDb";
+import { getProviderConnections, updateProviderConnection } from "@/lib/localDb";
 
 /**
  * Get cloud URL from settings
@@ -70,15 +70,23 @@ export class CloudUsagePoller {
 
     const data = await response.json();
 
+    // Update local usage DB
     for (const [connId, usage] of Object.entries(data.usage || {})) {
       try {
-        await updateProviderConnection(connId, {
-          providerSpecificData: {
-            cloudUsage: usage,
-          },
-        });
+        // Get existing connection to merge data
+        const connections = await getProviderConnections();
+        const conn = connections.find(c => c.id === connId);
+        
+        if (conn) {
+          await updateProviderConnection(connId, {
+            providerSpecificData: {
+              ...(conn.providerSpecificData || {}),
+              cloudUsage: usage
+            }
+          });
+        }
       } catch (err) {
-        console.error("[USAGE_POLL] Update failed for", connId, err);
+        console.error('[USAGE_POLL] Update failed for', connId, err);
       }
     }
   }

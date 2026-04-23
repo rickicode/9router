@@ -1,8 +1,21 @@
 import * as log from "../utils/logger.js";
 
-// Request-scoped cache for getMachineData (avoids multiple D1 queries per request)
+// Request-scoped cache with LRU eviction
 const requestCache = new Map();
+const MAX_CACHE_SIZE = 100;
 const CACHE_TTL_MS = 5000;
+
+// Clean up old cache entries
+function cleanupCache() {
+  if (requestCache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(requestCache.entries());
+    const toKeep = entries
+      .sort((a, b) => b[1].timestamp - a[1].timestamp)
+      .slice(0, MAX_CACHE_SIZE);
+    requestCache.clear();
+    toKeep.forEach(([key, value]) => requestCache.set(key, value));
+  }
+}
 
 /**
  * Get machine data from D1 (with request-scope caching)
@@ -27,6 +40,7 @@ export async function getMachineData(machineId, env) {
   
   const data = JSON.parse(row.data);
   requestCache.set(machineId, { data, timestamp: Date.now() });
+  cleanupCache();
   log.debug("STORAGE", `Retrieved: ${machineId}`);
   return data;
 }

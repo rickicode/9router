@@ -13,6 +13,11 @@ import * as log from "../utils/logger.js";
 export function selectCredential(machineData, provider, apiKey) {
   const settings = machineData.settings || {};
 
+  // Warn if settings are missing
+  if (!machineData.settings) {
+    log.warn("ROUTING", `No settings found for ${provider}, using defaults (roundRobin=false, sticky=false)`);
+  }
+
   // 1. Get all eligible credentials for provider
   const allProviders = Object.values(machineData.providers || {})
     .filter(p => p.provider === provider);

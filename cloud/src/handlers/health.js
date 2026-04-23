@@ -34,7 +34,7 @@ export async function handleHealth(request, env, machineId) {
     }
   } else if (data) {
     // Has data but no sync yet (cold start)
-    status = "healthy";
+    status = "initializing";
     syncAge = 0;
   }
 

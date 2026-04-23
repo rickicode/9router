@@ -31,10 +31,10 @@ export class CloudSyncScheduler {
 
     await this.initializeMachineId();
     
-    // Delay first sync by 30 seconds to ensure server is ready
+    // Delay first sync by 5 seconds to ensure server is ready
     setTimeout(() => {
       this.syncWithRetry().catch(() => {});
-    }, 30000);
+    }, 5000);
     
     // Then sync periodically
     this.intervalId = setInterval(() => {
