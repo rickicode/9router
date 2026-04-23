@@ -51,7 +51,22 @@ function hasValidOrigin(request) {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
 
-  return !origin || !host || origin.includes(host);
+  if (!host) {
+    return false;
+  }
+
+  if (process.env.NODE_ENV === "production" && !origin) {
+    return false;
+  }
+
+  if (!origin) return true;
+
+  try {
+    const originHost = new URL(origin).host;
+    return originHost === host;
+  } catch {
+    return false;
+  }
 }
 
 async function readCloudUrls() {
@@ -155,7 +170,7 @@ export async function PATCH(request) {
       if (index === -1) throw new Error("Cloud URL not found");
 
       if (status) cloudUrls[index].status = status;
-      if (lastChecked) cloudUrls[index].lastChecked = lastChecked;
+      if (lastChecked !== undefined) cloudUrls[index].lastChecked = lastChecked;
 
       return cloudUrls;
     });

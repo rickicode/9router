@@ -30,10 +30,14 @@ export class CloudUsagePoller {
 
     await this.initializeMachineId();
 
-    this.poll().catch(() => {});
+    this.poll().catch((error) => {
+      console.error("[CloudUsagePoller] Poll failed:", error);
+    });
 
     this.intervalId = setInterval(() => {
-      this.poll().catch(() => {});
+      this.poll().catch((error) => {
+        console.error("[CloudUsagePoller] Poll failed:", error);
+      });
     }, this.intervalMs);
   }
 
@@ -95,7 +99,7 @@ export class CloudUsagePoller {
 let usagePoller = null;
 
 export async function getCloudUsagePoller(machineId = null, intervalMs = 1000) {
-  if (!usagePoller) {
+  if (!usagePoller || usagePoller.intervalMs !== intervalMs) {
     usagePoller = new CloudUsagePoller(machineId, intervalMs);
   }
   return usagePoller;

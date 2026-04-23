@@ -6,5 +6,9 @@ export async function getCloudUrl() {
 
   const settings = await getSettings();
   const firstUrl = settings.cloudUrls?.[0]?.url;
-  return firstUrl?.replace(/\/$/, "") || "http://localhost:8787";
+  if (firstUrl && typeof firstUrl === "string") {
+    return firstUrl.replace(/\/$/, "");
+  }
+
+  return "http://localhost:8787";
 }

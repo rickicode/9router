@@ -167,12 +167,14 @@ export default function APIPageClient({ machineId }) {
   };
 
   const checkCloudHealth = async () => {
-    if (!machineId) return;
+    if (!machineId || cloudUrls.length === 0) return;
+
+    const primaryUrl = cloudUrls[0]?.url;
+    if (!primaryUrl) return;
 
     setCloudHealthLoading(true);
     try {
-      const cloudUrl = process.env.NEXT_PUBLIC_CLOUD_URL || "http://localhost:8787";
-      const response = await fetch(`${cloudUrl}/worker/health/${machineId}`);
+      const response = await fetch(`${primaryUrl}/worker/health/${machineId}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -188,13 +190,13 @@ export default function APIPageClient({ machineId }) {
   };
 
   useEffect(() => {
-    if (!machineId) return;
+    if (!machineId || cloudUrls.length === 0) return;
 
     checkCloudHealth();
     const interval = setInterval(checkCloudHealth, 5000);
 
     return () => clearInterval(interval);
-  }, [machineId]);
+  }, [machineId, cloudUrls]);
 
   const handleTunnelDashboardAccess = async (value) => {
     try {

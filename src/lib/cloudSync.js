@@ -2,6 +2,12 @@ import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { getAllConnections, getAllModelAliases, getAllCombos, getSettings, getApiKeys } from "./localDb.js";
 import { getCloudUrl } from "./cloudUrlResolver.js";
 
+async function getFirstApiKey() {
+  const apiKeys = await getApiKeys();
+  const firstActiveKey = apiKeys.find((apiKey) => apiKey?.isActive !== false && typeof apiKey?.key === "string" && apiKey.key);
+  return firstActiveKey?.key || "";
+}
+
 /**
  * Format connection for cloud sync
  */
@@ -47,7 +53,10 @@ export async function syncToCloud() {
 
   const response = await fetch(`${cloudUrl}/sync/${machineId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${await getFirstApiKey()}`,
+    },
     body: JSON.stringify(payload),
   });
 
