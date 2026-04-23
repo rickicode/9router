@@ -196,10 +196,14 @@ export default function APIPageClient({ machineId }) {
   useEffect(() => {
     if (!machineId || cloudUrls.length === 0) return;
 
-    checkCloudHealth();
+    // Delay first check to allow sync to complete
+    const initialDelay = setTimeout(checkCloudHealth, 2000);
     const interval = setInterval(checkCloudHealth, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialDelay);
+      clearInterval(interval);
+    };
   }, [machineId, cloudUrls]);
 
   const handleTunnelDashboardAccess = async (value) => {
@@ -283,7 +287,7 @@ export default function APIPageClient({ machineId }) {
     try {
       let data = null;
 
-      for (let i = 0; i < retries; i += 1) {
+      for (let i = 0; i < retries; i++) {
         try {
           const res = await fetch("/api/cloud-urls/test", {
             method: "POST",
@@ -296,12 +300,16 @@ export default function APIPageClient({ machineId }) {
             break;
           }
 
-          if (i < retries - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
+          if (i === retries - 1) {
+            throw new Error("Cloud URL test failed after retries");
           }
+
+          const delay = 1000 * Math.pow(2, i);
+          await new Promise((resolve) => setTimeout(resolve, delay));
         } catch (err) {
           if (i === retries - 1) throw err;
-          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i)));
+          const delay = 1000 * Math.pow(2, i);
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
 
