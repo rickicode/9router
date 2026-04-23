@@ -34,6 +34,8 @@ export default function APIPageClient({ machineId }) {
   const [tunnelLoading, setTunnelLoading] = useState(false);
   const [tunnelProgress, setTunnelProgress] = useState("");
   const [tunnelStatus, setTunnelStatus] = useState(null);
+  const [cloudHealth, setCloudHealth] = useState(null);
+  const [cloudHealthLoading, setCloudHealthLoading] = useState(false);
   const [showEnableTunnelModal, setShowEnableTunnelModal] = useState(false);
   const [showDisableTunnelModal, setShowDisableTunnelModal] = useState(false);
 
@@ -140,6 +142,36 @@ export default function APIPageClient({ machineId }) {
       setTunnelChecking(false);
     }
   };
+
+  const checkCloudHealth = async () => {
+    if (!machineId) return;
+
+    setCloudHealthLoading(true);
+    try {
+      const cloudUrl = process.env.NEXT_PUBLIC_CLOUD_URL || "http://localhost:8787";
+      const response = await fetch(`${cloudUrl}/worker/health/${machineId}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setCloudHealth(data);
+      } else {
+        setCloudHealth({ status: "down", details: { error: "Failed to fetch" } });
+      }
+    } catch (error) {
+      setCloudHealth({ status: "down", details: { error: error.message } });
+    } finally {
+      setCloudHealthLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!machineId) return;
+
+    checkCloudHealth();
+    const interval = setInterval(checkCloudHealth, 5000);
+
+    return () => clearInterval(interval);
+  }, [machineId]);
 
   const handleTunnelDashboardAccess = async (value) => {
     try {
@@ -701,6 +733,32 @@ export default function APIPageClient({ machineId }) {
               </Button>
             )}
           </div>
+          {cloudHealth && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-text-muted">Cloud Worker:</span>
+              {cloudHealth.status === "healthy" && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                  Healthy (synced {cloudHealth.syncAge}s ago)
+                </span>
+              )}
+              {cloudHealth.status === "degraded" && (
+                <span className="flex items-center gap-1 text-orange-600">
+                  <span className="w-2 h-2 bg-orange-600 rounded-full"></span>
+                  Degraded (last sync {cloudHealth.syncAge}s ago)
+                </span>
+              )}
+              {cloudHealth.status === "down" && (
+                <span className="flex items-center gap-1 text-red-600">
+                  <span className="w-2 h-2 bg-red-600 rounded-full"></span>
+                  Down
+                </span>
+              )}
+              {cloudHealthLoading && (
+                <span className="text-text-muted text-xs">Refreshing...</span>
+              )}
+            </div>
+          )}
           {/* Tailscale */}
           <div className="flex items-center gap-2">
             <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 min-w-[68px] text-center ${

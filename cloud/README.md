@@ -2,6 +2,31 @@
 
 Deploy your own Cloudflare Worker to access 9Router from anywhere.
 
+## Features
+
+### Routing
+
+- **Round-Robin**: Distribute requests across multiple credentials per provider
+- **Sticky Sessions**: Maintain consistent routing for duration
+- **Usage Tracking**: Real-time statistics per connection
+
+### Endpoints
+
+- `POST /sync/:machineId` - Sync config from 9Router (includes settings)
+- `GET /worker/usage/:machineId` - Get usage statistics
+- `GET /worker/health/:machineId` - Get health status
+- `POST /v1/chat/completions` - Chat with routing
+- `POST /v1/messages` - Claude format with routing
+
+### Settings
+
+Configure in 9Router dashboard:
+
+- `roundRobin`: Enable round-robin per provider
+- `sticky`: Enable sticky sessions
+- `stickyDuration`: Sticky duration in seconds
+- `comboStrategy`: Default combo fallback strategy
+
 ## Setup
 
 ```bash
