@@ -1,6 +1,6 @@
 // tests/unit/ipValidator.test.js
 import { describe, it, expect } from "vitest";
-import { getClientIP, isWhitelistedIP, isLocalRequest } from "../../src/lib/security/ipValidator.js";
+import { getClientIP, isWhitelistedIP, isLocalRequest, normalizeIP } from "../../src/lib/security/ipValidator.js";
 
 describe("IP Validator - IPv4 Localhost", () => {
   it("detects IPv4 localhost (127.0.0.1)", () => {
@@ -21,5 +21,30 @@ describe("IP Validator - IPv4 Localhost", () => {
       headers: { get: () => null }
     };
     expect(getClientIP(mockRequest)).toBe("127.0.0.1");
+  });
+});
+
+describe("IP Validator - IPv6 and CIDR", () => {
+  it("detects IPv6 localhost (::1)", () => {
+    const ip = "::1";
+    const whitelist = ["127.0.0.1", "::1"];
+    expect(isWhitelistedIP(ip, whitelist)).toBe(true);
+  });
+
+  it("matches IPv4 CIDR range (172.17.0.0/16)", () => {
+    const ip = "172.17.0.5";
+    const whitelist = ["172.17.0.0/16"];
+    expect(isWhitelistedIP(ip, whitelist)).toBe(true);
+  });
+
+  it("rejects IPv4 outside CIDR range", () => {
+    const ip = "172.18.0.5";
+    const whitelist = ["172.17.0.0/16"];
+    expect(isWhitelistedIP(ip, whitelist)).toBe(false);
+  });
+
+  it("normalizes IPv4-mapped IPv6", () => {
+    const ip = "::ffff:127.0.0.1";
+    expect(normalizeIP(ip)).toBe("127.0.0.1");
   });
 });

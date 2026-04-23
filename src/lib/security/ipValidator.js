@@ -32,6 +32,24 @@ export function normalizeIP(ip) {
   return ip;
 }
 
+function ipToInt(ip) {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  return parts.reduce((acc, part) => (acc << 8) + parseInt(part, 10), 0) >>> 0;
+}
+
+function cidrMatch(ip, cidr) {
+  const [range, bits] = cidr.split("/");
+  const mask = ~((1 << (32 - parseInt(bits, 10))) - 1);
+  
+  const ipInt = ipToInt(ip);
+  const rangeInt = ipToInt(range);
+  
+  if (ipInt === null || rangeInt === null) return false;
+  
+  return (ipInt & mask) === (rangeInt & mask);
+}
+
 export function isWhitelistedIP(ip, whitelist) {
   if (!ip || !Array.isArray(whitelist)) return false;
   
@@ -43,10 +61,11 @@ export function isWhitelistedIP(ip, whitelist) {
       return true;
     }
     
-    // CIDR match (handled in next task)
+    // CIDR match
     if (entry.includes("/")) {
-      // Placeholder for CIDR logic
-      continue;
+      if (cidrMatch(normalizedIP, entry)) {
+        return true;
+      }
     }
   }
   
