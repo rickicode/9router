@@ -48,3 +48,37 @@ describe("IP Validator - IPv6 and CIDR", () => {
     expect(normalizeIP(ip)).toBe("127.0.0.1");
   });
 });
+
+describe("IP Validator - Trusted Proxy Headers", () => {
+  it("uses X-Forwarded-For when trustedProxyEnabled=true", () => {
+    const mockRequest = {
+      socket: { remoteAddress: "10.0.0.1" },
+      headers: { 
+        get: (name) => name === "x-forwarded-for" ? "203.0.113.5, 10.0.0.1" : null 
+      }
+    };
+    const settings = { trustedProxyEnabled: true };
+    expect(getClientIP(mockRequest, settings)).toBe("203.0.113.5");
+  });
+
+  it("ignores X-Forwarded-For when trustedProxyEnabled=false", () => {
+    const mockRequest = {
+      socket: { remoteAddress: "10.0.0.1" },
+      headers: { 
+        get: (name) => name === "x-forwarded-for" ? "203.0.113.5" : null 
+      }
+    };
+    const settings = { trustedProxyEnabled: false };
+    expect(getClientIP(mockRequest, settings)).toBe("10.0.0.1");
+  });
+
+  it("falls back to X-Real-IP if X-Forwarded-For missing", () => {
+    const mockRequest = {
+      socket: null,
+      headers: { 
+        get: (name) => name === "x-real-ip" ? "203.0.113.10" : null 
+      }
+    };
+    expect(getClientIP(mockRequest)).toBe("203.0.113.10");
+  });
+});

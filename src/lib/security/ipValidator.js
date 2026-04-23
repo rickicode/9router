@@ -1,18 +1,23 @@
 // src/lib/security/ipValidator.js
-export function getClientIP(request) {
+export function getClientIP(request, settings = {}) {
   // Priority 1: Socket IP (most reliable)
-  if (request?.socket?.remoteAddress) {
-    return normalizeIP(request.socket.remoteAddress);
+  const socketIP = request?.socket?.remoteAddress;
+  
+  // Priority 2: X-Forwarded-For (only if trusted proxy enabled)
+  if (settings.trustedProxyEnabled) {
+    const xForwardedFor = request?.headers?.get?.("x-forwarded-for");
+    if (xForwardedFor) {
+      const firstIP = xForwardedFor.split(",")[0].trim();
+      return normalizeIP(firstIP);
+    }
   }
   
-  // Priority 2: X-Forwarded-For (if trusted proxy enabled)
-  const xForwardedFor = request?.headers?.get?.("x-forwarded-for");
-  if (xForwardedFor) {
-    const firstIP = xForwardedFor.split(",")[0].trim();
-    return normalizeIP(firstIP);
+  // Priority 3: Socket IP (if not using proxy headers)
+  if (socketIP) {
+    return normalizeIP(socketIP);
   }
   
-  // Priority 3: X-Real-IP
+  // Priority 4: X-Real-IP (fallback)
   const xRealIP = request?.headers?.get?.("x-real-ip");
   if (xRealIP) {
     return normalizeIP(xRealIP);
