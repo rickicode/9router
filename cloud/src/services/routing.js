@@ -1,0 +1,70 @@
+// cloud/src/services/routing.js
+
+import { getState } from "./state.js";
+import * as log from "../utils/logger.js";
+
+/**
+ * Select credential for provider using round-robin/sticky logic
+ * @param {Object} machineData - Machine data from D1
+ * @param {string} provider - Provider name
+ * @param {string} apiKey - Client API key (for sticky sessions)
+ * @returns {Object} Selected credential
+ */
+export function selectCredential(machineData, provider, apiKey) {
+  const settings = machineData.settings || {};
+
+  // 1. Get all eligible credentials for provider
+  const candidates = Object.values(machineData.providers || {})
+    .filter(p => p.provider === provider && p.isActive);
+
+  if (candidates.length === 0) {
+    throw new Error(`No credentials for provider: ${provider}`);
+  }
+
+  if (candidates.length === 1) {
+    log.debug("ROUTING", `Single credential for ${provider}`);
+    return candidates[0];
+  }
+
+  const state = getState();
+
+  // 2. Check sticky session
+  if (settings.sticky) {
+    const sticky = state.stickyMap.get(apiKey);
+    if (sticky && sticky.expiresAt > Date.now()) {
+      const found = candidates.find(c => c.id === sticky.connectionId);
+      if (found) {
+        log.debug("ROUTING", `Sticky session for ${provider}: ${found.id}`);
+        return found;
+      }
+    }
+  }
+
+  // 3. Apply round-robin
+  if (settings.roundRobin) {
+    const key = provider;
+    const index = state.roundRobinIndexes.get(key) || 0;
+    const selected = candidates[index % candidates.length];
+
+    // Update index for next request
+    state.roundRobinIndexes.set(key, index + 1);
+
+    log.debug("ROUTING", `Round-robin for ${provider}: ${selected.id} (index ${index})`);
+
+    // Set sticky if enabled
+    if (settings.sticky) {
+      const expiresAt = Date.now() + (settings.stickyDuration * 1000);
+      state.stickyMap.set(apiKey, {
+        connectionId: selected.id,
+        expiresAt
+      });
+      log.debug("ROUTING", `Set sticky session until ${new Date(expiresAt).toISOString()}`);
+    }
+
+    return selected;
+  }
+
+  // 4. Default: first available
+  log.debug("ROUTING", `Default first credential for ${provider}: ${candidates[0].id}`);
+  return candidates[0];
+}
