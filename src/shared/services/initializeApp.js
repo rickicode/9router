@@ -1,4 +1,4 @@
-import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys, isCloudEnabled } from "@/lib/localDb";
+import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
 import { getQuotaRefreshScheduler } from "@/lib/quotaRefreshScheduler";
 import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
 import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
@@ -104,6 +104,20 @@ export async function initializeApp() {
       const usagePoller = await getCloudUsagePoller();
       await usagePoller.start();
       console.log('[INIT] Cloud usage poller started');
+    }
+
+    // Start cloud sync scheduler if enabled
+    const { isCloudEnabled } = await import("@/lib/localDb");
+    const { getCloudSyncScheduler } = await import("@/shared/services/cloudSyncScheduler");
+
+    if (await isCloudEnabled()) {
+      try {
+        const syncScheduler = await getCloudSyncScheduler();
+        await syncScheduler.start();
+        console.log('[INIT] Cloud sync scheduler started (15 min interval)');
+      } catch (error) {
+        console.error('[INIT] Failed to start cloud sync scheduler:', error);
+      }
     }
 
     // Auto-start MITM if it was enabled before restart
