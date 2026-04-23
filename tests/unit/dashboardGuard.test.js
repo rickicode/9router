@@ -118,3 +118,71 @@ describe("Dashboard Guard - Audit Logging", () => {
     );
   });
 });
+
+describe("Dashboard Guard - Integration Tests", () => {
+  it("end-to-end: localhost access allowed", async () => {
+    isLocalRequest.mockReturnValue(true);
+    getClientIP.mockReturnValue("127.0.0.1");
+    getSettings.mockResolvedValue({ 
+      requireLogin: true,
+      auditLogEnabled: true,
+      ipWhitelist: ["127.0.0.1"]
+    });
+
+    const mockRequest = {
+      nextUrl: { pathname: "/dashboard" },
+      url: "http://localhost:20128/dashboard",
+      headers: { get: () => "localhost" },
+      cookies: { get: () => null }
+    };
+
+    const response = await proxy(mockRequest);
+    expect(response.status).not.toBe(401);
+  });
+
+  it("end-to-end: remote access denied without JWT", async () => {
+    isLocalRequest.mockReturnValue(false);
+    getClientIP.mockReturnValue("203.0.113.5");
+    getSettings.mockResolvedValue({ 
+      requireLogin: true,
+      auditLogEnabled: true
+    });
+
+    const mockRequest = {
+      nextUrl: { pathname: "/dashboard" },
+      url: "http://example.com/dashboard",
+      headers: { get: () => "example.com" },
+      cookies: { get: () => null }
+    };
+
+    const response = await proxy(mockRequest);
+    expect(response.status).toBe(307); // NextResponse.redirect uses 307
+  });
+
+  it("end-to-end: tunnel access blocked when disabled", async () => {
+    isLocalRequest.mockReturnValue(false);
+    getClientIP.mockReturnValue("203.0.113.5");
+    getSettings.mockResolvedValue({ 
+      requireLogin: true,
+      tunnelDashboardAccess: false,
+      tunnelUrl: "https://tunnel.example.com",
+      auditLogEnabled: true
+    });
+
+    const mockRequest = {
+      nextUrl: { pathname: "/dashboard" },
+      url: "https://tunnel.example.com/dashboard",
+      headers: { get: (name) => name === "host" ? "tunnel.example.com" : null },
+      cookies: { get: () => null }
+    };
+
+    const response = await proxy(mockRequest);
+    expect(response.status).toBe(307); // NextResponse.redirect uses 307
+    expect(auditLog.log).toHaveBeenCalledWith(
+      "tunnel_access_attempt",
+      expect.objectContaining({
+        allowed: false
+      })
+    );
+  });
+});
