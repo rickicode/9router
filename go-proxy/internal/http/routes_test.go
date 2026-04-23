@@ -344,6 +344,75 @@ func TestHandleProxy_StreamingSuccessReportsUsageEvidenceFromSSE(t *testing.T) {
 	if reporter.last.Quotas == nil {
 		t.Fatalf("expected quotas evidence in report payload")
 	}
+	if reporter.last.RequestID == "" {
+		t.Fatal("expected request id to be populated")
+	}
+}
+
+func TestHandleProxy_RequestIDConsistentOnForwardError(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"bad-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	reporter := &capturingReporter{}
+	h := requestHandler{
+		resolver: staticResolveClient{response: resolve.Response{
+			Provider:           "openai",
+			Model:              "gpt-4.1",
+			ChosenConnectionID: "conn-a",
+		}},
+		reporter:   reporter,
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: failingRoundTripper{err: errors.New("dial boom")}},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.handleProxy(rr, req, "openai")
+
+	if reporter.calls != 1 {
+		t.Fatalf("expected one report call, got %d", reporter.calls)
+	}
+	if reporter.last.RequestID == "" {
+		t.Fatal("expected request id on error path")
+	}
+}
+
+func TestHandleProxy_RequestIDConsistentOnSuccess(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	reporter := &capturingReporter{}
+	h := requestHandler{
+		resolver: staticResolveClient{response: resolve.Response{
+			Provider:           "openai",
+			Model:              "gpt-4.1",
+			ChosenConnectionID: "conn-a",
+		}},
+		reporter:   reporter,
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: staticResponseRoundTripper{resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
+		}}},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1"}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+	h.handleProxy(rr, req, "openai")
+
+	if reporter.calls != 1 {
+		t.Fatalf("expected one report call, got %d", reporter.calls)
+	}
+	if reporter.last.RequestID == "" {
+		t.Fatal("expected request id on success path")
+	}
 }
 
 func TestHandleProxy_ReportsUsedFallbackConnectionID(t *testing.T) {

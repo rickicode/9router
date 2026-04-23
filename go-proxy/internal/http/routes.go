@@ -123,6 +123,8 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 		return
 	}
 
+	requestID := generateRequestID()
+
 	apiKey := readPublicAPIKey(r)
 	if apiKey == "" {
 		http.Error(w, "missing api key", http.StatusUnauthorized)
@@ -152,7 +154,7 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 		normalized := proxy.NormalizeOutcome(result, err)
 		usageEvidence, quotasEvidence := extractResponseEvidence(result)
 		h.reportOutcome(report.OutcomePayload{
-			RequestID:         generateRequestID(),
+			RequestID:         requestID,
 			Provider:          resolved.Provider,
 			ConnectionID:      usedConnectionID,
 			Model:             resolved.Model,
@@ -201,7 +203,7 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 	normalized := proxy.NormalizeOutcome(result, transportErr)
 	usageEvidence, quotasEvidence := extractResponseEvidence(result)
 	h.reportOutcome(report.OutcomePayload{
-		RequestID:         generateRequestID(),
+		RequestID:         requestID,
 		Provider:          resolved.Provider,
 		ConnectionID:      usedConnectionID,
 		Model:             resolved.Model,

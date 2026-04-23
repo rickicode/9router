@@ -114,6 +114,9 @@ func isPrivateOrLocalIP(ip net.IP) bool {
 		"192.168.0.0/16",
 		"127.0.0.0/8",
 		"169.254.0.0/16",
+		"::1/128",
+		"fe80::/10",
+		"fc00::/7",
 	}
 	for _, cidr := range privateCIDRs {
 		_, network, err := net.ParseCIDR(cidr)

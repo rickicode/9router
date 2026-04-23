@@ -105,6 +105,36 @@ func TestBuildURL_QwenRejectsPrivateResourceURL(t *testing.T) {
 	}
 }
 
+func TestBuildURL_QwenRejectsIPv6PrivateResourceURLs(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+	}{
+		{name: "loopback", raw: "http://[::1]:8080/v1"},
+		{name: "link-local", raw: "http://[fe80::1]:8080/v1"},
+		{name: "unique-local", raw: "http://[fc00::1]:8080/v1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := BuildURL("qwen", "", true, BuildOptions{QwenResourceURL: tt.raw})
+			if err == nil {
+				t.Fatalf("expected error for blocked IPv6 resource URL %q", tt.raw)
+			}
+		})
+	}
+}
+
+func TestBuildURL_QwenAllowsPublicIPv6ResourceURL(t *testing.T) {
+	got, err := BuildURL("qwen", "", true, BuildOptions{QwenResourceURL: "https://[2001:4860:4860::8888]/v1"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if got != "https://[2001:4860:4860::8888]/v1/chat/completions" {
+		t.Fatalf("unexpected URL: %q", got)
+	}
+}
+
 func TestBuildURL_ClaudeCompatibleBetaQuerySuffix(t *testing.T) {
 	providers := []string{"claude", "glm", "kimi", "minimax"}
 	for _, provider := range providers {
