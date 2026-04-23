@@ -130,3 +130,28 @@ func TestTranslateRequest_StripImages(t *testing.T) {
 		t.Fatalf("expected text part to remain")
 	}
 }
+
+func TestTranslateRequest_RemovesMessagesWithOnlyStrippedContent(t *testing.T) {
+	body := map[string]any{
+		"messages": []any{
+			map[string]any{
+				"role": "user",
+				"content": []any{
+					map[string]any{"type": "image_url", "image_url": map[string]any{"url": "data:image/png;base64,abc"}},
+				},
+			},
+			map[string]any{"role": "user", "content": "keep me"},
+		},
+	}
+	opts := TranslateOptions{Model: "gpt-4", Stream: true, StripList: []string{"image"}}
+
+	got, err := TranslateRequest(FormatOpenAI, FormatOpenAI, body, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	messages := got["messages"].([]any)
+	if len(messages) != 1 {
+		t.Fatalf("expected stripped-only message to be removed, got %d messages", len(messages))
+	}
+}

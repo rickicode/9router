@@ -155,3 +155,36 @@ func TestOpenAIToClaude_ResponseFormat(t *testing.T) {
 		t.Fatalf("expected JSON instruction in system, got %q", text)
 	}
 }
+
+func TestOpenAIToClaude_ToolUseStaysAssistantRole(t *testing.T) {
+	body := map[string]any{
+		"messages": []any{
+			map[string]any{"role": "user", "content": "Call a tool"},
+			map[string]any{
+				"role": "assistant",
+				"tool_calls": []any{
+					map[string]any{
+						"id":   "call_123",
+						"type": "function",
+						"function": map[string]any{
+							"name":      "get_weather",
+							"arguments": `{"city":"SF"}`,
+						},
+					},
+				},
+			},
+		},
+	}
+	got, err := OpenAIToClaudeRequest("claude-sonnet-4", body, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	messages := got["messages"].([]any)
+	if len(messages) != 2 {
+		t.Fatalf("expected separate user and assistant messages, got %d", len(messages))
+	}
+	if messages[1].(map[string]any)["role"] != "assistant" {
+		t.Fatalf("expected tool_use message to remain assistant, got %#v", messages[1])
+	}
+}

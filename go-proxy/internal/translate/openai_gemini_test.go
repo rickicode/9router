@@ -1,6 +1,9 @@
 package translate
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestOpenAIToGemini_BasicMessage(t *testing.T) {
 	body := map[string]any{
@@ -104,6 +107,52 @@ func TestOpenAIToGemini_ToolCalls(t *testing.T) {
 	userContent := contents[1].(map[string]any)
 	if userContent["role"] != "user" {
 		t.Fatalf("expected user role, got %#v", userContent["role"])
+	}
+}
+
+func TestOpenAIToGemini_ToolResponsePreservesExistingResult(t *testing.T) {
+	body := map[string]any{
+		"messages": []any{
+			map[string]any{
+				"role": "assistant",
+				"tool_calls": []any{
+					map[string]any{
+						"id":   "call_123",
+						"type": "function",
+						"function": map[string]any{
+							"name":      "get_weather",
+							"arguments": `{"city":"SF"}`,
+						},
+					},
+				},
+			},
+			map[string]any{
+				"role":         "tool",
+				"tool_call_id": "call_123",
+				"content":      `{"result":{"temp":72}}`,
+			},
+		},
+	}
+	got, err := OpenAIToGeminiRequest("gemini-2.5-pro", body, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	contents := got["contents"].([]any)
+	userContent := contents[1].(map[string]any)
+	parts := userContent["parts"].([]any)
+	response := parts[0].(map[string]any)["functionResponse"].(map[string]any)["response"].(map[string]any)
+	inner := response["result"].(map[string]any)
+	if inner["temp"] != float64(72) {
+		t.Fatalf("expected existing result map to be preserved, got %#v", response)
+	}
+}
+
+func TestSanitizeGeminiFunctionName_LimitsBytes(t *testing.T) {
+	name := "1" + strings.Repeat("界", 40)
+	sanitized := sanitizeGeminiFunctionName(name)
+	if len([]byte(sanitized)) > 64 {
+		t.Fatalf("expected sanitized name to be at most 64 bytes, got %d", len([]byte(sanitized)))
 	}
 }
 

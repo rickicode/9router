@@ -133,13 +133,11 @@
               "name": "lookup_shipment.status",
               "response": {
                 "result": {
-                  "result": {
-                    "carrier": "UPS",
-                    "status": "label_created",
-                    "last_event": "Awaiting package from sender",
-                    "age_hours": 74,
-                    "warehouse": "LAS2"
-                  }
+                  "carrier": "UPS",
+                  "status": "label_created",
+                  "last_event": "Awaiting package from sender",
+                  "age_hours": 74,
+                  "warehouse": "LAS2"
                 }
               }
             }
@@ -174,12 +172,10 @@
               "name": "warehouse_exception_check",
               "response": {
                 "result": {
-                  "result": {
-                    "pick_delay": true,
-                    "root_cause": "inventory recount",
-                    "eta_hours": 18,
-                    "customer_safe_to_promise": "ships tomorrow"
-                  }
+                  "pick_delay": true,
+                  "root_cause": "inventory recount",
+                  "eta_hours": 18,
+                  "customer_safe_to_promise": "ships tomorrow"
                 }
               }
             }

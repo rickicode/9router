@@ -107,7 +107,10 @@ func handleClaudeEvent(event map[string]any, state *StreamState) map[string]any 
 		case "input_json_delta":
 			if partial := stringValue(delta["partial_json"]); partial != "" {
 				if toolCall := state.ToolCalls[index]; toolCall != nil {
-					current := stringValue(toolCall.Function["arguments"])
+					if toolCall.Function == nil {
+						toolCall.Function = map[string]any{"arguments": ""}
+					}
+					current, _ := toolCall.Function["arguments"].(string)
 					toolCall.Function["arguments"] = current + partial
 					return createOpenAIChunk(state, map[string]any{
 						"tool_calls": []any{map[string]any{

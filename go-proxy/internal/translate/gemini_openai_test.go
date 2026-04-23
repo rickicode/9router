@@ -128,3 +128,37 @@ func TestGeminiToOpenAI_UsageMetadata(t *testing.T) {
 		t.Fatalf("expected 20 completion tokens, got %d", state.UsageData.CompletionTokens)
 	}
 }
+
+func TestGeminiToOpenAI_UsageMetadataAccumulates(t *testing.T) {
+	state := &StreamState{MessageID: "msg_123", Model: "gemini-2.5-pro"}
+	chunkOne := []byte(`data: {"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":0,"thoughtsTokenCount":4,"totalTokenCount":18,"cachedContentTokenCount":2}}`)
+	chunkTwo := []byte(`data: {"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":7,"thoughtsTokenCount":3,"totalTokenCount":15,"cachedContentTokenCount":1}}`)
+
+	if _, err := GeminiToOpenAIChunk(chunkOne, state); err != nil {
+		t.Fatalf("unexpected error on first chunk: %v", err)
+	}
+	if _, err := GeminiToOpenAIChunk(chunkTwo, state); err != nil {
+		t.Fatalf("unexpected error on second chunk: %v", err)
+	}
+
+	if state.UsageData == nil {
+		t.Fatalf("expected usage data to be set")
+	}
+	if state.UsageData.PromptTokens != 15 {
+		t.Fatalf("expected accumulated prompt tokens 15, got %d", state.UsageData.PromptTokens)
+	}
+	if state.UsageData.CompletionTokens != 18 {
+		t.Fatalf("expected accumulated completion tokens 18, got %d", state.UsageData.CompletionTokens)
+	}
+	if state.UsageData.TotalTokens != 33 {
+		t.Fatalf("expected accumulated total tokens 33, got %d", state.UsageData.TotalTokens)
+	}
+	promptDetails := state.Usage["prompt_tokens_details"].(map[string]any)
+	if promptDetails["cached_tokens"] != 3 {
+		t.Fatalf("expected cached tokens 3, got %#v", promptDetails)
+	}
+	completionDetails := state.Usage["completion_tokens_details"].(map[string]any)
+	if completionDetails["reasoning_tokens"] != 7 {
+		t.Fatalf("expected reasoning tokens 7, got %#v", completionDetails)
+	}
+}

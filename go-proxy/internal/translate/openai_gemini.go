@@ -126,14 +126,19 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[
 						continue
 					}
 					parsed := tryParseJSON(resp)
-					if parsed == nil {
-						parsed = map[string]any{"result": resp}
-					} else {
-						switch parsed.(type) {
-						case map[string]any, []any:
-							parsed = map[string]any{"result": parsed}
+					responseValue := any(map[string]any{"result": resp})
+					if parsed != nil {
+						switch value := parsed.(type) {
+						case map[string]any:
+							if _, hasResult := value["result"]; hasResult {
+								responseValue = value
+							} else {
+								responseValue = map[string]any{"result": value}
+							}
+						case []any:
+							responseValue = map[string]any{"result": value}
 						default:
-							parsed = map[string]any{"result": parsed}
+							responseValue = map[string]any{"result": value}
 						}
 					}
 					name := toolCallIDToName[id]
@@ -144,9 +149,7 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool) (map[
 						"functionResponse": map[string]any{
 							"id":   id,
 							"name": sanitizeGeminiFunctionName(name),
-							"response": map[string]any{
-								"result": parsed,
-							},
+							"response": responseValue,
 						},
 					})
 				}
@@ -227,10 +230,15 @@ func sanitizeGeminiFunctionName(name string) string {
 			r = '_'
 		}
 		if i == 0 && !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_') {
-			builder.WriteByte('_')
+			if builder.Len() < 64 {
+				builder.WriteByte('_')
+			}
 		}
 		if r == '-' {
 			r = '_'
+		}
+		if builder.Len()+len(string(r)) > 64 {
+			break
 		}
 		builder.WriteRune(r)
 		if builder.Len() >= 64 {

@@ -100,9 +100,13 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool) (map[
 				continue
 			}
 
-			if currentRole != newRole {
+			if currentRole != newRole || (hasToolUse && newRole != "assistant") {
 				flush()
-				currentRole = newRole
+				if hasToolUse {
+					currentRole = "assistant"
+				} else {
+					currentRole = newRole
+				}
 			}
 			currentParts = append(currentParts, otherBlocks...)
 

@@ -227,13 +227,16 @@ func stripContentTypes(body map[string]any, stripList []string) {
 	}
 	stripImage := contains(stripList, "image")
 	stripAudio := contains(stripList, "audio")
+	filteredMessages := make([]any, 0, len(messages))
 	for _, raw := range messages {
 		msg, ok := raw.(map[string]any)
 		if !ok {
+			filteredMessages = append(filteredMessages, raw)
 			continue
 		}
 		parts, ok := msg["content"].([]any)
 		if !ok {
+			filteredMessages = append(filteredMessages, raw)
 			continue
 		}
 		filtered := make([]any, 0, len(parts))
@@ -253,11 +256,13 @@ func stripContentTypes(body map[string]any, stripList []string) {
 			filtered = append(filtered, part)
 		}
 		if len(filtered) == 0 {
-			msg["content"] = ""
+			continue
 		} else {
 			msg["content"] = filtered
 		}
+		filteredMessages = append(filteredMessages, msg)
 	}
+	body["messages"] = filteredMessages
 }
 
 func ensureToolCallIDs(body map[string]any) {

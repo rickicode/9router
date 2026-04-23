@@ -163,30 +163,51 @@ func createGeminiToolCallChunk(functionCall map[string]any, state *StreamState) 
 func updateGeminiUsage(usageMeta map[string]any, state *StreamState) {
 	promptTokens := intValue(usageMeta["promptTokenCount"], 0)
 	thoughtsTokens := intValue(usageMeta["thoughtsTokenCount"], 0)
-	completionTokens := intValue(usageMeta["candidatesTokenCount"], 0) + thoughtsTokens
+	candidateTokens := intValue(usageMeta["candidatesTokenCount"], 0)
+	completionTokens := candidateTokens + thoughtsTokens
 	totalTokens := intValue(usageMeta["totalTokenCount"], 0)
-	if completionTokens == thoughtsTokens && totalTokens > 0 {
+	if candidateTokens == 0 && totalTokens > 0 {
 		completionTokens = totalTokens - promptTokens
 		if completionTokens < 0 {
 			completionTokens = 0
 		}
 	}
-	state.UsageData = &UsageData{
-		PromptTokens:     promptTokens,
-		CompletionTokens: completionTokens,
-		TotalTokens:      totalTokens,
+	if state.UsageData == nil {
+		state.UsageData = &UsageData{}
+	}
+	state.UsageData.PromptTokens += promptTokens
+	state.UsageData.CompletionTokens += completionTokens
+	state.UsageData.TotalTokens += totalTokens
+	cachedTokens := intValue(usageMeta["cachedContentTokenCount"], 0)
+	existingCachedTokens := 0
+	existingReasoningTokens := 0
+	if state.Usage != nil {
+		existingCachedTokens = intValue(nestedMapValue(state.Usage, "prompt_tokens_details", "cached_tokens"), 0)
+		existingReasoningTokens = intValue(nestedMapValue(state.Usage, "completion_tokens_details", "reasoning_tokens"), 0)
 	}
 	state.Usage = map[string]any{
-		"prompt_tokens":     promptTokens,
-		"completion_tokens": completionTokens,
-		"total_tokens":      totalTokens,
+		"prompt_tokens":     state.UsageData.PromptTokens,
+		"completion_tokens": state.UsageData.CompletionTokens,
+		"total_tokens":      state.UsageData.TotalTokens,
 	}
-	if cachedTokens := intValue(usageMeta["cachedContentTokenCount"], 0); cachedTokens > 0 {
-		state.Usage["prompt_tokens_details"] = map[string]any{"cached_tokens": cachedTokens}
+	if totalCachedTokens := existingCachedTokens + cachedTokens; totalCachedTokens > 0 {
+		state.Usage["prompt_tokens_details"] = map[string]any{"cached_tokens": totalCachedTokens}
 	}
-	if thoughtsTokens > 0 {
-		state.Usage["completion_tokens_details"] = map[string]any{"reasoning_tokens": thoughtsTokens}
+	if totalReasoningTokens := existingReasoningTokens + thoughtsTokens; totalReasoningTokens > 0 {
+		state.Usage["completion_tokens_details"] = map[string]any{"reasoning_tokens": totalReasoningTokens}
 	}
+}
+
+func nestedMapValue(value map[string]any, keys ...string) any {
+	current := any(value)
+	for _, key := range keys {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil
+		}
+		current = m[key]
+	}
+	return current
 }
 
 func convertGeminiFinishReason(reason string, state *StreamState) string {

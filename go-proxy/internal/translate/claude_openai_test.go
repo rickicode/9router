@@ -165,3 +165,23 @@ func TestClaudeToOpenAI_MessageStop(t *testing.T) {
 		t.Fatalf("expected stop finish_reason, got %#v", finishReason)
 	}
 }
+
+func TestClaudeToOpenAI_InputJSONDeltaInitializesMissingFunction(t *testing.T) {
+	state := &StreamState{
+		MessageID: "msg_123",
+		Model:     "claude-sonnet-4",
+		ToolCalls: map[int]*ToolCall{0: {Index: 0, ID: "call_123", Type: "function"}},
+	}
+	chunk := []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"city\":\"SF\"}"}}`)
+
+	got, err := ClaudeToOpenAIChunk(chunk, state)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatalf("expected chunk output")
+	}
+	if state.ToolCalls[0].Function["arguments"] != `{"city":"SF"}` {
+		t.Fatalf("expected arguments to be initialized and accumulated, got %#v", state.ToolCalls[0].Function)
+	}
+}
