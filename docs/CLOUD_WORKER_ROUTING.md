@@ -112,6 +112,13 @@ database_name = "9router-db"
 database_id = "YOUR_D1_DATABASE_ID"  # Paste ID dari command di atas
 ```
 
+**Catatan:** Worker ini menggunakan **D1 only** (tidak pakai KV) karena:
+- ✅ D1 free tier lebih generous (5GB storage, 5M reads/day)
+- ✅ Tidak ada propagation delay (KV bisa delay up to 60s)
+- ✅ Transactional support (atomic updates)
+- ✅ SQL queries (lebih flexible untuk complex queries)
+- ✅ Lebih cocok untuk config storage yang butuh consistency
+
 ### 2. Initialize Database
 
 ```bash
@@ -621,7 +628,10 @@ A: Usage data di memory, hilang saat worker restart. 9Router poll every 1s untuk
 A: Ya, setiap 9Router punya machineId unik. Worker handle multiple machines.
 
 **Q: Berapa cost Cloudflare Worker?**  
-A: Free tier: 100k requests/day. Paid: $5/month untuk 10M requests.
+A: 
+- **Worker**: Free tier 100k requests/day, Paid $5/month untuk 10M requests
+- **D1**: Free tier 5GB storage + 5M reads/day, Paid $5/month untuk 25M reads
+- **Total**: Gratis untuk most use cases, ~$10/month untuk high traffic
 
 **Q: Apakah worker support semua providers?**  
 A: Ya, worker generic. Support semua providers yang 9Router support.
