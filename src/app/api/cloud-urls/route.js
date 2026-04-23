@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
+import { v4 as uuidv4 } from "uuid";
 
 const VALID_STATUSES = new Set(["unknown", "online", "offline", "error", "testing"]);
 
@@ -25,13 +26,14 @@ async function readCloudUrls() {
 async function writeCloudUrls(mutator) {
   const currentSettings = await getSettings();
   const currentUrls = Array.isArray(currentSettings.cloudUrls) ? currentSettings.cloudUrls : [];
-  const nextUrls = mutator(currentUrls.map((entry) => ({ ...entry })));
+  const clonedUrls = currentUrls.map((entry) => structuredClone(entry));
+  const nextUrls = mutator(clonedUrls);
   const settings = await updateSettings({ cloudUrls: nextUrls });
   return settings.cloudUrls;
 }
 
 function getNextId(cloudUrls) {
-  return cloudUrls.reduce((maxId, entry) => Math.max(maxId, Number(entry.id) || 0), 0) + 1;
+  return uuidv4();
 }
 
 export async function GET() {
@@ -79,14 +81,14 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const body = await request.json();
-    const id = Number(body?.id);
+    const id = String(body?.id ?? "").trim();
 
-    if (!Number.isInteger(id) || id <= 0) {
+    if (!id) {
       return NextResponse.json({ error: "Valid cloud URL id is required" }, { status: 400 });
     }
 
     const updated = await writeCloudUrls((cloudUrls) => {
-      const index = cloudUrls.findIndex((entry) => Number(entry.id) === id);
+      const index = cloudUrls.findIndex((entry) => entry.id === id);
       if (index === -1) {
         throw new Error("Cloud URL not found");
       }
@@ -94,7 +96,7 @@ export async function DELETE(request) {
         throw new Error("At least one cloud URL must remain");
       }
 
-      return cloudUrls.filter((entry) => Number(entry.id) !== id);
+      return cloudUrls.filter((entry) => entry.id !== id);
     });
 
     return NextResponse.json({ cloudUrls: updated });
