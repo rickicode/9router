@@ -61,3 +61,60 @@ describe("Dashboard Guard - IP Validation", () => {
     expect(isLocalRequest).toHaveBeenCalled();
   });
 });
+
+vi.mock("@/lib/security/auditLog", () => ({
+  auditLog: {
+    log: vi.fn()
+  }
+}));
+
+import { auditLog } from "@/lib/security/auditLog";
+
+describe("Dashboard Guard - Audit Logging", () => {
+  it("logs auth bypass attempts", async () => {
+    isLocalRequest.mockReturnValue(false);
+    getClientIP.mockReturnValue("192.168.1.100");
+    getSettings.mockResolvedValue({ requireLogin: true, auditLogEnabled: true });
+
+    const mockRequest = {
+      nextUrl: { pathname: "/api/shutdown" },
+      headers: { get: () => "example.com" },
+      cookies: { get: () => null }
+    };
+
+    await proxy(mockRequest);
+    
+    expect(auditLog.log).toHaveBeenCalledWith(
+      "auth_bypass_attempt",
+      expect.objectContaining({
+        ip: "192.168.1.100",
+        path: "/api/shutdown",
+        allowed: false
+      })
+    );
+  });
+
+  it("logs successful localhost bypass", async () => {
+    isLocalRequest.mockReturnValue(true);
+    getClientIP.mockReturnValue("127.0.0.1");
+    getSettings.mockResolvedValue({ requireLogin: true, auditLogEnabled: true });
+
+    const mockRequest = {
+      nextUrl: { pathname: "/api/settings" },
+      headers: { get: () => "localhost" },
+      cookies: { get: () => null }
+    };
+
+    await proxy(mockRequest);
+    
+    expect(auditLog.log).toHaveBeenCalledWith(
+      "auth_bypass_attempt",
+      expect.objectContaining({
+        ip: "127.0.0.1",
+        path: "/api/settings",
+        allowed: true,
+        reason: "localhost_whitelist"
+      })
+    );
+  });
+});

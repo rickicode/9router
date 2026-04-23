@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
 import { isLocalRequest, getClientIP } from "@/lib/security/ipValidator";
+import { auditLog } from "@/lib/security/auditLog";
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "9router-default-secret-change-me"
@@ -64,19 +65,47 @@ function getTunnelHostname(tunnelUrl) {
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
   const settings = await loadSettings();
+  const clientIP = getClientIP(request, settings);
 
   // Always protected - allow localhost/whitelist or valid JWT only
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    if (isLocalRequest(request, settings) || await hasValidToken(request))
+    const isLocal = isLocalRequest(request, settings);
+    const hasToken = await hasValidToken(request);
+    
+    if (settings?.auditLogEnabled) {
+      auditLog.log("auth_bypass_attempt", {
+        ip: clientIP,
+        path: pathname,
+        allowed: isLocal || hasToken,
+        reason: isLocal ? "localhost_whitelist" : hasToken ? "valid_jwt" : "denied"
+      });
+    }
+    
+    if (isLocal || hasToken) {
       return NextResponse.next();
+    }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Protect sensitive API endpoints (bypass if localhost or requireLogin = false)
+  // Protect sensitive API endpoints
   if (PROTECTED_API_PATHS.some((p) => pathname.startsWith(p))) {
     if (pathname === "/api/settings/require-login") return NextResponse.next();
-    if (isLocalRequest(request, settings) || await isAuthenticated(request))
+    
+    const isLocal = isLocalRequest(request, settings);
+    const isAuth = await isAuthenticated(request);
+    
+    if (settings?.auditLogEnabled) {
+      auditLog.log("auth_bypass_attempt", {
+        ip: clientIP,
+        path: pathname,
+        allowed: isLocal || isAuth,
+        reason: isLocal ? "localhost_whitelist" : isAuth ? "authenticated" : "denied"
+      });
+    }
+    
+    if (isLocal || isAuth) {
       return NextResponse.next();
+    }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -90,18 +119,27 @@ export async function proxy(request) {
         requireLogin = settings.requireLogin !== false;
         tunnelDashboardAccess = settings.tunnelDashboardAccess === true;
 
-        // Block tunnel/tailscale access if disabled (redirect to login)
+        // Block tunnel/tailscale access if disabled
         if (!tunnelDashboardAccess) {
           const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
           const tunnelHost = getTunnelHostname(settings.tunnelUrl);
           const tailscaleHost = getTunnelHostname(settings.tailscaleUrl);
+          
           if ((tunnelHost && host === tunnelHost) || (tailscaleHost && host === tailscaleHost)) {
+            if (settings?.auditLogEnabled) {
+              auditLog.log("tunnel_access_attempt", {
+                ip: clientIP,
+                host,
+                allowed: false,
+                tunnelUrl: settings.tunnelUrl || settings.tailscaleUrl
+              });
+            }
             return NextResponse.redirect(new URL("/login", request.url));
           }
         }
       }
     } catch {
-      // On error, keep defaults (require login, block tunnel)
+      // On error, keep defaults
     }
 
     // If login not required, allow through
@@ -114,6 +152,13 @@ export async function proxy(request) {
         await jwtVerify(token, SECRET);
         return NextResponse.next();
       } catch {
+        if (settings?.auditLogEnabled) {
+          auditLog.log("jwt_validation_failed", {
+            ip: clientIP,
+            path: pathname,
+            error: "invalid_or_expired"
+          });
+        }
         return NextResponse.redirect(new URL("/login", request.url));
       }
     }
@@ -121,7 +166,7 @@ export async function proxy(request) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect / to /dashboard if logged in, or /dashboard if it's the root
+  // Redirect / to /dashboard
   if (pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
