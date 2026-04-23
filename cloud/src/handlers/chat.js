@@ -165,7 +165,11 @@ async function handleSingleModelChat(body, modelStr, machineId, env, request) {
       }, 0) || 0;
 
       // Record usage (output tokens tracked in stream handler if needed)
-      recordUsage(connection.id, Math.floor(inputTokens / 4), 0);
+      if (connection?.id) {
+        recordUsage(connection.id, Math.floor(inputTokens / 4), 0);
+      } else {
+        log.warn("CHAT", "Cannot record usage: connection.id is undefined");
+      }
       return result.response;
     }
 
@@ -173,7 +177,9 @@ async function handleSingleModelChat(body, modelStr, machineId, env, request) {
 
     if (shouldFallback) {
       // On error
-      recordUsage(connection.id, 0, 0, result.error);
+      if (connection?.id) {
+        recordUsage(connection.id, 0, 0, result.error);
+      }
       log.warn("FALLBACK", `${provider.toUpperCase()} | ${credentials.id} | ${result.status}`);
       await markAccountUnavailable(machineId, credentials.id, result.status, result.error, env);
       excludeConnectionId = credentials.id;
@@ -182,8 +188,6 @@ async function handleSingleModelChat(body, modelStr, machineId, env, request) {
       continue;
     }
 
-    // On error
-    recordUsage(connection.id, 0, 0, result.error);
     return result.response;
   }
 }

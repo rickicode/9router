@@ -14,11 +14,16 @@ export function selectCredential(machineData, provider, apiKey) {
   const settings = machineData.settings || {};
 
   // 1. Get all eligible credentials for provider
-  const candidates = Object.values(machineData.providers || {})
-    .filter(p => p.provider === provider && p.isActive);
+  const allProviders = Object.values(machineData.providers || {})
+    .filter(p => p.provider === provider);
+  const candidates = allProviders.filter(p => p.isActive);
 
   if (candidates.length === 0) {
-    throw new Error(`No credentials for provider: ${provider}`);
+    if (allProviders.length === 0) {
+      throw new Error(`No credentials configured for provider: ${provider}`);
+    } else {
+      throw new Error(`All ${allProviders.length} credentials for ${provider} are inactive`);
+    }
   }
 
   if (candidates.length === 1) {
