@@ -7,6 +7,8 @@ import { HTTP_STATUS } from "open-sse/config/runtimeConfig.js";
 import * as log from "../utils/logger.js";
 import { refreshTokenByProvider } from "../services/tokenRefresh.js";
 import { parseApiKey, extractBearerToken } from "../utils/apiKey.js";
+import { selectCredential } from "../services/routing.js";
+import { recordUsage } from "../services/usage.js";
 import { getMachineData, saveMachineData } from "../services/storage.js";
 
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
@@ -77,19 +79,19 @@ export async function handleChat(request, env, ctx, machineIdOverride = null) {
     return handleComboChat({
       body,
       models: comboModels,
-      handleSingleModel: (reqBody, model) => handleSingleModelChat(reqBody, model, machineId, env),
+      handleSingleModel: (reqBody, model) => handleSingleModelChat(reqBody, model, machineId, env, request),
       log
     });
   }
 
   // Single model request
-  return handleSingleModelChat(body, modelStr, machineId, env);
+  return handleSingleModelChat(body, modelStr, machineId, env, request);
 }
 
 /**
  * Handle single model chat request
  */
-async function handleSingleModelChat(body, modelStr, machineId, env) {
+async function handleSingleModelChat(body, modelStr, machineId, env, request) {
   const modelInfo = await getModelInfo(modelStr, machineId, env);
   if (!modelInfo.provider) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Invalid model format");
 
@@ -101,7 +103,20 @@ async function handleSingleModelChat(body, modelStr, machineId, env) {
   let lastStatus = null;
 
   while (true) {
-    const credentials = await getProviderCredentials(machineId, provider, env, excludeConnectionId);
+    const data = await getMachineData(machineId, env);
+    let connection;
+    try {
+      const apiKey = extractBearerToken(request);
+      connection = selectCredential(data, provider, apiKey || 'default');
+    } catch (error) {
+      log.warn("ROUTING", error.message);
+      return errorResponse(HTTP_STATUS.BAD_REQUEST, error.message);
+    }
+
+    let credentials = connection;
+    if (excludeConnectionId && credentials?.id === excludeConnectionId) {
+      credentials = await getProviderCredentials(machineId, provider, env, excludeConnectionId);
+    }
     if (!credentials || credentials.allRateLimited) {
       if (credentials?.allRateLimited) {
         const retryAfterSec = Math.ceil((new Date(credentials.retryAfter).getTime() - Date.now()) / 1000);
@@ -143,11 +158,22 @@ async function handleSingleModelChat(body, modelStr, machineId, env) {
       }
     });
 
-    if (result.success) return result.response;
+    if (result.success) {
+      // Extract token counts from response metadata if available
+      const inputTokens = body.messages?.reduce((sum, msg) => {
+        return sum + (msg.content?.length || 0);
+      }, 0) || 0;
+
+      // Record usage (output tokens tracked in stream handler if needed)
+      recordUsage(connection.id, Math.floor(inputTokens / 4), 0);
+      return result.response;
+    }
 
     const { shouldFallback } = checkFallbackError(result.status, result.error);
 
     if (shouldFallback) {
+      // On error
+      recordUsage(connection.id, 0, 0, result.error);
       log.warn("FALLBACK", `${provider.toUpperCase()} | ${credentials.id} | ${result.status}`);
       await markAccountUnavailable(machineId, credentials.id, result.status, result.error, env);
       excludeConnectionId = credentials.id;
@@ -156,6 +182,8 @@ async function handleSingleModelChat(body, modelStr, machineId, env) {
       continue;
     }
 
+    // On error
+    recordUsage(connection.id, 0, 0, result.error);
     return result.response;
   }
 }

@@ -13,6 +13,8 @@ import { handleTestClaude } from "./handlers/testClaude.js";
 import { handleForward } from "./handlers/forward.js";
 import { handleForwardRaw } from "./handlers/forwardRaw.js";
 import { handleEmbeddings } from "./handlers/embeddings.js";
+import { handleUsage } from "./handlers/usage.js";
+import { handleHealth } from "./handlers/health.js";
 import { createLandingPageResponse } from "./services/landingPage.js";
 
 // Initialize translators at module load (static imports)
@@ -137,6 +139,34 @@ const worker = {
         return addCorsHeaders(response);
       }
 
+      // New format: /worker/usage/:machineId
+      if (path.startsWith("/worker/usage/") && request.method === "GET") {
+        const machineId = path.split("/")[3];
+        if (!machineId) {
+          return new Response(JSON.stringify({ error: "Missing machineId" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        const response = await handleUsage(request, env, machineId);
+        log.response(response.status, Date.now() - startTime);
+        return addCorsHeaders(response);
+      }
+
+      // New format: /worker/health/:machineId
+      if (path.startsWith("/worker/health/") && request.method === "GET") {
+        const machineId = path.split("/")[3];
+        if (!machineId) {
+          return new Response(JSON.stringify({ error: "Missing machineId" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        const response = await handleHealth(request, env, machineId);
+        log.response(response.status, Date.now() - startTime);
+        return addCorsHeaders(response);
+      }
+
       // New format: /v1/api/chat (Ollama format)
       if (path === "/v1/api/chat" && request.method === "POST") {
         const clonedReq = request.clone();
@@ -230,4 +260,3 @@ const worker = {
 };
 
 export default worker;
-

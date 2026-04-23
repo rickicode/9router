@@ -1,5 +1,6 @@
 import * as log from "../utils/logger.js";
 import { getMachineData, saveMachineData, deleteMachineData } from "../services/storage.js";
+import { updateLastSync } from "../services/state.js";
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
@@ -79,6 +80,12 @@ async function handlePost(request, machineId, env) {
     return jsonResponse({ error: "Missing providers array" }, 400);
   }
 
+  // Add settings validation
+  if (body.settings && typeof body.settings !== 'object') {
+    log.warn("SYNC", "Invalid settings object", { machineId });
+    return jsonResponse({ error: "Invalid settings object" }, 400);
+  }
+
   const existingData = await getMachineData(machineId, env) || { providers: {}, modelAliases: {}, apiKeys: [] };
 
   // Merge providers by ID
@@ -110,11 +117,15 @@ async function handlePost(request, machineId, env) {
     modelAliases: body.modelAliases || existingData.modelAliases || {},
     combos: body.combos || existingData.combos || [],
     apiKeys: body.apiKeys || existingData.apiKeys || [],
+    settings: body.settings || existingData.settings || {},
     updatedAt: new Date().toISOString()
   };
 
   // Store in D1 + invalidate cache
   await saveMachineData(machineId, finalData, env);
+
+  // Update state last sync timestamp
+  updateLastSync();
 
   log.info("SYNC", "Data synced successfully", {
     machineId,
