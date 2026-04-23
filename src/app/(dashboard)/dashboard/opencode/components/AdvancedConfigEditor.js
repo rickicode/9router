@@ -39,15 +39,15 @@ const SLIM_CATEGORY_ROLES = {
 
 function ModelAssignmentRow({ name, label, currentModel, availableModels, isOverride, onModelChange, onClear }) {
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <p className="truncate text-xs font-semibold font-mono text-text-main">{name}</p>
+          <p className="truncate text-[11px] font-medium font-mono text-[var(--color-text-main)]">{name}</p>
           {isOverride && (
             <Badge size="sm" variant="primary">Custom</Badge>
           )}
         </div>
-        <p className="truncate text-[11px] text-text-muted">{label}</p>
+        <p className="truncate text-[11px] text-[var(--color-text-muted)]">{label}</p>
       </div>
       <div className="flex items-center gap-2">
         <Select
@@ -57,13 +57,13 @@ function ModelAssignmentRow({ name, label, currentModel, availableModels, isOver
             { value: "", label: "Auto (from chain)" },
             ...availableModels.map(id => ({ value: id, label: id }))
           ]}
-          className="text-xs"
+          className="text-[11px]"
         />
         {isOverride && (
           <button
             type="button"
             onClick={onClear}
-            className="rounded p-1 text-text-muted hover:text-red-500 transition-colors"
+            className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
             title="Clear override"
           >
             <span className="material-symbols-outlined text-[16px]">close</span>
@@ -123,15 +123,15 @@ export default function AdvancedConfigEditor({ variant, preferences, availableMo
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-border">
+      <div className="flex items-center gap-2 border-b border-[var(--color-border)]">
         <button
           type="button"
           onClick={() => setActiveTab("agents")}
           className={cn(
-            "px-4 py-2 text-sm font-medium transition-colors cursor-pointer",
+            "px-4 py-2 text-[13px] font-medium transition-colors cursor-pointer",
             activeTab === "agents"
-              ? "border-b-2 border-primary text-primary"
-              : "text-text-muted hover:text-text-main"
+              ? "border-b-2 border-primary text-[var(--color-accent)]"
+              : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
           )}
         >
           Agent Assignments
@@ -143,10 +143,10 @@ export default function AdvancedConfigEditor({ variant, preferences, availableMo
           type="button"
           onClick={() => setActiveTab("categories")}
           className={cn(
-            "px-4 py-2 text-sm font-medium transition-colors cursor-pointer",
+            "px-4 py-2 text-[13px] font-medium transition-colors cursor-pointer",
             activeTab === "categories"
-              ? "border-b-2 border-primary text-primary"
-              : "text-text-muted hover:text-text-main"
+              ? "border-b-2 border-primary text-[var(--color-accent)]"
+              : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
           )}
         >
           Category Assignments
@@ -158,11 +158,11 @@ export default function AdvancedConfigEditor({ variant, preferences, availableMo
 
       {/* Agent Assignments */}
       {activeTab === "agents" && (
-        <div className="space-y-3 rounded-lg border border-border bg-surface/50 p-4">
+        <div className="space-y-3 rounded border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-text-main">Agent Model Assignments</p>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="text-[13px] font-medium text-[var(--color-text-main)]">Agent Model Assignments</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                 Override which model each agent uses. Leave as "Auto" to use the default chain.
               </p>
             </div>
@@ -187,18 +187,18 @@ export default function AdvancedConfigEditor({ variant, preferences, availableMo
           </div>
 
           {saving && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">Saving...</p>
+            <p className="text-[11px] text-[var(--color-warning)] dark:text-[var(--color-warning)]">Saving...</p>
           )}
         </div>
       )}
 
       {/* Category Assignments */}
       {activeTab === "categories" && (
-        <div className="space-y-3 rounded-lg border border-border bg-surface/50 p-4">
+        <div className="space-y-3 rounded border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-text-main">Category Model Assignments</p>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="text-[13px] font-medium text-[var(--color-text-main)]">Category Model Assignments</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                 Override which model each task category uses. Leave as "Auto" to use the default chain.
               </p>
             </div>
@@ -223,18 +223,18 @@ export default function AdvancedConfigEditor({ variant, preferences, availableMo
           </div>
 
           {saving && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">Saving...</p>
+            <p className="text-[11px] text-[var(--color-warning)] dark:text-[var(--color-warning)]">Saving...</p>
           )}
         </div>
       )}
 
       {/* Help Text */}
-      <div className="rounded-lg border border-border bg-surface/50 px-3 py-2 text-xs text-text-muted space-y-1">
-        <p className="font-semibold">💡 Tips:</p>
+      <div className="rounded border border-[var(--color-border)] bg-[var(--color-surface)]/50 px-3 py-2 text-[11px] text-[var(--color-text-muted)] space-y-1">
+        <p className="font-medium">💡 Tips:</p>
         <ul className="list-disc list-inside space-y-0.5 ml-2">
           <li>Use "Auto" to let the system choose the best model from the chain</li>
           <li>Override specific agents/categories when you need more control</li>
-          <li>Model format: <code className="text-primary">cx/gpt-5.3-codex</code> (with provider prefix)</li>
+          <li>Model format: <code className="text-[var(--color-accent)]">cx/gpt-5.3-codex</code> (with provider prefix)</li>
           <li>Changes are saved automatically</li>
         </ul>
       </div>

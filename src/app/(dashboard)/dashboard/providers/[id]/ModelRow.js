@@ -5,7 +5,7 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, test
     ? "border-green-500/40"
     : testStatus === "error"
     ? "border-red-500/40"
-    : "border-border";
+    : "border-[var(--color-border)]";
 
   const iconColor = testStatus === "ok"
     ? "#22c55e"
@@ -14,7 +14,7 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, test
     : undefined;
 
   return (
-    <div className={`group px-3 py-2 rounded-lg border ${borderColor} hover:bg-sidebar/50`}>
+    <div className={`group px-3 py-2 rounded border ${borderColor} hover:bg-[var(--color-primary)]/50`}>
       <div className="flex items-center gap-2">
         <span
           className="material-symbols-outlined text-base"
@@ -23,21 +23,21 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, test
           {testStatus === "ok" ? "check_circle" : testStatus === "error" ? "cancel" : "smart_toy"}
         </span>
         <div className="flex flex-col gap-1">
-          <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
-          {model.name && <span className="text-[9px] text-text-muted/70 italic pl-1">{model.name}</span>}
+          <code className="text-[11px] text-[var(--color-text-muted)] font-mono bg-[var(--color-primary)] px-1.5 py-0.5 rounded">{fullModel}</code>
+          {model.name && <span className="text-[9px] text-[var(--color-text-muted)]/70 italic pl-1">{model.name}</span>}
         </div>
         {onTest && (
           <div className="relative group/btn">
             <button
               onClick={onTest}
               disabled={isTesting}
-              className={`p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary transition-opacity ${isTesting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              className={`p-0.5 hover:bg-[var(--color-primary)] rounded text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-opacity ${isTesting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
             >
-              <span className="material-symbols-outlined text-sm" style={isTesting ? { animation: "spin 1s linear infinite" } : undefined}>
+              <span className="material-symbols-outlined text-[13px]" style={isTesting ? { animation: "spin 1s linear infinite" } : undefined}>
                 {isTesting ? "progress_activity" : "science"}
               </span>
             </button>
-            <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
+            <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-[var(--color-text-muted)] whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
               {isTesting ? "Testing..." : "Test"}
             </span>
           </div>
@@ -45,23 +45,23 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, test
         <div className="relative group/btn">
           <button
             onClick={() => onCopy(fullModel, `model-${model.id}`)}
-            className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
+            className="p-0.5 hover:bg-[var(--color-primary)] rounded text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
           >
-            <span className="material-symbols-outlined text-sm">
+            <span className="material-symbols-outlined text-[13px]">
               {copied === `model-${model.id}` ? "check" : "content_copy"}
             </span>
           </button>
-          <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
+          <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-[var(--color-text-muted)] whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
             {copied === `model-${model.id}` ? "Copied!" : "Copy"}
           </span>
         </div>
         {isCustom && (
           <button
             onClick={onDeleteAlias}
-            className="p-0.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+            className="p-0.5 hover:bg-[var(--color-danger)]/10 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
             title="Remove custom model"
           >
-            <span className="material-symbols-outlined text-sm">close</span>
+            <span className="material-symbols-outlined text-[13px]">close</span>
           </button>
         )}
       </div>

@@ -68,7 +68,8 @@ export default function ModelSelectModal({
     const groups = {};
 
     // Get all active provider IDs from connections
-    const activeConnectionIds = activeProviders.map(p => p.provider);
+    const activeProvidersList = activeProviders || [];
+    const activeConnectionIds = activeProvidersList.map(p => p.provider);
 
     // Only show connected providers (including both standard and custom)
     const providerIdsToShow = new Set([
@@ -226,7 +227,7 @@ export default function ModelSelectModal({
       {/* Search - compact */}
       <div className="mb-3">
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted text-[16px]">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] text-[16px]">
             search
           </span>
           <input
@@ -234,7 +235,7 @@ export default function ModelSelectModal({
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full pl-8 pr-3 py-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded text-[12px] focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
       </div>
@@ -244,10 +245,10 @@ export default function ModelSelectModal({
         {/* Combos section - always first */}
         {filteredCombos.length > 0 && (
           <div>
-            <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-surface py-0.5">
-              <span className="material-symbols-outlined text-primary text-[14px]">layers</span>
-              <span className="text-xs font-medium text-primary">Combos</span>
-              <span className="text-[10px] text-text-muted">({filteredCombos.length})</span>
+            <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-[var(--color-surface)] py-0.5">
+              <span className="material-symbols-outlined text-[var(--color-accent)] text-[14px]">layers</span>
+              <span className="text-[12px] font-medium text-[var(--color-accent)]">Combos</span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">({filteredCombos.length})</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {filteredCombos.map((combo) => {
@@ -257,10 +258,10 @@ export default function ModelSelectModal({
                     key={combo.id}
                     onClick={() => handleSelect({ id: combo.name, name: combo.name, value: combo.name })}
                     className={`
-                      px-2 py-1 rounded-xl text-xs font-medium transition-all border hover:cursor-pointer
+                      px-2 py-1 rounded text-[12px] font-medium transition-all border hover:cursor-pointer
                       ${isSelected
-                        ? "bg-primary text-white border-primary"
-                        : "bg-surface border-border text-text-main hover:border-primary/50 hover:bg-primary/5"
+                        ? "bg-[var(--color-primary)] text-[var(--color-text-main)] border-primary"
+                        : "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-main)] hover:border-[rgba(0,122,255,0.5)] hover:bg-[var(--color-primary)]/5"
                       }
                     `}
                   >
@@ -276,15 +277,15 @@ export default function ModelSelectModal({
         {Object.entries(filteredGroups).map(([providerId, group]) => (
           <div key={providerId}>
             {/* Provider header */}
-            <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-surface py-0.5">
+            <div className="flex items-center gap-1.5 mb-1.5 sticky top-0 bg-[var(--color-surface)] py-0.5">
               <div
-                className="w-2 h-2 rounded-full"
+                className="w-2 h-2 rounded"
                 style={{ backgroundColor: group.color }}
               />
-              <span className="text-xs font-medium text-primary">
+              <span className="text-[12px] font-medium text-[var(--color-accent)]">
                 {group.name}
               </span>
-              <span className="text-[10px] text-text-muted">
+              <span className="text-[10px] text-[var(--color-text-muted)]">
                 ({group.models.length})
               </span>
             </div>
@@ -299,12 +300,12 @@ export default function ModelSelectModal({
                     onClick={() => handleSelect(model)}
                     title={isPlaceholder ? "Select to pre-fill, then edit model ID in the input" : undefined}
                     className={`
-                      px-2 py-1 rounded-xl text-xs font-medium transition-all border hover:cursor-pointer
+                      px-2 py-1 rounded text-[12px] font-medium transition-all border hover:cursor-pointer
                       ${isPlaceholder
-                        ? "border-dashed border-border text-text-muted hover:border-primary/50 hover:text-primary bg-surface italic"
+                        ? "border-dashed border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[rgba(0,122,255,0.5)] hover:text-[var(--color-accent)] bg-[var(--color-surface)] italic"
                         : isSelected
-                          ? "bg-primary text-white border-primary"
-                          : "bg-surface border-border text-text-main hover:border-primary/50 hover:bg-primary/5"
+                          ? "bg-[var(--color-primary)] text-[var(--color-text-main)] border-primary"
+                          : "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-main)] hover:border-[rgba(0,122,255,0.5)] hover:bg-[var(--color-primary)]/5"
                       }
                     `}
                   >
@@ -327,11 +328,11 @@ export default function ModelSelectModal({
         ))}
 
         {Object.keys(filteredGroups).length === 0 && filteredCombos.length === 0 && (
-          <div className="text-center py-4 text-text-muted">
-            <span className="material-symbols-outlined text-2xl mb-1 block">
+          <div className="text-center py-4 text-[var(--color-text-muted)]">
+            <span className="material-symbols-outlined text-[24px] mb-1 block">
               search_off
             </span>
-            <p className="text-xs">No models found</p>
+            <p className="text-[12px]">No models found</p>
           </div>
         )}
       </div>

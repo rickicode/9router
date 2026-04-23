@@ -119,26 +119,26 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
 
   return (
     <>
-      <Card padding="sm" className="border-primary/20 bg-primary/5">
+      <Card padding="sm" className="border-primary/20 bg-[var(--color-primary)]/5">
         <div className="flex flex-col gap-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">security</span>
-              <span className="font-semibold text-sm text-text-main">MITM Server</span>
+              <span className="material-symbols-outlined text-[var(--color-accent)] text-[20px]">security</span>
+              <span className="font-medium text-[13px] text-[var(--color-text-main)]">MITM Server</span>
               {isRunning ? (
                 <Badge variant="success" size="sm">Running</Badge>
               ) : (
                 <Badge variant="default" size="sm">Stopped</Badge>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-text-muted" data-i18n-skip="true">
+            <div className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)]" data-i18n-skip="true">
               {[
                 { label: "Cert", ok: status?.certExists },
                 { label: "Trusted", ok: status?.certTrusted },
                 { label: "Server", ok: isRunning },
               ].map(({ label, ok }) => (
-                <span key={label} className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded ${ok ? "text-green-600" : "text-text-muted"}`}>
+                <span key={label} className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded ${ok ? "text-green-600" : "text-[var(--color-text-muted)]"}`}>
                   <span className="material-symbols-outlined text-[12px]">
                     {ok ? "check_circle" : "cancel"}
                   </span>
@@ -149,38 +149,38 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
           </div>
 
           {/* Purpose & How it works */}
-          <div className="px-2 py-2 rounded-lg bg-surface/50 border border-border/50 flex flex-col gap-2">
-            <p className="text-[11px] text-text-muted leading-relaxed">
-              <span className="font-medium text-text-main">Purpose:</span> Use Antigravity IDE & GitHub Copilot → with ANY provider/model from 9Router
+          <div className="px-2 py-2 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border)]/50 flex flex-col gap-2">
+            <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+              <span className="font-medium text-[var(--color-text-main)]">Purpose:</span> Use Antigravity IDE & GitHub Copilot → with ANY provider/model from 9Router
             </p>
-            <p className="text-[11px] text-text-muted leading-relaxed">
-              <span className="font-medium text-text-main">How it works:</span> Antigravity/Copilot IDE request → DNS redirect to localhost:443 → MITM proxy intercepts → 9Router → response to Antigravity/Copilot
+            <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+              <span className="font-medium text-[var(--color-text-main)]">How it works:</span> Antigravity/Copilot IDE request → DNS redirect to localhost:443 → MITM proxy intercepts → 9Router → response to Antigravity/Copilot
             </p>
           </div>
 
           {/* Base URL + API Key — same row pattern as Claude Code / cli-tools */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">9Router Base URL</span>
-              <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+              <span className="w-32 shrink-0 text-[13px] font-medium text-[var(--color-text-main)] text-right">9Router Base URL</span>
+              <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px]">arrow_forward</span>
               <input
                 type="text"
                 value={mitmRouterBaseUrl}
                 onChange={(e) => setMitmRouterBaseUrl(e.target.value)}
                 placeholder={DEFAULT_MITM_ROUTER_BASE}
                 disabled={isRunning}
-                className="flex-1 min-w-0 px-2 py-1.5 bg-surface rounded border border-border text-xs text-text-main focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
+                className="flex-1 min-w-0 px-2 py-1.5 bg-[var(--color-surface)] rounded border border-[var(--color-border)] text-[11px] text-[var(--color-text-main)] focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
               />
             </div>
             {!isRunning && (
               <div className="flex items-center gap-2">
-                <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">API Key</span>
-                <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                <span className="w-32 shrink-0 text-[13px] font-medium text-[var(--color-text-main)] text-right">API Key</span>
+                <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px]">arrow_forward</span>
                 {apiKeys?.length > 0 ? (
                   <select
                     value={selectedApiKey}
                     onChange={(e) => setSelectedApiKey(e.target.value)}
-                    className="flex-1 min-w-0 px-2 py-1.5 bg-surface rounded text-xs border border-border text-text-main focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    className="flex-1 min-w-0 px-2 py-1.5 bg-[var(--color-surface)] rounded text-[11px] border border-[var(--color-border)] text-[var(--color-text-main)] focus:outline-none focus:ring-1 focus:ring-primary/50"
                   >
                     {apiKeys.map((key) => (
                       <option key={key.id} value={key.key}>
@@ -189,7 +189,7 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
                     ))}
                   </select>
                 ) : (
-                  <span className="flex-1 px-2 py-1.5 text-xs text-text-muted">
+                  <span className="flex-1 px-2 py-1.5 text-[11px] text-[var(--color-text-muted)]">
                     {cloudEnabled ? "No API keys — create one in Keys page" : "sk_9router (default)"}
                   </span>
                 )}
@@ -203,7 +203,7 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
               <button
                 onClick={() => handleAction("trust-cert")}
                 disabled={loading}
-                className="px-4 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-600 font-medium text-xs flex items-center gap-1.5 hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 rounded bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30 text-[var(--color-warning)] font-medium text-[11px] flex items-center gap-1.5 hover:bg-[var(--color-warning)]/20 transition-colors disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[16px]">verified_user</span>
                 Trust Cert
@@ -213,7 +213,7 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
               <button
                 onClick={() => handleAction("stop")}
                 disabled={loading}
-                className="px-4 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 font-medium text-xs flex items-center gap-1.5 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 rounded bg-[var(--color-danger)]/10 border border-[rgba(255,59,48,0.3)] text-[var(--color-danger)] font-medium text-[11px] flex items-center gap-1.5 hover:bg-[var(--color-danger)]/20 transition-colors disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[16px]">stop_circle</span>
                 Stop Server
@@ -222,20 +222,20 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
               <button
                 onClick={() => handleAction("start")}
                 disabled={loading || (isWindows && !isAdmin)}
-                className="px-4 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary font-medium text-xs flex items-center gap-1.5 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 rounded bg-[var(--color-primary)]/10 border border-[rgba(0,122,255,0.3)] text-[var(--color-accent)] font-medium text-[11px] flex items-center gap-1.5 hover:bg-[var(--color-primary)]/20 transition-colors disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[16px]">play_circle</span>
                 Start Server
               </button>
             )}
             {isRunning && (
-              <p className="text-xs text-text-muted">Enable DNS per tool below to activate interception</p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">Enable DNS per tool below to activate interception</p>
             )}
           </div>
 
           {/* Action error */}
           {actionError && (
-            <div className="flex items-start gap-2 px-2 py-1.5 rounded text-xs bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+            <div className="flex items-start gap-2 px-2 py-1.5 rounded text-[11px] bg-[var(--color-danger)]/10 text-[var(--color-danger)] dark:text-[var(--color-danger)] border border-red-500/20">
               <span className="material-symbols-outlined text-[14px] mt-0.5 shrink-0">error</span>
               <span>{actionError}</span>
             </div>
@@ -243,7 +243,7 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
 
           {/* Windows admin warning */}
           {isWindows && !isAdmin && (
-            <div className="flex items-center gap-2 px-2 py-1.5 rounded text-xs bg-red-500/10 text-red-600 border border-red-500/20">
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded text-[11px] bg-[var(--color-danger)]/10 text-[var(--color-danger)] border border-red-500/20">
               <span className="material-symbols-outlined text-[14px]">shield_lock</span>
               <span>Administrator required — restart 9Router as Administrator to use MITM</span>
             </div>
@@ -253,12 +253,12 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
 
       {/* Password Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-surface border border-border rounded-xl p-6 w-full max-w-sm flex flex-col gap-4 shadow-xl">
-            <h3 className="font-semibold text-text-main">Sudo Password Required</h3>
-            <div className="flex items-start gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <span className="material-symbols-outlined text-yellow-500 text-[20px]">warning</span>
-              <p className="text-xs text-text-muted">Required for SSL certificate and server startup</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-primary)]/50 ">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-6 w-full max-w-sm flex flex-col gap-4 ">
+            <h3 className="font-medium text-[var(--color-text-main)]">Sudo Password Required</h3>
+            <div className="flex items-start gap-3 p-3 bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30 rounded">
+              <span className="material-symbols-outlined text-[var(--color-warning)] text-[20px]">warning</span>
+              <p className="text-[11px] text-[var(--color-text-muted)]">Required for SSL certificate and server startup</p>
             </div>
             <Input
               type="password"
@@ -268,7 +268,7 @@ export default function MitmServerCard({ apiKeys, cloudEnabled, onStatusChange }
               onKeyDown={(e) => { if (e.key === "Enter" && !loading) handleConfirmPassword(); }}
             />
             {modalError && (
-              <div className="flex items-center gap-2 px-2 py-1.5 rounded text-xs bg-red-500/10 text-red-600">
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded text-[11px] bg-[var(--color-danger)]/10 text-[var(--color-danger)]">
                 <span className="material-symbols-outlined text-[14px]">error</span>
                 <span>{modalError}</span>
               </div>

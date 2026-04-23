@@ -495,7 +495,7 @@ export default function AdvancedOverridesCard({
       title={getConfigTitle(variant)}
       subtitle={getCardSubtitle(variant, hasGeneratedArtifact, configFilename)}
       icon="settings"
-      className="rounded-[24px] border-black/5 shadow-[0_18px_46px_rgba(0,0,0,0.05)] dark:border-white/5"
+      className="rounded-[24px] border-[var(--color-border)] shadow-[0_18px_46px_rgba(0,0,0,0.05)] dark:border-white/5"
       action={
         <div className="flex flex-wrap items-center gap-2">
           {hasGeneratedArtifact ? (
@@ -516,62 +516,62 @@ export default function AdvancedOverridesCard({
       {collapsed ? (
         <div className="space-y-6">
           {hasGeneratedArtifact ? (
-            <div className="rounded-[22px] border border-primary/10 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent p-4 dark:border-primary/15">
+            <div className="rounded-[22px] border border-primary/10 bg-gradient-to-br from-[var(--color-primary)]/[0.05] via-transparent to-transparent p-4 dark:border-primary/15">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-text-main">{configFilename}</p>
-                  <p className="mt-1 text-xs text-text-muted">
+                  <p className="text-[13px] font-medium text-[var(--color-text-main)]">{configFilename}</p>
+                  <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
                     Generated advanced config for the selected variant. Keep it below the main opencode.json flow.
                   </p>
                 </div>
-                <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
+                <span className="material-symbols-outlined text-[18px] text-[var(--color-accent)]">tune</span>
               </div>
-              <pre className="mt-4 max-h-[18rem] overflow-auto rounded-[18px] border border-black/5 bg-[#0b1020] px-4 py-4 text-xs leading-6 text-slate-100 dark:border-white/5">
+              <pre className="mt-4 max-h-[18rem] overflow-auto rounded-[18px] border border-[var(--color-border)] bg-[var(--color-primary)] px-4 py-4 text-[11px] leading-6 text-[var(--color-text-inverse)] dark:border-white/5">
                 <code>{prettyJson(generatedVariantConfig)}</code>
               </pre>
             </div>
           ) : (
-            <div className="rounded-[22px] border border-dashed border-black/8 bg-black/[0.015] p-4 text-sm text-text-muted dark:border-white/10 dark:bg-white/[0.015]">
+            <div className="rounded-[22px] border border-dashed border-black/8 bg-black/[0.015] p-4 text-[13px] text-[var(--color-text-muted)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/[0.015]">
               {getMissingVariantArtifactCopy(variant)}
             </div>
           )}
-          <p className="text-sm text-text-muted">
+          <p className="text-[13px] text-[var(--color-text-muted)]">
             Expand only if you need to change overrides, assignments, LSP servers, or raw JSON.
           </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-          {parseError ? <p className="text-sm text-red-600 dark:text-red-400">{parseError}</p> : null}
+          {error ? <p className="text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">{error}</p> : null}
+          {parseError ? <p className="text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">{parseError}</p> : null}
 
           {hasGeneratedArtifact ? (
-            <div className="rounded-[24px] border border-black/5 bg-white/[0.78] px-5 py-5 dark:border-white/5 dark:bg-white/[0.02]">
+            <div className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/[0.78] px-5 py-5 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
               <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-text-main">Generated output</p>
-                <p className="text-xs leading-5 text-text-muted">Preview of the current generated advanced file for this variant.</p>
+                <p className="text-[13px] font-medium text-[var(--color-text-main)]">Generated output</p>
+                <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Preview of the current generated advanced file for this variant.</p>
               </div>
-              <pre className="mt-4 max-h-[18rem] overflow-auto rounded-[18px] border border-black/5 bg-[#0b1020] px-4 py-4 text-xs leading-6 text-slate-100 dark:border-white/5">
+              <pre className="mt-4 max-h-[18rem] overflow-auto rounded-[18px] border border-[var(--color-border)] bg-[var(--color-primary)] px-4 py-4 text-[11px] leading-6 text-[var(--color-text-inverse)] dark:border-white/5">
                 <code>{prettyJson(generatedVariantConfig)}</code>
               </pre>
             </div>
           ) : null}
 
-          <div className="rounded-[24px] border border-black/5 bg-white/[0.78] px-5 py-5 dark:border-white/5 dark:bg-white/[0.02]">
+          <div className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/[0.78] px-5 py-5 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-text-main">Assignment controls</p>
-                <p className="text-xs leading-5 text-text-muted">Use a preset as a starting point, then refine assignments and supporting servers below.</p>
+                <p className="text-[13px] font-medium text-[var(--color-text-main)]">Assignment controls</p>
+                <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Use a preset as a starting point, then refine assignments and supporting servers below.</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="text-sm font-medium text-text-main" htmlFor={`preset-${variant}`}>
+                  <label className="text-[13px] font-medium text-[var(--color-text-main)]" htmlFor={`preset-${variant}`}>
                     Preset
                   </label>
                   <select
                     id={`preset-${variant}`}
                     value={draft.preset || ""}
                     onChange={(event) => applyPreset(event.target.value)}
-                    className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm text-text-main dark:border-white/10 dark:bg-white/5"
+                    className="h-10 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--color-text-main)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]"
                     disabled={variant === "custom"}
                   >
                     {ASSIGNMENT_PRESET_OPTIONS.map((option) => (
@@ -589,24 +589,24 @@ export default function AdvancedOverridesCard({
           </div>
 
           {variant === "custom" ? (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            <div className="rounded border border-[rgba(255,159,10,0.2)] bg-[var(--color-warning)]/5 px-4 py-3 text-[13px] text-[var(--color-warning)] ">
               Custom / No preset uses raw JSON overrides instead of the preset matrix.
             </div>
           ) : null}
 
           {variant !== "custom" ? (
             <div className="grid gap-5 lg:grid-cols-2">
-              <div className="space-y-4 rounded-[24px] border border-black/10 bg-white/60 px-5 py-5 dark:border-white/10 dark:bg-white/5">
+              <div className="space-y-4 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-5 py-5 dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]">
                 <div className="space-y-1">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Agent assignments</h4>
-                  <p className="text-xs leading-5 text-text-muted">Map each agent with enough breathing room to compare selections comfortably.</p>
+                  <h4 className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Agent assignments</h4>
+                  <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Map each agent with enough breathing room to compare selections comfortably.</p>
                 </div>
                 {agentRows.map((row) => (
-                  <div key={row.id} className="rounded-[18px] border border-black/5 px-4 py-3.5 dark:border-white/5">
+                  <div key={row.id} className="rounded-[18px] border border-[var(--color-border)] px-4 py-3.5 dark:border-white/5">
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <div>
-                        <p className="text-sm font-medium text-text-main">{row.label}</p>
-                        <p className="mt-1 text-xs text-text-muted">{row.note}</p>
+                        <p className="text-[13px] font-medium text-[var(--color-text-main)]">{row.label}</p>
+                        <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{row.note}</p>
                       </div>
                       <Button
                         variant="secondary"
@@ -627,17 +627,17 @@ export default function AdvancedOverridesCard({
                 ))}
               </div>
 
-              <div className="space-y-4 rounded-[24px] border border-black/10 bg-white/60 px-5 py-5 dark:border-white/10 dark:bg-white/5">
+              <div className="space-y-4 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-5 py-5 dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]">
                 <div className="space-y-1">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Category assignments</h4>
-                  <p className="text-xs leading-5 text-text-muted">Keep routing separate from agent mapping so the advanced matrix is easier to scan.</p>
+                  <h4 className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Category assignments</h4>
+                  <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Keep routing separate from agent mapping so the advanced matrix is easier to scan.</p>
                 </div>
                 {categoryRows.map((row) => (
-                  <div key={row.id} className="rounded-[18px] border border-black/5 px-4 py-3.5 dark:border-white/5">
+                  <div key={row.id} className="rounded-[18px] border border-[var(--color-border)] px-4 py-3.5 dark:border-white/5">
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <div>
-                        <p className="text-sm font-medium text-text-main">{row.label}</p>
-                        <p className="mt-1 text-xs text-text-muted">{row.note}</p>
+                        <p className="text-[13px] font-medium text-[var(--color-text-main)]">{row.label}</p>
+                        <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{row.note}</p>
                       </div>
                       <Button
                         variant="secondary"
@@ -660,38 +660,38 @@ export default function AdvancedOverridesCard({
             </div>
           ) : null}
 
-          <div className="space-y-4 rounded-[24px] border border-emerald-500/20 bg-emerald-500/5 px-5 py-5">
+          <div className="space-y-4 rounded-[24px] border border-[var(--color-success)]/20 bg-emerald-500/5 px-5 py-5">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">LSP Servers</h4>
-                <p className="text-xs leading-5 text-text-muted">Add optional language server entries without crowding the assignments above.</p>
+                <h4 className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-success)] ">LSP Servers</h4>
+                <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Add optional language server entries without crowding the assignments above.</p>
               </div>
               <Button variant="ghost" size="sm" onClick={addLspServer}>Add row</Button>
             </div>
 
             {(draft.lspServers || []).length === 0 ? (
-              <p className="text-sm text-text-muted">No LSP servers configured.</p>
+              <p className="text-[13px] text-[var(--color-text-muted)]">No LSP servers configured.</p>
             ) : (
               <div className="space-y-3">
                 {(draft.lspServers || []).map((server, index) => (
-                  <div key={`${server.language || "lang"}-${index}`} className="grid gap-3 rounded-[18px] border border-emerald-500/20 bg-white/70 p-4 md:grid-cols-[140px_1fr_1fr_auto] dark:bg-white/5">
+                  <div key={`${server.language || "lang"}-${index}`} className="grid gap-3 rounded-[18px] border border-[var(--color-success)]/20 bg-[var(--color-surface)]/70 p-4 md:grid-cols-[140px_1fr_1fr_auto] dark:bg-[var(--color-surface)]">
                     <input
                       value={server.language || ""}
                       onChange={(event) => updateLspServer(index, "language", event.target.value)}
                       placeholder="language"
-                      className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs text-text-main dark:border-white/10 dark:bg-white/5"
+                      className="h-9 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-main)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]"
                     />
                     <input
                       value={server.command || ""}
                       onChange={(event) => updateLspServer(index, "command", event.target.value)}
                       placeholder="command"
-                      className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs text-text-main dark:border-white/10 dark:bg-white/5"
+                      className="h-9 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-main)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]"
                     />
                     <input
                       value={server.args || ""}
                       onChange={(event) => updateLspServer(index, "args", event.target.value)}
                       placeholder="args"
-                      className="h-9 rounded-lg border border-black/10 bg-white px-3 text-xs text-text-main dark:border-white/10 dark:bg-white/5"
+                      className="h-9 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[11px] text-[var(--color-text-main)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]"
                     />
                     <Button variant="ghost" size="sm" onClick={() => removeLspServer(index)}>Remove</Button>
                   </div>
@@ -704,7 +704,7 @@ export default function AdvancedOverridesCard({
             <textarea
               value={rawValue}
               onChange={(event) => setRawValue(event.target.value)}
-              className="min-h-[260px] w-full rounded-[22px] border border-black/10 bg-white px-4 py-4 font-mono text-sm text-text-main shadow-inner outline-none transition-all focus:border-primary/50 focus:ring-1 focus:ring-primary/30 dark:border-white/10 dark:bg-white/5"
+              className="min-h-[260px] w-full rounded-[22px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 font-mono text-[13px] text-[var(--color-text-main)] shadow-inner outline-none transition-all focus:border-[rgba(0,122,255,0.5)] focus:ring-1 focus:ring-primary/30 dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]"
               spellCheck={false}
             />
           ) : null}

@@ -417,46 +417,46 @@ export default function ProfilePage() {
   const observabilityEnabled = settings.enableObservability === true;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="flex flex-col gap-6">
         {/* Local Mode Info */}
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <div className="size-12 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">computer</span>
+              <div className="flex items-center justify-center w-12 h-12 rounded bg-[var(--color-success)]/10 text-[var(--color-success)]">
+                <span className="material-symbols-outlined text-[24px]">computer</span>
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Local Mode</h2>
-                <p className="text-text-muted">Running on your machine</p>
+                <h2 className="text-[16px] font-medium">Local Mode</h2>
+                <p className="text-[var(--color-text-muted)]">Running on your machine</p>
               </div>
             </div>
-            <div className="inline-flex p-1 rounded-lg bg-black/5 dark:bg-white/5">
+            <div className="inline-flex p-1 rounded-[4px] bg-[#f1eeee]">
               {["light", "dark", "system"].map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setTheme(option)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] font-medium transition-all",
                     theme === option
-                      ? "bg-white dark:bg-white/10 text-text-main shadow-sm"
-                      : "text-text-muted hover:text-text-main"
+                      ? "bg-[var(--color-surface)] text-[var(--color-text-main)]"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
                   )}
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {option === "light" ? "light_mode" : option === "dark" ? "dark_mode" : "contrast"}
                   </span>
-                  <span className="capitalize text-sm">{option}</span>
+                  <span className="capitalize text-[14px]">{option}</span>
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex flex-col gap-3 pt-4 border-t border-border">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-bg border border-border">
+          <div className="flex flex-col gap-3 pt-4 border-t border-[var(--color-border)]">
+            <div className="flex items-center justify-between p-3 rounded-[4px] bg-[var(--color-bg-alt)] border border-[var(--color-border)]">
               <div>
                 <p className="font-medium">Database Location</p>
-                <p className="text-sm text-text-muted font-mono">~/.9router/db.json</p>
+                <p className="text-[14px] text-[var(--color-text-muted)] font-mono">~/.9router/db.json</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -485,7 +485,7 @@ export default function ProfilePage() {
               />
             </div>
             {dbStatus.message && (
-              <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
+              <p className={`text-[14px] ${dbStatus.type === "error" ? "text-[var(--color-danger)]" : "text-[var(--color-success)]"}`}>
                 {dbStatus.message}
               </p>
             )}
@@ -495,16 +495,16 @@ export default function ProfilePage() {
         {/* Security */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <div className="p-2 rounded-[4px] bg-[var(--color-primary)]/10 text-[var(--color-accent)]">
               <span className="material-symbols-outlined text-[20px]">shield</span>
             </div>
-            <h3 className="text-lg font-semibold">Security</h3>
+            <h3 className="text-[16px] font-medium">Security</h3>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Require login</p>
-                <p className="text-sm text-text-muted">
+                <p className="text-[14px] text-[var(--color-text-muted)]">
                   When ON, dashboard requires password. When OFF, access without login.
                 </p>
               </div>
@@ -515,10 +515,10 @@ export default function ProfilePage() {
               />
             </div>
             {settings.requireLogin === true && (
-              <form onSubmit={handlePasswordChange} className="flex flex-col gap-4 pt-4 border-t border-border/50">
+              <form onSubmit={handlePasswordChange} className="flex flex-col gap-4 pt-4 border-t border-[var(--color-border)]/50">
                 {settings.hasPassword && (
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">Current Password</label>
+                    <label className="text-[13px] font-medium">Current Password</label>
                     <Input
                       type="password"
                       placeholder="Enter current password"
@@ -529,15 +529,15 @@ export default function ProfilePage() {
                   </div>
                 )}
                 {/* {!settings.hasPassword && (
-                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-sm text-blue-600 dark:text-blue-400">
-                      Setting password for the first time. Leave current password empty or use default: <code className="bg-blue-500/20 px-1 rounded">123456</code>
+                  <div className="p-3 rounded bg-[var(--color-accent)]/10 border border-blue-500/20">
+                    <p className="text-[13px] text-[var(--color-accent)] dark:text-[var(--color-accent)]">
+                      Setting password for the first time. Leave current password empty or use default: <code className="bg-[var(--color-accent)]/20 px-1 rounded">123456</code>
                     </p>
                   </div>
                 )} */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">New Password</label>
+                    <label className="text-[13px] font-medium">New Password</label>
                     <Input
                       type="password"
                       placeholder="Enter new password"
@@ -547,7 +547,7 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">Confirm New Password</label>
+                    <label className="text-[13px] font-medium">Confirm New Password</label>
                     <Input
                       type="password"
                       placeholder="Confirm new password"
@@ -559,7 +559,7 @@ export default function ProfilePage() {
                 </div>
 
                 {passStatus.message && (
-                  <p className={`text-sm ${passStatus.type === "error" ? "text-red-500" : "text-green-500"}`}>
+                  <p className={`text-[13px] ${passStatus.type === "error" ? "text-[var(--color-danger)]" : "text-[var(--color-success)]"}`}>
                     {passStatus.message}
                   </p>
                 )}
@@ -577,16 +577,16 @@ export default function ProfilePage() {
         {/* Routing Preferences */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+            <div className="p-2 rounded-[4px] bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
               <span className="material-symbols-outlined text-[20px]">route</span>
             </div>
-            <h3 className="text-lg font-semibold">Routing Strategy</h3>
+            <h3 className="text-[16px] font-medium">Routing Strategy</h3>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Round Robin</p>
-                <p className="text-sm text-text-muted">
+                <p className="text-[14px] text-[var(--color-text-muted)]">
                   Cycle through accounts to distribute load
                 </p>
               </div>
@@ -599,10 +599,10 @@ export default function ProfilePage() {
 
             {/* Sticky Round Robin Limit */}
             {settings.fallbackStrategy === "round-robin" && (
-              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]/50">
                 <div>
                   <p className="font-medium">Sticky Limit</p>
-                  <p className="text-sm text-text-muted">
+                  <p className="text-[14px] text-[var(--color-text-muted)]">
                     Calls per account before switching
                   </p>
                 </div>
@@ -619,10 +619,10 @@ export default function ProfilePage() {
             )}
 
             {/* Combo Round Robin */}
-            <div className="flex items-center justify-between pt-4 border-t border-border/50">
+            <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]/50">
               <div>
                 <p className="font-medium">Combo Round Robin</p>
-                <p className="text-sm text-text-muted">
+                <p className="text-[14px] text-[var(--color-text-muted)]">
                   Cycle through providers in combos instead of always starting with first
                 </p>
               </div>
@@ -633,7 +633,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <p className="text-xs text-text-muted italic pt-2 border-t border-border/50">
+            <p className="text-[14px] text-[var(--color-text-muted)] italic pt-2 border-t border-[var(--color-border)]/50">
               {settings.fallbackStrategy === "round-robin"
                 ? `Currently distributing requests across all available accounts with ${settings.stickyRoundRobinLimit || 3} calls per account.`
                 : "Currently using accounts in priority order (Fill First)."}
@@ -644,17 +644,17 @@ export default function ProfilePage() {
         {/* Network */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+            <div className="p-2 rounded-[4px] bg-[rgba(147,51,234,0.1)] text-[#9333ea]">
               <span className="material-symbols-outlined text-[20px]">wifi</span>
             </div>
-            <h3 className="text-lg font-semibold">Network</h3>
+            <h3 className="text-[16px] font-medium">Network</h3>
           </div>
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Outbound Proxy</p>
-                <p className="text-sm text-text-muted">Enable proxy for OAuth + provider outbound requests.</p>
+                <p className="text-[14px] text-[var(--color-text-muted)]">Enable proxy for OAuth + provider outbound requests.</p>
               </div>
               <Toggle
                 checked={settings.outboundProxyEnabled === true}
@@ -664,7 +664,7 @@ export default function ProfilePage() {
             </div>
 
             {settings.outboundProxyEnabled === true && (
-              <form onSubmit={updateOutboundProxy} className="flex flex-col gap-4 pt-2 border-t border-border/50">
+              <form onSubmit={updateOutboundProxy} className="flex flex-col gap-4 pt-2 border-t border-[var(--color-border)]/50">
                 <div className="flex flex-col gap-2">
                   <label className="font-medium">Proxy URL</label>
                   <Input
@@ -673,10 +673,10 @@ export default function ProfilePage() {
                     onChange={(e) => setProxyForm((prev) => ({ ...prev, outboundProxyUrl: e.target.value }))}
                     disabled={loading || proxyLoading}
                   />
-                  <p className="text-sm text-text-muted">Leave empty to inherit existing env proxy (if any).</p>
+                  <p className="text-[14px] text-[var(--color-text-muted)]">Leave empty to inherit existing env proxy (if any).</p>
                 </div>
 
-                <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
+                <div className="flex flex-col gap-2 pt-2 border-t border-[var(--color-border)]/50">
                   <label className="font-medium">No Proxy</label>
                   <Input
                     placeholder="localhost,127.0.0.1"
@@ -684,10 +684,10 @@ export default function ProfilePage() {
                     onChange={(e) => setProxyForm((prev) => ({ ...prev, outboundNoProxy: e.target.value }))}
                     disabled={loading || proxyLoading}
                   />
-                  <p className="text-sm text-text-muted">Comma-separated hostnames/domains to bypass the proxy.</p>
+                  <p className="text-[14px] text-[var(--color-text-muted)]">Comma-separated hostnames/domains to bypass the proxy.</p>
                 </div>
 
-                <div className="pt-2 border-t border-border/50 flex items-center gap-2">
+                <div className="pt-2 border-t border-[var(--color-border)]/50 flex items-center gap-2">
                   <Button
                     type="button"
                     variant="secondary"
@@ -705,7 +705,7 @@ export default function ProfilePage() {
             )}
 
             {proxyStatus.message && (
-              <p className={`text-sm ${proxyStatus.type === "error" ? "text-red-500" : "text-green-500"} pt-2 border-t border-border/50`}>
+              <p className={`text-[14px] ${proxyStatus.type === "error" ? "text-[var(--color-danger)]" : "text-[var(--color-success)]"} pt-2 border-t border-[var(--color-border)]/50`}>
                 {proxyStatus.message}
               </p>
             )}
@@ -715,15 +715,15 @@ export default function ProfilePage() {
         {/* Observability Settings */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
+            <div className="p-2 rounded-[4px] bg-[var(--color-warning)]/10 text-[var(--color-warning)]">
               <span className="material-symbols-outlined text-[20px]">monitoring</span>
             </div>
-            <h3 className="text-lg font-semibold">Observability</h3>
+            <h3 className="text-[16px] font-medium">Observability</h3>
           </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Enable Observability</p>
-              <p className="text-sm text-text-muted">
+              <p className="text-[14px] text-[var(--color-text-muted)]">
                 Record request details for inspection in the logs view
               </p>
             </div>
@@ -737,12 +737,12 @@ export default function ProfilePage() {
 
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+            <div className="p-2 rounded-[4px] bg-[var(--color-success)]/10 text-[var(--color-success)]">
               <span className="material-symbols-outlined text-[20px]">schedule</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold">Quota Scheduler</h3>
-              <p className="text-sm text-text-muted">Control automatic quota refresh checks for supported accounts.</p>
+              <h3 className="text-[16px] font-medium">Quota Scheduler</h3>
+              <p className="text-[14px] text-[var(--color-text-muted)]">Control automatic quota refresh checks for supported accounts.</p>
             </div>
           </div>
 
@@ -750,7 +750,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Enable scheduler</p>
-                <p className="text-sm text-text-muted">Automatically refresh quota status in the background.</p>
+                <p className="text-[14px] text-[var(--color-text-muted)]">Automatically refresh quota status in the background.</p>
               </div>
               <Toggle
                 checked={quotaForm.enabled}
@@ -759,7 +759,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <form onSubmit={applyQuotaSettings} className="flex flex-col gap-3 pt-4 border-t border-border/50">
+            <form onSubmit={applyQuotaSettings} className="flex flex-col gap-3 pt-4 border-t border-[var(--color-border)]/50">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div className="flex-1 grid gap-3 md:grid-cols-2 md:items-end">
                   <Input
@@ -799,13 +799,13 @@ export default function ProfilePage() {
                 </Button>
               </div>
 
-              <div className="rounded-lg border border-border/60 bg-bg px-3 py-2 text-sm text-text-muted">
+              <div className="rounded-[4px] border border-[var(--color-border)]/60 bg-[var(--color-bg-alt)] px-3 py-2 text-[14px] text-[var(--color-text-muted)]">
                 Current cadence: every {Math.max(15, Math.round((settings?.quotaScheduler?.cadenceMs || 900000) / 60000))} minutes
               </div>
             </form>
 
             {quotaStatus.message && (
-              <p className={`text-sm ${quotaStatus.type === "error" ? "text-red-500" : "text-green-500"} pt-2 border-t border-border/50`}>
+              <p className={`text-[14px] ${quotaStatus.type === "error" ? "text-[var(--color-danger)]" : "text-[var(--color-success)]"} pt-2 border-t border-[var(--color-border)]/50`}>
                 {quotaStatus.message}
               </p>
             )}
@@ -813,7 +813,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* App Info */}
-        <div className="text-center text-sm text-text-muted py-4">
+        <div className="text-center text-[14px] text-[var(--color-text-muted)] py-4">
           <p>{APP_CONFIG.name} v{APP_CONFIG.version}</p>
           <p className="mt-1">Local Mode - All data stored on your machine</p>
         </div>

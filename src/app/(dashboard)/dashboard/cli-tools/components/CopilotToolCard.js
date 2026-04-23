@@ -39,7 +39,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
 
   // Pre-fill model list from existing config
   useEffect(() => {
-    if (status?.config && Array.isArray(status.config) && modelList.length === 0) {
+    if (status?.config && Array.isArray(status.config) && modelList?.length === 0) {
       const entry = status.config.find((e) => e.name === "9Router");
       if (entry?.models?.length > 0) {
         setModelList(entry.models.map((m) => m.id));
@@ -164,25 +164,25 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
       <div className="flex items-center justify-between hover:cursor-pointer" onClick={onToggle}>
         <div className="flex items-center gap-3">
           <div className="size-8 flex items-center justify-center shrink-0">
-            <Image src="/providers/copilot.png" alt={tool.name} width={32} height={32} className="size-8 object-contain rounded-lg" sizes="32px" onError={(e) => { e.target.style.display = "none"; }} />
+            <Image src="/providers/copilot.png" alt={tool.name} width={32} height={32} className="size-8 object-contain rounded" sizes="32px" onError={(e) => { e.target.style.display = "none"; }} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-sm">{tool.name}</h3>
-              {configStatus === "configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-600 dark:text-green-400 rounded-full">Connected</span>}
-              {configStatus === "not_configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full">Not configured</span>}
-              {configStatus === "other" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">Other</span>}
+              <h3 className="font-medium text-[13px]">{tool.name}</h3>
+              {configStatus === "configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-success)]/10 text-[var(--color-success)] dark:text-green-400 rounded">Connected</span>}
+              {configStatus === "not_configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-warning)]/10 text-[var(--color-warning)]  rounded">Not configured</span>}
+              {configStatus === "other" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-accent)]/10 text-[var(--color-accent)] dark:text-[var(--color-accent)] rounded">Other</span>}
             </div>
-            <p className="text-xs text-text-muted truncate">{tool.description}</p>
+            <p className="text-[11px] text-[var(--color-text-muted)] truncate">{tool.description}</p>
           </div>
         </div>
-        <span className={`material-symbols-outlined text-text-muted text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
+        <span className={`material-symbols-outlined text-[var(--color-text-muted)] text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
       </div>
 
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-border flex flex-col gap-4">
+        <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex flex-col gap-4">
           {checking && (
-            <div className="flex items-center gap-2 text-text-muted">
+            <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
               <span className="material-symbols-outlined animate-spin">progress_activity</span>
               <span>Checking Copilot config...</span>
             </div>
@@ -191,10 +191,10 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
           {!checking && (
             <>
               {/* Info */}
-              <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <span className="material-symbols-outlined text-blue-500 text-lg">info</span>
-                <div className="text-xs text-blue-700 dark:text-blue-300">
-                  <p className="font-medium">Writes to <code className="px-1 bg-black/5 dark:bg-white/10 rounded">chatLanguageModels.json</code></p>
+              <div className="flex items-start gap-3 p-3 bg-[var(--color-accent)]/10 border border-[rgba(0,122,255,0.3)] rounded">
+                <span className="material-symbols-outlined text-[var(--color-accent)] text-[16px]">info</span>
+                <div className="text-[11px] text-[var(--color-accent-hover)] ">
+                  <p className="font-medium">Writes to <code className="px-1 bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] rounded">chatLanguageModels.json</code></p>
                   <p className="mt-0.5 opacity-80">Reload VS Code after applying for changes to take effect.</p>
                 </div>
               </div>
@@ -202,13 +202,13 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
               <div className="flex flex-col gap-3">
                 {/* API Key */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-text-muted">API Key</label>
-                  {apiKeys.length > 0 ? (
-                    <select value={selectedApiKey} onChange={(e) => setSelectedApiKey(e.target.value)} className="px-3 py-2 bg-bg-secondary rounded-lg text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary/50">
+                  <label className="text-[11px] font-medium text-[var(--color-text-muted)]">API Key</label>
+                  {apiKeys?.length > 0 ? (
+                    <select value={selectedApiKey} onChange={(e) => setSelectedApiKey(e.target.value)} className="px-3 py-2 bg-[var(--color-bg-alt)]-secondary rounded text-[13px] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-primary/50">
                       {apiKeys.map((key) => <option key={key.id} value={key.key}>{key.key}</option>)}
                     </select>
                   ) : (
-                    <span className="text-sm text-text-muted">
+                    <span className="text-[13px] text-[var(--color-text-muted)]">
                       {cloudEnabled ? "No API keys - Create one in Keys page" : "sk_9router (default)"}
                     </span>
                   )}
@@ -216,17 +216,17 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
 
                 {/* Model input + Add */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-text-muted">
-                    Models {modelList.length > 0 && <span className="text-primary">({modelList.length} added)</span>}
+                  <label className="text-[11px] font-medium text-[var(--color-text-muted)]">
+                    Models {modelList?.length > 0 && <span className="text-[var(--color-accent)]">({modelList?.length} added)</span>}
                   </label>
 
                   {/* Model list */}
-                  {modelList.length > 0 && (
+                  {modelList?.length > 0 && (
                     <div className="flex flex-col gap-1 mb-1">
                       {modelList.map((id) => (
-                        <div key={id} className="flex items-center gap-2 px-3 py-1.5 bg-bg-secondary rounded-lg border border-border">
-                          <span className="flex-1 text-sm font-mono truncate">{id}</span>
-                          <button onClick={() => removeModel(id)} className="text-text-muted hover:text-red-500 transition-colors" title="Remove">
+                        <div key={id} className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-alt)]-secondary rounded border border-[var(--color-border)]">
+                          <span className="flex-1 text-[13px] font-mono truncate">{id}</span>
+                          <button onClick={() => removeModel(id)} className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors" title="Remove">
                             <span className="material-symbols-outlined text-[14px]">close</span>
                           </button>
                         </div>
@@ -241,10 +241,10 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
                       onChange={(e) => setModelInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addModel()}
                       placeholder="provider/model-id"
-                      className="flex-1 px-3 py-2 bg-bg-secondary rounded-lg text-sm border border-border focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      className="flex-1 px-3 py-2 bg-[var(--color-bg-alt)]-secondary rounded text-[13px] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />
-                    <button onClick={() => setModalOpen(true)} disabled={!activeProviders?.length} className={`px-3 py-2 rounded-lg border text-sm transition-colors shrink-0 ${activeProviders?.length ? "bg-bg-secondary border-border hover:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed border-border"}`}>Select</button>
-                    <button onClick={addModel} disabled={!modelInput.trim()} className="px-3 py-2 rounded-lg border text-sm bg-bg-secondary border-border hover:border-primary transition-colors shrink-0 disabled:opacity-50" title="Add model">
+                    <button onClick={() => setModalOpen(true)} disabled={!activeProviders?.length} className={`px-3 py-2 rounded border text-[13px] transition-colors shrink-0 ${activeProviders?.length ? "bg-[var(--color-bg-alt)]-secondary border-[var(--color-border)] hover:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed border-[var(--color-border)]"}`}>Select</button>
+                    <button onClick={addModel} disabled={!modelInput.trim()} className="px-3 py-2 rounded border text-[13px] bg-[var(--color-bg-alt)]-secondary border-[var(--color-border)] hover:border-primary transition-colors shrink-0 disabled:opacity-50" title="Add model">
                       <span className="material-symbols-outlined text-[16px]">add</span>
                     </button>
                   </div>
@@ -252,20 +252,20 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
               </div>
 
               {message && (
-                <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs ${message.type === "success" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
+                <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${message.type === "success" ? "bg-[var(--color-success)]/10 text-[var(--color-success)]" : "bg-[var(--color-danger)]/10 text-[var(--color-danger)]"}`}>
                   <span className="material-symbols-outlined text-[14px]">{message.type === "success" ? "check_circle" : "error"}</span>
                   <span>{message.text}</span>
                 </div>
               )}
 
               <div className="flex items-center gap-2">
-                <Button variant="primary" size="sm" onClick={handleApply} disabled={modelList.length === 0} loading={applying}>
+                <Button variant="primary" size="sm" onClick={handleApply} disabled={modelList?.length === 0} loading={applying}>
                   <span className="material-symbols-outlined text-[14px] mr-1">save</span>Apply
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleReset} disabled={!status?.has9Router} loading={restoring}>
                   <span className="material-symbols-outlined text-[14px] mr-1">restore</span>Reset
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)} disabled={modelList.length === 0}>
+                <Button variant="ghost" size="sm" onClick={() => setShowManualConfigModal(true)} disabled={modelList?.length === 0}>
                   <span className="material-symbols-outlined text-[14px] mr-1">content_copy</span>Manual Config
                 </Button>
               </div>

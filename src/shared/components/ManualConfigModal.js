@@ -21,7 +21,7 @@ export default function ManualConfigModal({ isOpen, onClose, title = "Manual Con
         {configs.map((config, index) => (
           <div key={index} className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-text-main">{config.filename}</span>
+              <span className="text-[14px] font-medium text-[var(--color-text-main)]">{config.filename}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -33,7 +33,7 @@ export default function ManualConfigModal({ isOpen, onClose, title = "Manual Con
                 {copiedIndex === index ? "Copied!" : "Copy"}
               </Button>
             </div>
-            <pre className="px-3 py-2 bg-black/5 dark:bg-white/5 rounded font-mono text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-60 overflow-y-auto border border-border">
+            <pre className="px-3 py-2 bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.05)] rounded font-mono text-[12px] overflow-x-auto whitespace-pre-wrap break-all max-h-60 overflow-y-auto border border-[var(--color-border)]">
               {config.content}
             </pre>
           </div>

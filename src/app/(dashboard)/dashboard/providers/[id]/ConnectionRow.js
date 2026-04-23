@@ -133,35 +133,35 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   })();
 
   return (
-    <div className={`group flex items-center justify-between p-2 rounded-lg hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors ${connection.isActive === false ? "opacity-60" : ""}`}>
+    <div className={`group flex items-center justify-between p-2 rounded hover:bg-black/[0.02] dark:hover:bg-[var(--color-surface)]/[0.02] transition-colors ${connection.isActive === false ? "opacity-60" : ""}`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {/* Priority arrows */}
         <div className="flex flex-col">
           <button
             onClick={onMoveUp}
             disabled={isFirst}
-            className={`p-0.5 rounded ${isFirst ? "text-text-muted/30 cursor-not-allowed" : "hover:bg-sidebar text-text-muted hover:text-primary"}`}
+            className={`p-0.5 rounded ${isFirst ? "text-[var(--color-text-muted)]/30 cursor-not-allowed" : "hover:bg-[var(--color-primary)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"}`}
           >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_up</span>
+            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_up</span>
           </button>
           <button
             onClick={onMoveDown}
             disabled={isLast}
-            className={`p-0.5 rounded ${isLast ? "text-text-muted/30 cursor-not-allowed" : "hover:bg-sidebar text-text-muted hover:text-primary"}`}
+            className={`p-0.5 rounded ${isLast ? "text-[var(--color-text-muted)]/30 cursor-not-allowed" : "hover:bg-[var(--color-primary)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"}`}
           >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
           </button>
         </div>
-        <span className="material-symbols-outlined text-base text-text-muted">
+        <span className="material-symbols-outlined text-base text-[var(--color-text-muted)]">
           {isOAuth ? "lock" : "key"}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{displayName}</p>
+          <p className="text-[13px] font-medium truncate">{displayName}</p>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant={statusBadge.variant} size="sm" dot>
               {statusBadge.label}
             </Badge>
-            <span className="text-[11px] text-text-muted capitalize" title={`Status source: ${statusDetails.source}`}>
+            <span className="text-[11px] text-[var(--color-text-muted)] capitalize" title={`Status source: ${statusDetails.source}`}>
               {statusReasonLabel}
             </span>
             {hasAnyProxy && (
@@ -171,27 +171,27 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             )}
             {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
             {connection.lastError && connection.isActive !== false && (
-              <span className="text-xs text-red-500 truncate max-w-[300px]" title={connection.lastError}>
+              <span className="text-[11px] text-[var(--color-danger)] truncate max-w-[300px]" title={connection.lastError}>
                 {connection.lastError}
               </span>
             )}
-            <span className="text-xs text-text-muted">#{connection.priority}</span>
+            <span className="text-[11px] text-[var(--color-text-muted)]">#{connection.priority}</span>
             {connection.globalPriority && (
-              <span className="text-xs text-text-muted">Auto: {connection.globalPriority}</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">Auto: {connection.globalPriority}</span>
             )}
           </div>
           {hasAnyProxy && (
             <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] text-text-muted truncate max-w-[420px]" title={proxyDisplayText}>
+              <span className="text-[11px] text-[var(--color-text-muted)] truncate max-w-[420px]" title={proxyDisplayText}>
                 {proxyDisplayText}
               </span>
               {maskedProxyUrl && (
-                <code className="text-[10px] font-mono bg-black/5 dark:bg-white/5 px-1 py-0.5 rounded text-text-muted">
+                <code className="text-[10px] font-mono bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] px-1 py-0.5 rounded text-[var(--color-text-muted)]">
                   {maskedProxyUrl}
                 </code>
               )}
               {noProxyText && (
-                <span className="text-[11px] text-text-muted truncate max-w-[320px]" title={noProxyText}>
+                <span className="text-[11px] text-[var(--color-text-muted)] truncate max-w-[320px]" title={noProxyText}>
                   no_proxy: {noProxyText}
                 </span>
               )}
@@ -206,7 +206,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             <div className="relative" ref={proxyDropdownRef}>
               <button
                 onClick={() => setShowProxyDropdown((v) => !v)}
-                className={`flex flex-col items-center px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${hasAnyProxy ? "text-primary" : "text-text-muted hover:text-primary"}`}
+                className={`flex flex-col items-center px-2 py-1 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] transition-colors ${hasAnyProxy ? "text-[var(--color-accent)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"}`}
                 disabled={updatingProxy}
               >
                 <span className="material-symbols-outlined text-[18px]">
@@ -215,10 +215,10 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
                 <span className="text-[10px] leading-tight">Proxy</span>
               </button>
               {showProxyDropdown && (
-                <div className="absolute right-0 top-full mt-1 z-50 bg-bg border border-border rounded-lg shadow-lg py-1 min-w-[160px]">
+                <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--color-bg-alt)] border border-[var(--color-border)] rounded  py-1 min-w-[160px]">
                   <button
                     onClick={() => handleSelectProxy("__none__")}
-                    className={`w-full text-left px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5 ${!boundProxyPoolId ? "text-primary font-medium" : "text-text-main"}`}
+                    className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] ${!boundProxyPoolId ? "text-[var(--color-accent)] font-medium" : "text-[var(--color-text-main)]"}`}
                   >
                     None
                   </button>
@@ -226,7 +226,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
                     <button
                       key={pool.id}
                       onClick={() => handleSelectProxy(pool.id)}
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5 ${boundProxyPoolId === pool.id ? "text-primary font-medium" : "text-text-main"}`}
+                      className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] ${boundProxyPoolId === pool.id ? "text-[var(--color-accent)] font-medium" : "text-[var(--color-text-main)]"}`}
                     >
                       {pool.name}
                     </button>
@@ -235,11 +235,11 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
               )}
             </div>
           )}
-          <button onClick={onEdit} className="flex flex-col items-center px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary">
+          <button onClick={onEdit} className="flex flex-col items-center px-2 py-1 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]">
             <span className="material-symbols-outlined text-[18px]">edit</span>
             <span className="text-[10px] leading-tight">Edit</span>
           </button>
-          <button onClick={onDelete} className="flex flex-col items-center px-2 py-1 rounded hover:bg-red-500/10 text-red-500">
+          <button onClick={onDelete} className="flex flex-col items-center px-2 py-1 rounded hover:bg-[var(--color-danger)]/10 text-[var(--color-danger)]">
             <span className="material-symbols-outlined text-[18px]">delete</span>
             <span className="text-[10px] leading-tight">Delete</span>
           </button>

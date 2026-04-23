@@ -15,9 +15,9 @@ export default function AnimatedBackground() {
         />
         
         {/* Animated gradient orbs */}
-        <div className="absolute -top-20 left-1/4 w-[600px] h-[600px] bg-[#f97815]/20 rounded-full blur-[120px] animate-blob" />
-        <div className="absolute top-1/3 -right-20 w-[500px] h-[500px] bg-purple-500/15 rounded-full blur-[120px] animate-blob-delayed-1" />
-        <div className="absolute -bottom-20 left-1/2 w-[550px] h-[550px] bg-blue-500/12 rounded-full blur-[120px] animate-blob-delayed-2" />
+        <div className="absolute -top-20 left-1/4 w-[600px] h-[600px] bg-[#f97815]/20 rounded blur-[120px] animate-blob" />
+        <div className="absolute top-1/3 -right-20 w-[500px] h-[500px] bg-purple-500/15 rounded blur-[120px] animate-blob-delayed-1" />
+        <div className="absolute -bottom-20 left-1/2 w-[550px] h-[550px] bg-blue-500/12 rounded blur-[120px] animate-blob-delayed-2" />
         
         {/* Vignette effect */}
         <div 

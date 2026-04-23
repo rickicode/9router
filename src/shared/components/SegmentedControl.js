@@ -10,16 +10,16 @@ export default function SegmentedControl({
   className,
 }) {
   const sizes = {
-    sm: "h-7 text-xs",
-    md: "h-9 text-sm",
+    sm: "h-7 text-[12px]",
+    md: "h-9 text-[14px]",
     lg: "h-11 text-base",
   };
 
   return (
     <div
       className={cn(
-        "inline-flex items-center p-1 rounded-lg",
-        "bg-black/5 dark:bg-white/5",
+        "inline-flex items-center p-1 rounded",
+        "bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.05)]",
         className
       )}
     >
@@ -31,8 +31,8 @@ export default function SegmentedControl({
             "px-4 rounded-md font-medium transition-all",
             sizes[size],
             value === option.value
-              ? "bg-white dark:bg-white/10 text-text-main shadow-sm"
-              : "text-text-muted hover:text-text-main"
+              ? "bg-[var(--color-surface)] dark:bg-[rgba(255,255,255,0.1)] text-[var(--color-text-main)] "
+              : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
           )}
         >
           {option.icon && (

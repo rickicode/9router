@@ -195,31 +195,31 @@ export default function ProviderDetailPage() {
       key: "eligible",
       label: "Eligible",
       value: quotaSummary.eligible,
-      tone: "text-emerald-600 dark:text-emerald-400",
+      tone: "text-[var(--color-success)] dark:text-[var(--color-success)]",
     },
     {
       key: "exhausted",
       label: "Exhausted",
       value: quotaSummary.exhausted,
-      tone: "text-amber-600 dark:text-amber-400",
+      tone: "text-[var(--color-warning)] dark:text-[var(--color-warning)]",
     },
     {
       key: "blocked",
       label: "Blocked",
       value: quotaSummary.blocked,
-      tone: "text-rose-600 dark:text-rose-400",
+      tone: "text-[var(--color-danger)]",
     },
     {
       key: "disabled",
       label: "Disabled",
       value: quotaSummary.disabled,
-      tone: "text-text-muted",
+      tone: "text-[var(--color-text-muted)]",
     },
     {
       key: "unknown",
       label: "Unknown",
       value: quotaSummary.unknown,
-      tone: "text-text-muted",
+      tone: "text-[var(--color-text-muted)]",
     },
   ]), [quotaSummary]);
 
@@ -653,15 +653,15 @@ export default function ProviderDetailPage() {
 
   const connectionsList = (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-sm shadow-sm px-4 py-4 space-y-4">
+      <div className="rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)]/70 dark:bg-[var(--color-surface)]   px-4 py-4 space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-text-primary">Connections</h3>
-            <p className="mt-1 text-sm text-text-muted">
+            <h3 className="text-base font-medium text-[var(--color-accent)]">Connections</h3>
+            <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
               Search, reorder, and manage saved accounts for this provider.
             </p>
           </div>
-          <div className="text-sm text-text-muted">
+          <div className="text-[13px] text-[var(--color-text-muted)]">
             {totalConnections === 0
               ? "No matching connections"
               : `${totalConnections} matching connection${totalConnections === 1 ? "" : "s"}`}
@@ -692,21 +692,21 @@ export default function ProviderDetailPage() {
             ]}
           />
 
-          <div className="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 dark:border-white/10 bg-surface px-3 py-2.5 text-xs text-text-muted h-[40px]">
-            <span className="material-symbols-outlined text-[16px] text-primary">info</span>
+          <div className="flex items-center gap-2 rounded border border-dashed border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[11px] text-[var(--color-text-muted)] h-[40px]">
+            <span className="material-symbols-outlined text-[16px] text-[var(--color-accent)]">info</span>
             <span>Use the arrows in each row to reorder visible results.</span>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col divide-y divide-black/[0.03] dark:divide-white/[0.03] rounded-xl border border-black/5 dark:border-white/5 overflow-hidden bg-surface">
+      <div className="flex flex-col divide-y divide-black/[0.03]  rounded border border-[var(--color-border)] dark:border-white/5 overflow-hidden bg-[var(--color-surface)]">
         {paginatedConnections.map((conn) => {
           const filteredIndex = filteredConnectionIndexMap.get(conn.id) ?? 0;
           const previousConnection = filteredConnections[filteredIndex - 1] || null;
           const nextConnection = filteredConnections[filteredIndex + 1] || null;
 
           return (
-            <div key={conn.id} className="flex items-stretch bg-surface">
+            <div key={conn.id} className="flex items-stretch bg-[var(--color-surface)]">
               <div className="flex-1 min-w-0">
                 <ConnectionRow
                   connection={conn}
@@ -788,8 +788,8 @@ export default function ProviderDetailPage() {
           placeholder="None"
         />
 
-        <p className="text-xs text-text-muted">{bulkHint}</p>
-        <p className="text-xs text-text-muted">Selecting None will unbind selected connections from proxy pool.</p>
+        <p className="text-[11px] text-[var(--color-text-muted)]">{bulkHint}</p>
+        <p className="text-[11px] text-[var(--color-text-muted)]">Selecting None will unbind selected connections from proxy pool.</p>
 
         <div className="flex gap-2">
           <Button onClick={handleBulkApplyProxyPool} fullWidth disabled={!canApplyBulkProxy}>
@@ -910,9 +910,9 @@ export default function ProviderDetailPage() {
         {/* Add model button — inline, same style as model chips */}
         <button
           onClick={() => setShowAddCustomModel(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-black/15 dark:border-white/15 text-xs text-text-muted hover:text-primary hover:border-primary/40 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded border border-dashed border-black/15 dark:border-white/15 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-primary/40 transition-colors"
         >
-          <span className="material-symbols-outlined text-sm">add</span>
+          <span className="material-symbols-outlined text-[13px]">add</span>
           Add Model
         </button>
 
@@ -926,7 +926,7 @@ export default function ProviderDetailPage() {
           if (notAdded.length === 0) return null;
           return (
             <div className="w-full mt-2">
-              <p className="text-xs text-text-muted mb-2">Suggested free models (≥200k context):</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] mb-2">Suggested free models (≥200k context):</p>
               <div className="flex flex-wrap gap-2">
                 {notAdded.map((m) => (
                   <button
@@ -935,7 +935,7 @@ export default function ProviderDetailPage() {
                       const alias = m.id.split("/").pop();
                       await handleSetAlias(m.id, alias, providerStorageAlias);
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-[var(--color-border)] dark:border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-primary/40 hover:bg-[var(--color-primary)]/5 transition-colors"
                     title={`${m.name} · ${(m.contextLength / 1000).toFixed(0)}k ctx`}
                   >
                     <span className="material-symbols-outlined text-[13px]">add</span>
@@ -962,8 +962,8 @@ export default function ProviderDetailPage() {
   if (!providerInfo) {
     return (
       <div className="text-center py-20">
-        <p className="text-text-muted">Provider not found</p>
-        <Link href="/dashboard/providers" className="text-primary mt-4 inline-block">
+        <p className="text-[var(--color-text-muted)]">Provider not found</p>
+        <Link href="/dashboard/providers" className="text-[var(--color-accent)] mt-4 inline-block">
           Back to Providers
         </Link>
       </div>
@@ -991,18 +991,18 @@ export default function ProviderDetailPage() {
       <div>
         <Link
           href="/dashboard/providers"
-          className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
+          className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
           Back to Providers
         </Link>
         <div className="flex items-center gap-4">
           <div
-            className="rounded-lg flex items-center justify-center"
+            className="rounded flex items-center justify-center"
             style={{ backgroundColor: `${providerInfo.color}15` }}
           >
             {headerImgError ? (
-              <span className="text-sm font-bold" style={{ color: providerInfo.color }}>
+              <span className="text-[13px] font-medium" style={{ color: providerInfo.color }}>
                 {providerInfo.textIcon || providerInfo.id.slice(0, 2).toUpperCase()}
               </span>
             ) : (
@@ -1011,15 +1011,15 @@ export default function ProviderDetailPage() {
                 alt={providerInfo.name}
                 width={48}
                 height={48}
-                className="object-contain rounded-lg max-w-[48px] max-h-[48px]"
+                className="object-contain rounded max-w-[48px] max-h-[48px]"
                 sizes="48px"
                 onError={() => setHeaderImgError(true)}
               />
             )}
           </div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{providerInfo.name}</h1>
-            <p className="text-text-muted">
+            <h1 className="text-[30px] font-medium tracking-tight">{providerInfo.name}</h1>
+            <p className="text-[var(--color-text-muted)]">
               {connections.length} connection{connections.length === 1 ? "" : "s"}
             </p>
           </div>
@@ -1027,22 +1027,22 @@ export default function ProviderDetailPage() {
       </div>
 
       {providerInfo.deprecated && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-          <span className="material-symbols-outlined text-[16px] text-yellow-500 mt-0.5 shrink-0">warning</span>
-          <p className="text-xs text-red-600 dark:text-yellow-400 leading-relaxed">{providerInfo.deprecationNotice}</p>
+        <div className="flex items-center gap-2 px-3 py-2 rounded bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30">
+          <span className="material-symbols-outlined text-[16px] text-[var(--color-warning)] mt-0.5 shrink-0">warning</span>
+          <p className="text-[11px] text-[var(--color-danger)] dark:text-yellow-400 leading-relaxed">{providerInfo.deprecationNotice}</p>
         </div>
       )}
 
       {providerInfo.notice && !providerInfo.deprecated && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30">
-          <span className="material-symbols-outlined text-[16px] text-blue-500 shrink-0">info</span>
-          <p className="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">{providerInfo.notice.text}</p>
+        <div className="flex items-center gap-2 px-3 py-2 rounded bg-[var(--color-accent)]/10 border border-[rgba(0,122,255,0.3)]">
+          <span className="material-symbols-outlined text-[16px] text-[var(--color-accent)] shrink-0">info</span>
+          <p className="text-[11px] text-[var(--color-accent)] dark:text-[var(--color-accent)] leading-relaxed">{providerInfo.notice.text}</p>
           {providerInfo.notice.apiKeyUrl && (
             <a
               href={providerInfo.notice.apiKeyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 px-2 py-0.5 rounded shrink-0 transition-colors"
+              className="text-[11px] font-medium text-[var(--color-text-main)] bg-blue-500 hover:bg-blue-600 px-2 py-0.5 rounded shrink-0 transition-colors"
             >
               Get API Key →
             </a>
@@ -1054,22 +1054,22 @@ export default function ProviderDetailPage() {
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              <div className="inline-flex items-center gap-2 rounded border border-primary/15 bg-[var(--color-primary)]/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--color-accent)]">
                 <span className="material-symbols-outlined text-[14px]">donut_large</span>
                 Routing availability
               </div>
-              <h2 className="mt-3 text-lg font-semibold text-text-primary">Connection routing summary</h2>
-              <p className="mt-1 text-sm text-text-muted">
+              <h2 className="mt-3 text-[16px] font-medium text-[var(--color-accent)]">Connection routing summary</h2>
+              <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
                 This rolls up each connection&apos;s current routing status for this provider. Quota and cooldown signals are only shown when the connection is explicitly reporting them.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-surface px-4 py-3 text-sm text-text-muted min-w-[240px]">
-              <div className="flex items-center gap-2 text-text-primary font-medium">
-                <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+            <div className="rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[13px] text-[var(--color-text-muted)] min-w-[240px]">
+              <div className="flex items-center gap-2 text-[var(--color-accent)] font-medium">
+                <span className="material-symbols-outlined text-[16px] text-[var(--color-accent)]">schedule</span>
                 Next quota retry/reset
               </div>
-              <p className="mt-1 text-sm">
+              <p className="mt-1 text-[13px]">
                 {nextQuotaResetLabel || "No quota retry/reset scheduled"}
               </p>
             </div>
@@ -1079,16 +1079,16 @@ export default function ProviderDetailPage() {
             {quotaSummaryItems.map((item) => (
               <div
                 key={item.key}
-                className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] px-4 py-3"
+                className="rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)]/70 dark:bg-[var(--color-surface)]/[0.03] px-4 py-3"
               >
-                <p className="text-xs uppercase tracking-[0.14em] text-text-muted">{item.label}</p>
-                <p className={`mt-2 text-2xl font-semibold ${item.tone}`}>{item.value}</p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">{item.label}</p>
+                <p className={`mt-2 text-[24px] font-medium ${item.tone}`}>{item.value}</p>
               </div>
             ))}
           </div>
 
           {quotaSummary.unknown > 0 && (
-            <p className="mt-4 text-xs text-text-muted">
+            <p className="mt-4 text-[11px] text-[var(--color-text-muted)]">
               {quotaSummary.unknown} connection{quotaSummary.unknown === 1 ? " is" : "s are"} still reporting unknown availability.
             </p>
           )}
@@ -1099,8 +1099,8 @@ export default function ProviderDetailPage() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold">{isAnthropicCompatible ? "Anthropic Compatible Details" : "OpenAI Compatible Details"}</h2>
-              <p className="text-sm text-text-muted">
+              <h2 className="text-[16px] font-medium">{isAnthropicCompatible ? "Anthropic Compatible Details" : "OpenAI Compatible Details"}</h2>
+              <p className="text-[13px] text-[var(--color-text-muted)]">
                 {isAnthropicCompatible ? "Messages API" : (providerNode.apiType === "responses" ? "Responses API" : "Chat Completions")} · {(providerNode.baseUrl || "").replace(/\/$/, "")}/
                 {isAnthropicCompatible ? "messages" : (providerNode.apiType === "responses" ? "responses" : "chat/completions")}
               </p>
@@ -1143,7 +1143,7 @@ export default function ProviderDetailPage() {
             </div>
           </div>
           {connections.length > 0 && (
-            <p className="text-sm text-text-muted">
+            <p className="text-[13px] text-[var(--color-text-muted)]">
               Only one connection is allowed per compatible node. Add another node if you need more connections.
             </p>
           )}
@@ -1154,28 +1154,28 @@ export default function ProviderDetailPage() {
       {isFreeNoAuth ? (
         <Card>
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-green-500/10 text-green-500">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded bg-[var(--color-success)]/10 text-[var(--color-success)]">
               <span className="material-symbols-outlined text-[20px]">lock_open</span>
             </div>
             <div>
-              <p className="text-sm font-medium">No authentication required</p>
-              <p className="text-xs text-text-muted">This provider is ready to use.</p>
+              <p className="text-[13px] font-medium">No authentication required</p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">This provider is ready to use.</p>
             </div>
           </div>
         </Card>
       ) : (
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Connections</h2>
+            <h2 className="text-[16px] font-medium">Connections</h2>
             <div className="flex items-center gap-4">
               {/* Thinking config */}
               {/* {thinkingConfig && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-muted font-medium">Thinking</span>
+                  <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Thinking</span>
                   <select
                     value={thinkingMode}
                     onChange={(e) => handleThinkingModeChange(e.target.value)}
-                    className="text-xs px-2 py-1 border border-border rounded-md bg-background focus:outline-none focus:border-primary"
+                    className="text-[11px] px-2 py-1 border border-[var(--color-border)] rounded-md bg-background focus:outline-none focus:border-primary"
                   >
                     {thinkingConfig.options.map((opt) => (
                       <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
@@ -1185,21 +1185,21 @@ export default function ProviderDetailPage() {
               )} */}
               {/* Round Robin toggle */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted font-medium">Round Robin</span>
+                <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Round Robin</span>
                 <Toggle
                   checked={providerStrategy === "round-robin"}
                   onChange={handleRoundRobinToggle}
                 />
                 {providerStrategy === "round-robin" && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-text-muted">Sticky:</span>
+                    <span className="text-[11px] text-[var(--color-text-muted)]">Sticky:</span>
                     <input
                       type="number"
                       min={1}
                       value={providerStickyLimit}
                       onChange={(e) => handleStickyLimitChange(e.target.value)}
                       placeholder="1"
-                      className="w-14 px-2 py-1 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-primary"
+                      className="w-14 px-2 py-1 text-[11px] border border-[var(--color-border)] rounded-md bg-background focus:outline-none focus:border-primary"
                     />
                   </div>
                 )}
@@ -1209,11 +1209,11 @@ export default function ProviderDetailPage() {
 
           {connections.length === 0 ? (
             <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded bg-[var(--color-primary)]/10 text-[var(--color-accent)] mb-4">
                 <span className="material-symbols-outlined text-[32px]">{isOAuth ? "lock" : "key"}</span>
               </div>
-              <p className="text-text-main font-medium mb-1">No connections yet</p>
-              <p className="text-sm text-text-muted mb-4">Add your first connection to get started</p>
+              <p className="text-[var(--color-text-main)] font-medium mb-1">No connections yet</p>
+              <p className="text-[13px] text-[var(--color-text-muted)] mb-4">Add your first connection to get started</p>
               {!isCompatible && (
                 <div className="flex gap-2 justify-center">
                   {providerId === "iflow" && (
@@ -1260,12 +1260,12 @@ export default function ProviderDetailPage() {
       {/* Models */}
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-[16px] font-medium">
             {"Available Models"}
           </h2>
         </div>
         {!!modelsTestError && (
-          <p className="text-xs text-red-500 mb-3 break-words">{modelsTestError}</p>
+          <p className="text-[11px] text-[var(--color-danger)] mb-3 break-words">{modelsTestError}</p>
         )}
         {renderModelsSection()}
       </Card>

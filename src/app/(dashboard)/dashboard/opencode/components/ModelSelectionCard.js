@@ -14,15 +14,15 @@ function SelectionModeButton({ active, title, description, onClick }) {
         "rounded-[24px] border px-5 py-[1.125rem] text-left transition-all duration-200",
         active
           ? "border-primary/35 bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent shadow-[0_14px_32px_rgba(0,0,0,0.05)]"
-          : "border-black/5 bg-white/[0.72] hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/[0.01] dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/[0.03]"
+          : "border-[var(--color-border)] bg-[var(--color-surface)]/[0.72] hover:-translate-y-0.5 hover:border-[rgba(0,122,255,0.3)] hover:bg-black/[0.01] dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02] dark:hover:bg-[var(--color-surface)]/[0.03]"
       )}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="text-sm font-semibold text-text-main">{title}</div>
-          <div className="text-xs leading-5 text-text-muted">{description}</div>
+          <div className="text-[13px] font-medium text-[var(--color-text-main)]">{title}</div>
+          <div className="text-[11px] leading-5 text-[var(--color-text-muted)]">{description}</div>
         </div>
-        <span className={cn("material-symbols-outlined mt-0.5 text-[18px]", active ? "text-primary" : "text-text-muted")}>
+        <span className={cn("material-symbols-outlined mt-0.5 text-[18px]", active ? "text-[var(--color-accent)]" : "text-[var(--color-text-muted)]")}>
           {active ? "check_circle" : "radio_button_unchecked"}
         </span>
       </div>
@@ -75,14 +75,14 @@ export default function ModelSelectionCard({
       title="Choose models"
       subtitle="Choose which models you want included in the generated config."
       icon="model_training"
-      className="rounded-[24px] border-black/5 bg-black/[0.015] shadow-[0_18px_40px_rgba(0,0,0,0.04)] dark:border-white/5 dark:bg-white/[0.015]"
+      className="rounded-[24px] border-[var(--color-border)] bg-black/[0.015] shadow-[0_18px_40px_rgba(0,0,0,0.04)] dark:border-white/5 dark:bg-[var(--color-surface)]/[0.015]"
     >
       <div className="space-y-7">
-        <div className="rounded-[24px] border border-primary/10 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent px-5 py-[1.125rem] dark:border-primary/15">
+        <div className="rounded-[24px] border border-primary/10 bg-gradient-to-br from-[var(--color-primary)]/[0.05] via-transparent to-transparent px-5 py-[1.125rem] dark:border-primary/15">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Model visibility</p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Model visibility</p>
+              <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--color-text-muted)]">
                 Choose whether this config starts from the full catalog or from an allowlist. This keeps the highest-impact decision grouped before preset selection.
               </p>
             </div>
@@ -112,16 +112,16 @@ export default function ModelSelectionCard({
           />
         </div>
 
-        <Card.Section className="rounded-[24px] border border-black/5 bg-white/[0.78] px-5 py-5 dark:border-white/5 dark:bg-white/[0.02]">
+        <Card.Section className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/[0.78] px-5 py-5 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
           <div className="mb-4 space-y-1">
-            <p className="text-sm font-semibold text-text-main">Add a model rule</p>
-            <p className="text-xs leading-5 text-text-muted">Pick from the models currently available so the generated config stays valid and easy to review.</p>
+            <p className="text-[13px] font-medium text-[var(--color-text-main)]">Add a model rule</p>
+            <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Pick from the models currently available so the generated config stays valid and easy to review.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => setPickerOpen(true)} loading={saving} disabled={availableOptions.length === 0}>
               {mode === "include" ? "Add allowed model" : "Add excluded model"}
             </Button>
-            <p className="text-xs text-text-muted">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
               {availableOptions.length > 0
                 ? `${availableOptions.length} available model${availableOptions.length === 1 ? "" : "s"} ready to pick.`
                 : "All currently available models are already in this list."}
@@ -129,31 +129,31 @@ export default function ModelSelectionCard({
           </div>
         </Card.Section>
 
-        {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+        {error ? <p className="text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">{error}</p> : null}
 
         <div className="space-y-3.5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-text-main">Selected model rules</p>
-              <p className="text-xs text-text-muted">Keep this list tight so the preview stays intentional.</p>
+              <p className="text-[13px] font-medium text-[var(--color-text-main)]">Selected model rules</p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">Keep this list tight so the preview stays intentional.</p>
             </div>
             {selectedModels.length > 0 ? <Badge size="sm">{selectedModels.length} selected</Badge> : null}
           </div>
 
-          <div className="flex min-h-[64px] flex-wrap gap-2.5 rounded-[22px] border border-dashed border-black/8 bg-black/[0.015] p-4 dark:border-white/10 dark:bg-white/[0.015]">
+          <div className="flex min-h-[64px] flex-wrap gap-2.5 rounded-[22px] border border-dashed border-black/8 bg-black/[0.015] p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/[0.015]">
             {selectedModels.length === 0 ? (
-              <p className="text-sm text-text-muted">
+              <p className="text-[13px] text-[var(--color-text-muted)]">
                 {mode === "include"
                   ? "No included models selected yet."
                   : "No excluded models configured. The generated config will keep the full catalog."}
               </p>
             ) : (
               selectedModels.map((modelId) => (
-                <Badge key={modelId} className="gap-2 pr-1 shadow-sm">
+                <Badge key={modelId} className="gap-2 pr-1 ">
                   <span className="max-w-[240px] truncate">{modelId}</span>
                   <button
                     type="button"
-                    className="rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                    className="rounded p-0.5 hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[var(--color-surface)]"
                     onClick={() => removeModel(modelId)}
                     aria-label={`Remove ${modelId}`}
                   >

@@ -215,13 +215,13 @@ export default function TranslatorPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-2xl font-bold text-text-main">Translator Debug</h1>
-          <p className="text-sm text-text-muted mt-1">Replay request flow — matches log files</p>
+          <h1 className="text-[24px] font-medium text-[var(--color-text-main)]">Translator Debug</h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-1">Replay request flow — matches log files</p>
         </div>
         {meta && (
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <MetaBadge label="src" value={meta.sourceFormat} color="blue" />
-            <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+            <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px]">arrow_forward</span>
             <MetaBadge label="dst" value={meta.targetFormat} color="orange" />
             <MetaBadge label="provider" value={meta.provider} color="green" />
             <MetaBadge label="model" value={meta.model} color="purple" />
@@ -240,13 +240,13 @@ export default function TranslatorPage() {
               {/* Step header */}
               <div className="flex items-center justify-between">
                 <button onClick={() => toggle(step.id)} className="flex items-center gap-2 flex-1 text-left group">
-                  <span className="material-symbols-outlined text-[20px] text-text-muted group-hover:text-primary transition-colors">
+                  <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)] group-hover:text-[var(--color-accent)] transition-colors">
                     {isExpanded ? "expand_more" : "chevron_right"}
                   </span>
-                  <span className="text-xs font-mono text-text-muted/60 w-4">{step.id}</span>
-                  <h3 className="text-sm font-semibold text-text-main">{step.label}</h3>
-                  <span className="text-xs text-text-muted/60 font-mono">{step.file}</span>
-                  {content && <span className="text-xs text-green-500">({content.length} chars)</span>}
+                  <span className="text-[11px] font-mono text-[var(--color-text-muted)]/60 w-4">{step.id}</span>
+                  <h3 className="text-[13px] font-medium text-[var(--color-text-main)]">{step.label}</h3>
+                  <span className="text-[11px] text-[var(--color-text-muted)]/60 font-mono">{step.file}</span>
+                  {content && <span className="text-[11px] text-[var(--color-success)]">({content.length} chars)</span>}
                 </button>
                 {!isExpanded && (
                   <div className="flex gap-1 shrink-0">
@@ -259,7 +259,7 @@ export default function TranslatorPage() {
               {/* Expanded content */}
               {isExpanded && (
                 <>
-                  <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="border border-[var(--color-border)] rounded overflow-hidden">
                     <Editor
                       height="400px"
                       defaultLanguage={step.lang === "text" ? "plaintext" : "json"}
@@ -290,14 +290,14 @@ export default function TranslatorPage() {
 
 function MetaBadge({ label, value, color }) {
   const colors = {
-    blue: "bg-blue-500/10 text-blue-500",
-    orange: "bg-orange-500/10 text-orange-500",
-    green: "bg-green-500/10 text-green-500",
-    purple: "bg-purple-500/10 text-purple-500",
+    blue: "bg-[var(--color-accent)]/10 text-[var(--color-accent)]",
+    orange: "bg-orange-500/10 text-[var(--color-warning)]",
+    green: "bg-[var(--color-success)]/10 text-[var(--color-success)]",
+    purple: "bg-[var(--color-accent)]/10 text-[var(--color-accent)]",
   };
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${colors[color]}`}>
-      <span className="text-text-muted/70 font-sans text-[10px]">{label}:</span>{value}
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono ${colors[color]}`}>
+      <span className="text-[var(--color-text-muted)]/70 font-sans text-[10px]">{label}:</span>{value}
     </span>
   );
 }

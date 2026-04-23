@@ -383,25 +383,25 @@ export default function ProvidersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="border border-border shadow-sm">
+      <Card className="border border-[var(--color-border)] ">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-black/[0.03] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+            <div className="inline-flex items-center gap-2 rounded border border-[var(--color-border)] bg-black/[0.03] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
               <span className="material-symbols-outlined text-[14px]">
                 backup
               </span>
               Credentials
             </div>
-            <h2 className="mt-3 text-lg font-semibold text-text-main">
+            <h2 className="mt-3 text-[16px] font-medium text-[var(--color-text-main)]">
               Backup and restore credentials
             </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-text-muted">
+            <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[var(--color-text-muted)]">
               Export and restore access tokens, refresh tokens, API keys, and
               provider-specific auth data. This keeps OAuth sessions like Codex
               usable after moving devices.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-bg/80 p-2 shadow-inner">
+          <div className="flex items-center gap-2 rounded border border-[var(--color-border)] bg-[var(--color-bg-alt)]/80 p-2 shadow-inner">
             <Button
               variant="outline"
               size="sm"
@@ -428,7 +428,7 @@ export default function ProvidersPage() {
       {/* OAuth Providers */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-[20px] font-medium flex items-center gap-2">
             OAuth Providers
           </h2>
           <div className="flex items-center gap-2">
@@ -436,10 +436,10 @@ export default function ProvidersPage() {
             <button
               onClick={() => handleBatchTest("oauth")}
               disabled={!!testingMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border transition-colors ${
                 testingMode === "oauth"
-                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                  : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+                  ? "bg-[var(--color-primary)]/20 border-primary/40 text-[var(--color-accent)] animate-pulse"
+                  : "bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/40"
               }`}
               title="Test all OAuth connections"
               aria-label="Test all OAuth connections"
@@ -470,16 +470,16 @@ export default function ProvidersPage() {
       {/* Free & Free Tier Providers */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-[20px] font-medium flex items-center gap-2">
             Free &amp; Free Tier Providers
           </h2>
           <button
             onClick={() => handleBatchTest("free")}
             disabled={!!testingMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border transition-colors ${
               testingMode === "free"
-                ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+                ? "bg-[var(--color-primary)]/20 border-primary/40 text-[var(--color-accent)] animate-pulse"
+                : "bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/40"
             }`}
             title="Test all Free connections"
             aria-label="Test all Free provider connections"
@@ -519,16 +519,16 @@ export default function ProvidersPage() {
       {/* API Key Providers — fixed list */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-[20px] font-medium flex items-center gap-2">
             API Key Providers{" "}
           </h2>
           <button
             onClick={() => handleBatchTest("apikey")}
             disabled={!!testingMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border transition-colors ${
               testingMode === "apikey"
-                ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+                ? "bg-[var(--color-primary)]/20 border-primary/40 text-[var(--color-accent)] animate-pulse"
+                : "bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/40"
             }`}
             title="Test all API Key connections"
             aria-label="Test all API Key connections"
@@ -560,7 +560,7 @@ export default function ProvidersPage() {
       {/* Web Cookie Providers — use browser subscription cookie instead of API key */}
       {/* <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-[20px] font-medium flex items-center gap-2">
             Web Cookie Providers{" "}
           </h2>
         </div>
@@ -581,7 +581,7 @@ export default function ProvidersPage() {
       {/* API Key Compatible Providers — dynamic (OpenAI/Anthropic compatible) */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-[20px] font-medium flex items-center gap-2">
             API Key Compatible Providers{" "}
           </h2>
           <div className="flex gap-2">
@@ -589,9 +589,9 @@ export default function ProvidersPage() {
               <button
                 onClick={() => handleBatchTest("compatible")}
                 disabled={!!testingMode}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${testingMode === "compatible"
-                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                  : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border transition-colors ${testingMode === "compatible"
+                  ? "bg-[var(--color-primary)]/20 border-primary/40 text-[var(--color-accent)] animate-pulse"
+                  : "bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/40"
                   }`}
                 title="Test all Compatible connections"
               >
@@ -613,7 +613,7 @@ export default function ProvidersPage() {
               variant="secondary"
               icon="add"
               onClick={() => setShowAddCompatibleModal(true)}
-              className="!bg-white !text-black hover:!bg-gray-100"
+              className="!bg-[var(--color-surface)] !text-black hover:!bg-gray-100"
             >
               Add OpenAI Compatible
             </Button>
@@ -621,14 +621,14 @@ export default function ProvidersPage() {
         </div>
         {compatibleProviders.length === 0 &&
         anthropicCompatibleProviders.length === 0 ? (
-          <div className="text-center py-8 border border-dashed border-border rounded-xl">
-            <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
+          <div className="text-center py-8 border border-dashed border-[var(--color-border)] rounded">
+            <span className="material-symbols-outlined text-[32px] text-[var(--color-text-muted)] mb-2">
               extension
             </span>
-            <p className="text-text-muted text-sm">
+            <p className="text-[var(--color-text-muted)] text-[13px]">
               No compatible providers added yet
             </p>
-            <p className="text-text-muted text-xs mt-1">
+            <p className="text-[var(--color-text-muted)] text-[11px] mt-1">
               Use the buttons above to add OpenAI or Anthropic compatible
               endpoints
             </p>
@@ -676,19 +676,19 @@ export default function ProvidersPage() {
           className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]"
           onClick={() => setTestResults(null)}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-[rgba(0,0,0,0.6)] " />
           <div
-            className="relative bg-surface border border-border rounded-xl w-full max-w-[600px] max-h-[80vh] overflow-y-auto shadow-2xl"
+            className="relative bg-[var(--color-surface)] border border-[var(--color-border)] rounded w-full max-w-[600px] max-h-[80vh] overflow-y-auto "
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-border bg-surface/95 backdrop-blur-sm rounded-t-xl">
-              <h3 className="font-semibold">Test Results</h3>
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95  rounded-t-xl">
+              <h3 className="font-medium">Test Results</h3>
               <button
                 onClick={() => setTestResults(null)}
-                className="p-1 rounded-lg hover:bg-bg text-text-muted hover:text-text-main transition-colors"
+                className="p-1 rounded hover:bg-[var(--color-bg-alt)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
                 aria-label="Close test results"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
             </div>
             <div className="p-5">
@@ -740,7 +740,7 @@ export default function ProvidersPage() {
         }
       >
         <div className="flex flex-col gap-4">
-          <div className="text-sm text-text-muted">
+          <div className="text-[13px] text-[var(--color-text-muted)]">
             Paste exported backup JSON or load a backup file. Existing provider
             connections will be matched and updated so refresh tokens (including
             Codex OAuth tokens) remain usable. Import accepts universal JSON
@@ -749,15 +749,15 @@ export default function ProvidersPage() {
           </div>
 
           <div
-            className={`rounded-xl border px-4 py-3 ${credentialImportStatus.type === "error"
-              ? "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+            className={`rounded border px-4 py-3 ${credentialImportStatus.type === "error"
+              ? "border-[rgba(255,59,48,0.3)] bg-[var(--color-danger)]/10 text-red-700 dark:text-red-300"
               : credentialImportStatus.type === "success"
-                ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300"
+                ? "border-green-500/30 bg-[var(--color-success)]/10 text-green-700 dark:text-green-300"
                 : credentialImportStatus.type === "warning"
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                  ? "border-[rgba(255,159,10,0.3)] bg-[var(--color-warning)]/10 text-[var(--color-warning)] "
                   : credentialImportStatus.type === "info"
-                    ? "border-primary/30 bg-primary/10 text-text-main"
-                    : "border-border bg-bg/60 text-text-muted"
+                    ? "border-[rgba(0,122,255,0.3)] bg-[var(--color-primary)]/10 text-[var(--color-text-main)]"
+                    : "border-[var(--color-border)] bg-[var(--color-bg-alt)]/60 text-[var(--color-text-muted)]"
               }`}
           >
             <div className="flex items-start gap-3">
@@ -781,15 +781,15 @@ export default function ProvidersPage() {
                       ? "Restoring credentials"
                       : "Ready to restore")}
                 </div>
-                <div className="mt-1 text-sm opacity-90 break-words">
+                <div className="mt-1 text-[13px] opacity-90 break-words">
                   {credentialImportStatus.detail ||
                     (importingCredentials
                       ? "The modal stays open until the restore finishes."
                       : "Load a backup file or paste JSON to begin.")}
                 </div>
                 {importingCredentials && (
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-                    <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
+                  <div className="mt-3 h-1.5 overflow-hidden rounded bg-[rgba(0,0,0,0.1)] dark:bg-[var(--color-surface)]">
+                    <div className="h-full w-2/3 animate-pulse rounded bg-[var(--color-primary)]" />
                   </div>
                 )}
               </div>
@@ -806,7 +806,7 @@ export default function ProvidersPage() {
               Choose Backup File
             </Button>
             {credentialImportFileName && (
-              <span className="text-xs text-text-muted">
+              <span className="text-[11px] text-[var(--color-text-muted)]">
                 Loaded: {credentialImportFileName}
               </span>
             )}
@@ -823,7 +823,7 @@ export default function ProvidersPage() {
           <textarea
             value={credentialImportText}
             onChange={(e) => setCredentialImportText(e.target.value)}
-            className="w-full min-h-[240px] rounded-lg border border-border bg-bg p-3 text-sm font-mono text-text-main focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full min-h-[240px] rounded border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] font-mono text-[var(--color-text-main)] focus:outline-none focus:ring-2 focus:ring-primary/30"
             placeholder="Paste credentials backup JSON here"
           />
         </div>
@@ -837,10 +837,10 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
   const isNoAuth = !!provider.noAuth;
 
   const dotColors = {
-    free: "bg-green-500",
-    oauth: "bg-blue-500",
-    apikey: "bg-amber-500",
-    compatible: "bg-orange-500",
+    free: "bg-[var(--color-success)]",
+    oauth: "bg-[var(--color-accent)]",
+    apikey: "bg-[var(--color-warning)]",
+    compatible: "bg-[var(--color-warning)]",
   };
   const dotLabels = {
     free: "Free",
@@ -853,12 +853,12 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
     <Link href={`/dashboard/providers/${providerId}`} className="group">
       <Card
         padding="xs"
-        className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
+        className={`h-full hover:bg-black/[0.01] dark:hover:bg-[var(--color-surface)]/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="size-8 rounded-lg flex items-center justify-center"
+              className="size-8 rounded flex items-center justify-center"
               style={{
                 backgroundColor: `${provider.color?.length > 7 ? provider.color : provider.color + "15"}`,
               }}
@@ -867,7 +867,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
                 src={`/providers/${provider.id}.png`}
                 alt={provider.name}
                 size={30}
-                className="object-contain rounded-lg max-w-[32px] max-h-[32px]"
+                className="object-contain rounded max-w-[32px] max-h-[32px]"
                 fallbackText={
                   provider.textIcon || provider.id.slice(0, 2).toUpperCase()
                 }
@@ -875,8 +875,8 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
               />
             </div>
             <div>
-              <h3 className="font-semibold">{provider.name}</h3>
-              <div className="flex items-center gap-2 text-xs flex-wrap">
+              <h3 className="font-medium">{provider.name}</h3>
+              <div className="flex items-center gap-2 text-[11px] flex-wrap">
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
                     <span className="flex items-center gap-1">
@@ -896,7 +896,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
                       </Badge>
                     ))}
                     {errorTime && (
-                      <span className="text-text-muted">{errorTime}</span>
+                      <span className="text-[var(--color-text-muted)]">{errorTime}</span>
                     )}
                   </>
                 )}
@@ -960,10 +960,10 @@ function ApiKeyProviderCard({
   );
 
   const dotColors = {
-    free: "bg-green-500",
-    oauth: "bg-blue-500",
-    apikey: "bg-amber-500",
-    compatible: "bg-orange-500",
+    free: "bg-[var(--color-success)]",
+    oauth: "bg-[var(--color-accent)]",
+    apikey: "bg-[var(--color-warning)]",
+    compatible: "bg-[var(--color-warning)]",
   };
   const dotLabels = {
     free: "Free",
@@ -985,12 +985,12 @@ function ApiKeyProviderCard({
     <Link href={`/dashboard/providers/${providerId}`} className="group">
       <Card
         padding="xs"
-        className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
+        className={`h-full hover:bg-black/[0.01] dark:hover:bg-[var(--color-surface)]/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="size-8 rounded-lg flex items-center justify-center"
+              className="size-8 rounded flex items-center justify-center"
               style={{
                 backgroundColor: `${provider.color?.length > 7 ? provider.color : provider.color + "15"}`,
               }}
@@ -999,7 +999,7 @@ function ApiKeyProviderCard({
                 src={getIconPath()}
                 alt={provider.name}
                 size={30}
-                className="object-contain rounded-lg max-w-[30px] max-h-[30px]"
+                className="object-contain rounded max-w-[30px] max-h-[30px]"
                 fallbackText={
                   provider.textIcon || provider.id.slice(0, 2).toUpperCase()
                 }
@@ -1007,8 +1007,8 @@ function ApiKeyProviderCard({
               />
             </div>
             <div>
-              <h3 className="font-semibold">{provider.name}</h3>
-              <div className="flex items-center gap-2 text-xs flex-wrap">
+              <h3 className="font-medium">{provider.name}</h3>
+              <div className="flex items-center gap-2 text-[11px] flex-wrap">
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
                     <span className="flex items-center gap-1">
@@ -1038,7 +1038,7 @@ function ApiKeyProviderCard({
                       </Badge>
                     )}
                     {errorTime && (
-                      <span className="text-text-muted">{errorTime}</span>
+                      <span className="text-[var(--color-text-muted)]">{errorTime}</span>
                     )}
                   </>
                 )}
@@ -1183,7 +1183,7 @@ function AddOpenAICompatibleModal({ isOpen, onClose, onCreated }) {
         <>
           <Badge variant="success">Valid</Badge>
           {method === "chat" && (
-            <span className="text-sm text-text-muted">
+            <span className="text-[13px] text-[var(--color-text-muted)]">
               (via inference test)
             </span>
           )}
@@ -1193,7 +1193,7 @@ function AddOpenAICompatibleModal({ isOpen, onClose, onCreated }) {
     return (
       <div className="flex flex-col gap-1">
         <Badge variant="error">Invalid</Badge>
-        {error && <span className="text-sm text-red-500">{error}</span>}
+        {error && <span className="text-[13px] text-[var(--color-danger)]">{error}</span>}
       </div>
     );
   };
@@ -1372,7 +1372,7 @@ function AddAnthropicCompatibleModal({ isOpen, onClose, onCreated }) {
         <>
           <Badge variant="success">Valid</Badge>
           {method === "chat" && (
-            <span className="text-sm text-text-muted">
+            <span className="text-[13px] text-[var(--color-text-muted)]">
               (via inference test)
             </span>
           )}
@@ -1382,7 +1382,7 @@ function AddAnthropicCompatibleModal({ isOpen, onClose, onCreated }) {
     return (
       <div className="flex flex-col gap-1">
         <Badge variant="error">Invalid</Badge>
-        {error && <span className="text-sm text-red-500">{error}</span>}
+        {error && <span className="text-[13px] text-[var(--color-danger)]">{error}</span>}
       </div>
     );
   };
@@ -1468,10 +1468,10 @@ function ProviderTestResultsView({ results }) {
   if (results.error && !results.results) {
     return (
       <div className="text-center py-6">
-        <span className="material-symbols-outlined text-red-500 text-[32px] mb-2 block">
+        <span className="material-symbols-outlined text-[var(--color-danger)] text-[32px] mb-2 block">
           error
         </span>
-        <p className="text-sm text-red-400">{results.error}</p>
+        <p className="text-[13px] text-[var(--color-danger)]">{results.error}</p>
       </div>
     );
   }
@@ -1490,17 +1490,17 @@ function ProviderTestResultsView({ results }) {
   return (
     <div className="flex flex-col gap-3">
       {summary && (
-        <div className="flex items-center gap-3 text-xs mb-1">
-          <span className="text-text-muted">{modeLabel} Test</span>
-          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
+        <div className="flex items-center gap-3 text-[11px] mb-1">
+          <span className="text-[var(--color-text-muted)]">{modeLabel} Test</span>
+          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-[var(--color-success)] font-medium">
             {summary.passed} passed
           </span>
           {summary.failed > 0 && (
-            <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 font-medium">
+            <span className="px-2 py-0.5 rounded bg-[var(--color-danger)]/15 text-[var(--color-danger)] font-medium">
               {summary.failed} failed
             </span>
           )}
-          <span className="text-text-muted ml-auto">
+          <span className="text-[var(--color-text-muted)] ml-auto">
             {summary.total} tested
           </span>
         </div>
@@ -1508,27 +1508,27 @@ function ProviderTestResultsView({ results }) {
       {items.map((r, i) => (
         <div
           key={r.connectionId || i}
-          className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-black/[0.03] dark:bg-white/[0.03]"
+          className="flex items-center gap-2 text-[11px] px-3 py-2 rounded bg-black/[0.03] dark:bg-[var(--color-surface)]/[0.03]"
         >
           <span
-            className={`material-symbols-outlined text-[16px] ${r.valid ? "text-emerald-500" : "text-red-500"}`}
+            className={`material-symbols-outlined text-[16px] ${r.valid ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}
           >
             {r.valid ? "check_circle" : "error"}
           </span>
           <div className="flex-1 min-w-0">
             <span className="font-medium">{r.connectionName}</span>
-            <span className="text-text-muted ml-1.5">({r.provider})</span>
+            <span className="text-[var(--color-text-muted)] ml-1.5">({r.provider})</span>
           </div>
           {r.latencyMs !== undefined && (
-            <span className="text-text-muted font-mono tabular-nums">
+            <span className="text-[var(--color-text-muted)] font-mono tabular-nums">
               {r.latencyMs}ms
             </span>
           )}
           <span
-            className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+            className={`text-[10px] uppercase font-medium px-1.5 py-0.5 rounded ${
               r.valid
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-red-500/15 text-red-400"
+                ? "bg-emerald-500/15 text-[var(--color-success)]"
+                : "bg-[var(--color-danger)]/15 text-[var(--color-danger)]"
             }`}
           >
             {r.valid ? "OK" : r.diagnosis?.type || "ERROR"}
@@ -1536,7 +1536,7 @@ function ProviderTestResultsView({ results }) {
         </div>
       ))}
       {items.length === 0 && (
-        <div className="text-center py-4 text-text-muted text-sm">
+        <div className="text-center py-4 text-[var(--color-text-muted)] text-[13px]">
           No active connections found for this group.
         </div>
       )}

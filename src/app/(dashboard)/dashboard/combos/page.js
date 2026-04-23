@@ -129,8 +129,8 @@ export default function CombosPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Combos</h1>
-          <p className="text-sm text-text-muted mt-1">
+          <h1 className="text-[24px] font-medium">Combos</h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-1">
             Create model combos with fallback support
           </p>
         </div>
@@ -143,11 +143,11 @@ export default function CombosPage() {
       {combos.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded bg-[var(--color-primary)]/10 text-[var(--color-accent)] mb-4">
               <span className="material-symbols-outlined text-[32px]">layers</span>
             </div>
-            <p className="text-text-main font-medium mb-1">No combos yet</p>
-            <p className="text-sm text-text-muted mb-4">Create model combos with fallback support</p>
+            <p className="text-[var(--color-text-main)] font-medium mb-1">No combos yet</p>
+            <p className="text-[13px] text-[var(--color-text-muted)] mb-4">Create model combos with fallback support</p>
             <Button icon="add" onClick={() => setShowCreateModal(true)}>
               Create Combo
             </Button>
@@ -197,23 +197,23 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
     <Card padding="sm" className="group">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-primary text-[18px]">layers</span>
+          <div className="size-8 rounded bg-[var(--color-primary)]/10 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[var(--color-accent)] text-[18px]">layers</span>
           </div>
           <div className="min-w-0 flex-1">
-            <code className="text-sm font-medium font-mono truncate">{combo.name}</code>
+            <code className="text-[13px] font-medium font-mono truncate">{combo.name}</code>
             <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-              {combo.models.length === 0 ? (
-                <span className="text-xs text-text-muted italic">No models</span>
+              {(combo.models || []).length === 0 ? (
+                <span className="text-[11px] text-[var(--color-text-muted)] italic">No models</span>
               ) : (
                 combo.models.slice(0, 3).map((model, index) => (
-                  <code key={index} className="text-[10px] font-mono bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded text-text-muted">
+                  <code key={index} className="text-[10px] font-mono bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] px-1.5 py-0.5 rounded text-[var(--color-text-muted)]">
                     {model}
                   </code>
                 ))
               )}
-              {combo.models.length > 3 && (
-                <span className="text-[10px] text-text-muted">+{combo.models.length - 3} more</span>
+              {(combo.models || []).length > 3 && (
+                <span className="text-[10px] text-[var(--color-text-muted)]">+{(combo.models || []).length - 3} more</span>
               )}
             </div>
           </div>
@@ -223,7 +223,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
         <div className="flex items-center gap-3 shrink-0">
           {/* Round Robin Toggle — always visible */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-text-muted font-medium">Round Robin</span>
+            <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Round Robin</span>
             <Toggle
               size="sm"
               checked={roundRobinEnabled}
@@ -234,7 +234,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
           <div className="flex gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onCopy(combo.name, `combo-${combo.id}`); }}
-              className="flex flex-col items-center px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors"
+              className="flex flex-col items-center px-2 py-1 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
               title="Copy combo name"
             >
               <span className="material-symbols-outlined text-[18px]">
@@ -244,7 +244,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
             </button>
             <button
               onClick={onEdit}
-              className="flex flex-col items-center px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors"
+              className="flex flex-col items-center px-2 py-1 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors"
               title="Edit"
             >
               <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -252,7 +252,7 @@ function ComboCard({ combo, copied, onCopy, onEdit, onDelete, roundRobinEnabled,
             </button>
             <button
               onClick={onDelete}
-              className="flex flex-col items-center px-2 py-1 rounded hover:bg-red-500/10 text-red-500 transition-colors"
+              className="flex flex-col items-center px-2 py-1 rounded hover:bg-[var(--color-danger)]/10 text-[var(--color-danger)] transition-colors"
               title="Delete"
             >
               <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -283,9 +283,9 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
   };
 
   return (
-    <div className="group flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors">
+    <div className="group flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/[0.02] dark:bg-[var(--color-surface)]/[0.02] hover:bg-black/[0.04] dark:hover:bg-[var(--color-surface)]/[0.04] transition-colors">
       {/* Index badge */}
-      <span className="text-[10px] font-medium text-text-muted w-3 text-center shrink-0">{index + 1}</span>
+      <span className="text-[10px] font-medium text-[var(--color-text-muted)] w-3 text-center shrink-0">{index + 1}</span>
 
       {/* Inline editable model value */}
       {editing ? (
@@ -295,11 +295,11 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          className="flex-1 min-w-0 px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-black/20 border border-primary/40 rounded outline-none text-text-main"
+          className="flex-1 min-w-0 px-1.5 py-0.5 text-[11px] font-mono bg-[var(--color-surface)] dark:bg-black/20 border border-primary/40 rounded outline-none text-[var(--color-text-main)]"
         />
       ) : (
         <div
-          className="flex-1 min-w-0 px-1.5 py-0.5 text-xs font-mono text-text-main truncate cursor-text hover:bg-black/5 dark:hover:bg-white/5 rounded"
+          className="flex-1 min-w-0 px-1.5 py-0.5 text-[11px] font-mono text-[var(--color-text-main)] truncate cursor-text hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] rounded"
           onClick={() => setEditing(true)}
           title="Click to edit"
         >
@@ -312,7 +312,7 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
         <button
           onClick={onMoveUp}
           disabled={isFirst}
-          className={`p-0.5 rounded ${isFirst ? "text-text-muted/20 cursor-not-allowed" : "text-text-muted hover:text-primary hover:bg-black/5 dark:hover:bg-white/5"}`}
+          className={`p-0.5 rounded ${isFirst ? "text-[var(--color-text-muted)]/20 cursor-not-allowed" : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)]"}`}
           title="Move up"
         >
           <span className="material-symbols-outlined text-[12px]">arrow_upward</span>
@@ -320,7 +320,7 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
         <button
           onClick={onMoveDown}
           disabled={isLast}
-          className={`p-0.5 rounded ${isLast ? "text-text-muted/20 cursor-not-allowed" : "text-text-muted hover:text-primary hover:bg-black/5 dark:hover:bg-white/5"}`}
+          className={`p-0.5 rounded ${isLast ? "text-[var(--color-text-muted)]/20 cursor-not-allowed" : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)]"}`}
           title="Move down"
         >
           <span className="material-symbols-outlined text-[12px]">arrow_downward</span>
@@ -330,7 +330,7 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
       {/* Remove */}
       <button
         onClick={onRemove}
-        className="p-0.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-500 transition-all"
+        className="p-0.5 hover:bg-[var(--color-danger)]/10 rounded text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-all"
         title="Remove"
       >
         <span className="material-symbols-outlined text-[12px]">close</span>
@@ -433,19 +433,19 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders }) {
               placeholder="my-combo"
               error={nameError}
             />
-            <p className="text-[10px] text-text-muted mt-0.5">
+            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
               Only letters, numbers, -, _ and . allowed
             </p>
           </div>
 
           {/* Models */}
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Models</label>
+            <label className="text-[13px] font-medium mb-1.5 block">Models</label>
 
             {models.length === 0 ? (
-              <div className="text-center py-4 border border-dashed border-black/10 dark:border-white/10 rounded-lg bg-black/[0.01] dark:bg-white/[0.01]">
-                <span className="material-symbols-outlined text-text-muted text-xl mb-1">layers</span>
-                <p className="text-xs text-text-muted">No models added yet</p>
+              <div className="text-center py-4 border border-dashed border-[var(--color-border)] dark:border-[var(--color-border)] rounded bg-black/[0.01] dark:bg-[var(--color-surface)]/[0.01]">
+                <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[20px] mb-1">layers</span>
+                <p className="text-[11px] text-[var(--color-text-muted)]">No models added yet</p>
               </div>
             ) : (
               <div className="flex flex-col gap-1 max-h-[350px] overflow-y-auto">
@@ -472,7 +472,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders }) {
             {/* Add Model button */}
             <button
               onClick={() => setShowModelSelect(true)}
-              className="w-full mt-2 py-2 border border-dashed border-black/10 dark:border-white/10 rounded-lg text-xs text-primary font-medium hover:text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-1"
+              className="w-full mt-2 py-2 border border-dashed border-[var(--color-border)] dark:border-[var(--color-border)] rounded text-[11px] text-[var(--color-accent)] font-medium hover:text-[var(--color-accent)] hover:border-[rgba(0,122,255,0.5)] transition-colors flex items-center justify-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               Add Model

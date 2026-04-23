@@ -23,13 +23,13 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="bg-bg border-t border-border pt-16 pb-12">
+    <footer className="bg-[var(--color-bg-alt)] border-t border-[var(--color-border)] pt-16 pb-12">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 mb-12">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <div className="size-6 text-primary">
+              <div className="size-6 text-[var(--color-accent)]">
                 <svg className="w-full h-full" fill="currentColor" viewBox="0 0 48 48">
                   <path
                     clipRule="evenodd"
@@ -38,18 +38,18 @@ export default function Footer() {
                   />
                 </svg>
               </div>
-              <span className="text-xl font-bold text-text-main">
+              <span className="text-[20px] font-bold text-[var(--color-text-main)]">
                 {APP_CONFIG.name}
               </span>
             </div>
-            <p className="text-text-muted mb-6 max-w-sm font-light">
+            <p className="text-[var(--color-text-muted)] mb-6 max-w-sm font-light">
               The unified interface for modern AI infrastructure. Secure, observable, and scalable.
             </p>
             {/* Social links */}
             <div className="flex gap-4">
               <a
                 href="#"
-                className="text-gray-400 hover:text-primary transition-colors"
+                className="text-gray-400 hover:text-[var(--color-accent)] transition-colors"
                 aria-label="Twitter"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@ export default function Footer() {
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-primary transition-colors"
+                className="text-gray-400 hover:text-[var(--color-accent)] transition-colors"
                 aria-label="GitHub"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -70,11 +70,11 @@ export default function Footer() {
 
           {/* Product */}
           <div>
-            <h4 className="font-semibold text-text-main mb-4">Product</h4>
-            <ul className="flex flex-col gap-3 text-sm text-text-muted font-light">
+            <h4 className="font-medium text-[var(--color-text-main)] mb-4">Product</h4>
+            <ul className="flex flex-col gap-3 text-[14px] text-[var(--color-text-muted)] font-light">
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="hover:text-primary transition-colors">
+                  <Link href={link.href} className="hover:text-[var(--color-accent)] transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -84,11 +84,11 @@ export default function Footer() {
 
           {/* Resources */}
           <div>
-            <h4 className="font-semibold text-text-main mb-4">Resources</h4>
-            <ul className="flex flex-col gap-3 text-sm text-text-muted font-light">
+            <h4 className="font-medium text-[var(--color-text-main)] mb-4">Resources</h4>
+            <ul className="flex flex-col gap-3 text-[14px] text-[var(--color-text-muted)] font-light">
               {footerLinks.resources.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="hover:text-primary transition-colors">
+                  <Link href={link.href} className="hover:text-[var(--color-accent)] transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -98,11 +98,11 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-text-main mb-4">Company</h4>
-            <ul className="flex flex-col gap-3 text-sm text-text-muted font-light">
+            <h4 className="font-medium text-[var(--color-text-main)] mb-4">Company</h4>
+            <ul className="flex flex-col gap-3 text-[14px] text-[var(--color-text-muted)] font-light">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="hover:text-primary transition-colors">
+                  <Link href={link.href} className="hover:text-[var(--color-accent)] transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -112,15 +112,15 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-text-muted">
+        <div className="border-t border-[var(--color-border)] pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-[14px] text-[var(--color-text-muted)]">
             © {new Date().getFullYear()} {APP_CONFIG.name} Inc. All rights reserved.
           </p>
-          <div className="flex gap-6 text-sm text-text-muted">
-            <Link href="#" className="hover:text-primary transition-colors">
+          <div className="flex gap-6 text-[14px] text-[var(--color-text-muted)]">
+            <Link href="#" className="hover:text-[var(--color-accent)] transition-colors">
               Privacy Policy
             </Link>
-            <Link href="#" className="hover:text-primary transition-colors">
+            <Link href="#" className="hover:text-[var(--color-accent)] transition-colors">
               Terms of Service
             </Link>
           </div>

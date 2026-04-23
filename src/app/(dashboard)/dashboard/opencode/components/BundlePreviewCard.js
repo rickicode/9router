@@ -99,14 +99,14 @@ function getProviderModelCount(opencodeConfig = {}) {
 
 function StatTile({ label, value, note, icon }) {
   return (
-    <div className="rounded-[24px] border border-black/5 bg-white/[0.78] px-[1.125rem] py-4 shadow-[0_10px_30px_rgba(0,0,0,0.03)] dark:border-white/5 dark:bg-white/[0.02]">
+    <div className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/[0.78] px-[1.125rem] py-4 shadow-[0_10px_30px_rgba(0,0,0,0.03)] dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">{label}</p>
-          <p className="text-sm font-semibold text-text-main break-all">{value}</p>
-          {note ? <p className="text-xs text-text-muted">{note}</p> : null}
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">{label}</p>
+          <p className="text-[13px] font-medium text-[var(--color-text-main)] break-all">{value}</p>
+          {note ? <p className="text-[11px] text-[var(--color-text-muted)]">{note}</p> : null}
         </div>
-        <span className="material-symbols-outlined text-[18px] text-primary">{icon}</span>
+        <span className="material-symbols-outlined text-[18px] text-[var(--color-accent)]">{icon}</span>
       </div>
     </div>
   );
@@ -131,10 +131,10 @@ function ConfigViewTabs({ views, activeView, onChange }) {
             type="button"
             onClick={() => onChange(view.id)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+              "rounded border px-3 py-1.5 text-[11px] font-medium transition-all",
               activeView === view.id
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "border-black/8 bg-transparent text-text-muted hover:border-primary/30 hover:text-text-main dark:border-white/10"
+                ? "border-primary bg-[var(--color-primary)]/10 text-[var(--color-accent)] "
+                : "border-black/8 bg-transparent text-[var(--color-text-muted)] hover:border-[rgba(0,122,255,0.3)] hover:text-[var(--color-text-main)] dark:border-[var(--color-border)]"
             )}
           >
             {view.label}
@@ -207,7 +207,7 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
     >
       <div className="space-y-7">
         {error ? (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          <div className="rounded border border-[var(--color-danger)]/20 bg-[rgba(255,59,48,0.05)] px-4 py-3 text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">
             {error}
           </div>
         ) : null}
@@ -249,8 +249,8 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
                 <Badge>{selectedVariantArtifact?.badge || "No preset artifact"}</Badge>
               </div>
               <div>
-                <h4 className="text-base font-semibold text-text-main">Choose the file you want to copy</h4>
-                <p className="text-sm leading-6 text-text-muted">This preview centers the real generated opencode.json artifact first. {PUBLIC_ARTIFACTS_COPY}</p>
+                <h4 className="text-base font-medium text-[var(--color-text-main)]">Choose the file you want to copy</h4>
+                <p className="text-[13px] leading-6 text-[var(--color-text-muted)]">This preview centers the real generated opencode.json artifact first. {PUBLIC_ARTIFACTS_COPY}</p>
               </div>
             </div>
           </div>
@@ -258,13 +258,13 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
           {hasMainArtifact ? (
             <ConfigViewTabs views={primaryViews} activeView={resolvedActiveView} onChange={setActiveView} />
           ) : (
-            <div className="rounded-[24px] border border-dashed border-black/8 bg-black/[0.015] p-[1.125rem] text-sm text-text-muted dark:border-white/10 dark:bg-white/[0.015]">
+            <div className="rounded-[24px] border border-dashed border-black/8 bg-black/[0.015] p-[1.125rem] text-[13px] text-[var(--color-text-muted)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/[0.015]">
               {getMissingMainArtifactCopy()}
             </div>
           )}
 
           {secondaryViews.length > 0 ? (
-            <div className="space-y-3 rounded-[24px] border border-dashed border-black/8 bg-black/[0.015] p-[1.125rem] dark:border-white/10 dark:bg-white/[0.015]">
+            <div className="space-y-3 rounded-[24px] border border-dashed border-black/8 bg-black/[0.015] p-[1.125rem] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/[0.015]">
               <button
                 type="button"
                 onClick={() => {
@@ -279,12 +279,12 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <div>
-                  <p className="text-sm font-semibold text-text-main">More generated artifacts</p>
-                  <p className="mt-1 text-xs text-text-muted">Only true public artifacts beyond opencode.json stay secondary.</p>
+                  <p className="text-[13px] font-medium text-[var(--color-text-main)]">More generated artifacts</p>
+                  <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">Only true public artifacts beyond opencode.json stay secondary.</p>
                 </div>
                 <span
                   className={cn(
-                    "material-symbols-outlined text-[18px] text-text-muted transition-transform duration-200",
+                    "material-symbols-outlined text-[18px] text-[var(--color-text-muted)] transition-transform duration-200",
                     showMoreViews ? "rotate-180" : "rotate-0"
                   )}
                 >
@@ -299,7 +299,7 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
                     activeView={resolvedActiveView || secondaryViews[0]?.id || "advanced"}
                     onChange={setActiveView}
                   />
-                  <p className="text-xs text-text-muted">{PUBLIC_ARTIFACTS_COPY}</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">{PUBLIC_ARTIFACTS_COPY}</p>
                 </div>
               ) : null}
             </div>
@@ -309,7 +309,7 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
             <button
               type="button"
               onClick={() => setIsExpanded((value) => !value)}
-              className="flex items-center gap-2 rounded-full px-1 text-xs font-medium text-text-muted transition-colors hover:text-text-main"
+              className="flex items-center gap-2 rounded px-1 text-[11px] font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-main)]"
             >
               <span
                 className={cn(
@@ -325,21 +325,21 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
 
           {isExpanded && currentView && resolvedActiveView ? (
             <div className="grid gap-5 2xl:grid-cols-[minmax(320px,0.82fr)_minmax(0,1.18fr)]">
-              <div className="space-y-5 rounded-[24px] border border-black/5 bg-surface px-5 py-5 shadow-[0_12px_34px_rgba(0,0,0,0.04)] dark:border-white/5">
+              <div className="space-y-5 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-5 shadow-[0_12px_34px_rgba(0,0,0,0.04)] dark:border-white/5">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Current view</p>
-                  <h4 className="mt-1 text-base font-semibold text-text-main">{currentView?.title}</h4>
-                  <p className="mt-1 text-sm text-text-muted">{currentView?.description}</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Current view</p>
+                  <h4 className="mt-1 text-base font-medium text-[var(--color-text-main)]">{currentView?.title}</h4>
+                  <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">{currentView?.description}</p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-black/5 bg-black/[0.02] px-3 py-3 dark:border-white/5 dark:bg-white/[0.02]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted">Filename</p>
-                    <p className="mt-1 text-sm font-medium text-text-main break-all">{currentView?.filename}</p>
+                  <div className="rounded border border-[var(--color-border)] bg-black/[0.02] px-3 py-3 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">Filename</p>
+                    <p className="mt-1 text-[13px] font-medium text-[var(--color-text-main)] break-all">{currentView?.filename}</p>
                   </div>
-                  <div className="rounded-xl border border-black/5 bg-black/[0.02] px-3 py-3 dark:border-white/5 dark:bg-white/[0.02]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted">Contains</p>
-                    <p className="mt-1 text-sm font-medium text-text-main">
+                  <div className="rounded border border-[var(--color-border)] bg-black/[0.02] px-3 py-3 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">Contains</p>
+                    <p className="mt-1 text-[13px] font-medium text-[var(--color-text-main)]">
                       {Array.isArray(currentView?.content)
                         ? `${currentView.content.length} items`
                         : `${Object.keys(currentView?.content || {}).length} top-level keys`}
@@ -357,18 +357,18 @@ export default function BundlePreviewCard({ preview, selectedVariant = "custom",
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[24px] border border-black/5 bg-[#0b1020] shadow-[0_24px_70px_rgba(8,15,35,0.2)] dark:border-white/5">
-                <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+              <div className="overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-[var(--color-primary)] shadow-[0_24px_70px_rgba(8,15,35,0.2)] dark:border-white/5">
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3.5">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Preview</p>
-                    <p className="text-sm font-semibold text-slate-100">{currentView?.filename}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Preview</p>
+                    <p className="text-[13px] font-medium text-[var(--color-text-inverse)]">{currentView?.filename}</p>
                   </div>
-                  <Badge className="bg-white/8 text-slate-200" size="sm">
+                  <Badge className="bg-[var(--color-surface)]/8 text-slate-200" size="sm">
                     sanitized
                   </Badge>
                 </div>
 
-                <pre className="max-h-[42rem] overflow-auto px-5 py-5 text-xs leading-6 text-slate-100">
+                <pre className="max-h-[42rem] overflow-auto px-5 py-5 text-[11px] leading-6 text-[var(--color-text-inverse)]">
                   <code>{currentContent}</code>
                 </pre>
               </div>

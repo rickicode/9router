@@ -336,8 +336,8 @@ export default function ProxyPoolsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Proxy Pools</h1>
-          <p className="text-sm text-text-muted mt-1">
+          <h1 className="text-[24px] font-medium">Proxy Pools</h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-1">
             Manage reusable per-connection proxies and bind them to provider connections.
           </p>
         </div>
@@ -363,19 +363,19 @@ export default function ProxyPoolsPage() {
 
         {proxyPools.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-text-main font-medium mb-1">No proxy pool entries yet</p>
-            <p className="text-sm text-text-muted mb-4">
+            <p className="text-[var(--color-text-main)] font-medium mb-1">No proxy pool entries yet</p>
+            <p className="text-[13px] text-[var(--color-text-muted)] mb-4">
               Create a proxy pool entry, then assign it to connections.
             </p>
             <Button icon="add" onClick={openCreateModal}>Add Proxy Pool</Button>
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-black/[0.04] dark:divide-white/[0.05]">
+          <div className="flex flex-col divide-y divide-[var(--color-border)] ">
             {proxyPools.map((pool) => (
               <div key={pool.id} className="py-3 flex items-center justify-between gap-3 group">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium truncate">{pool.name}</p>
+                    <p className="text-[13px] font-medium truncate">{pool.name}</p>
                     <Badge variant={getStatusVariant(pool.testStatus)} size="sm" dot>
                       {pool.testStatus || "unknown"}
                     </Badge>
@@ -389,11 +389,11 @@ export default function ProxyPoolsPage() {
                       {pool.boundConnectionCount || 0} bound
                     </Badge>
                   </div>
-                  <p className="text-xs text-text-muted truncate mt-1">{pool.proxyUrl}</p>
+                  <p className="text-[11px] text-[var(--color-text-muted)] truncate mt-1">{pool.proxyUrl}</p>
                   {pool.noProxy ? (
-                    <p className="text-xs text-text-muted truncate">No proxy: {pool.noProxy}</p>
+                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">No proxy: {pool.noProxy}</p>
                   ) : null}
-                  <p className="text-[11px] text-text-muted mt-1">
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
                     Last tested: {formatDateTime(pool.lastTestedAt)}
                     {pool.lastError ? ` · ${pool.lastError}` : ""}
                   </p>
@@ -402,7 +402,7 @@ export default function ProxyPoolsPage() {
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleTest(pool.id)}
-                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary"
+                    className="p-2 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
                     title="Test proxy"
                     disabled={testingId === pool.id}
                   >
@@ -415,14 +415,14 @@ export default function ProxyPoolsPage() {
                   </button>
                   <button
                     onClick={() => openEditModal(pool)}
-                    className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary"
+                    className="p-2 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
                     title="Edit"
                   >
                     <span className="material-symbols-outlined text-[18px]">edit</span>
                   </button>
                   <button
                     onClick={() => handleDelete(pool)}
-                    className="p-2 rounded hover:bg-red-500/10 text-red-500"
+                    className="p-2 rounded hover:bg-[var(--color-danger)]/10 text-[var(--color-danger)]"
                     title="Delete"
                   >
                     <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -441,14 +441,14 @@ export default function ProxyPoolsPage() {
       >
         <div className="flex flex-col gap-4">
           <div>
-            <label className="text-sm font-medium text-text-main mb-1 block">Paste Proxy List (One per line)</label>
+            <label className="text-[13px] font-medium text-[var(--color-text-main)] mb-1 block">Paste Proxy List (One per line)</label>
             <textarea
               value={batchImportText}
               onChange={(e) => setBatchImportText(e.target.value)}
               placeholder={"http://user:pass@127.0.0.1:7897\n127.0.0.1:7897:user:pass"}
-              className="w-full min-h-[180px] py-2 px-3 text-sm text-text-main bg-white dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-md focus:ring-1 focus:ring-primary/30 focus:border-primary/50 focus:outline-none transition-all"
+              className="w-full min-h-[180px] py-2 px-3 text-[13px] text-[var(--color-text-main)] bg-[var(--color-surface)] dark:bg-[var(--color-surface)] border border-[var(--color-border)] dark:border-[var(--color-border)] rounded-md focus:ring-1 focus:ring-primary/30 focus:border-[rgba(0,122,255,0.5)] focus:outline-none transition-all"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
               Supported formats: protocol://user:pass@host:port, host:port:user:pass
             </p>
           </div>
@@ -470,12 +470,12 @@ export default function ProxyPoolsPage() {
         onClose={closeVercelModal}
       >
         <div className="flex flex-col gap-4">
-          <div className="rounded-lg bg-blue-500/5 border border-blue-500/10 p-3 flex flex-col gap-1.5">
-            <p className="text-sm text-text-main font-medium">What is Vercel Relay?</p>
-            <p className="text-xs text-text-muted">
+          <div className="rounded bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 p-3 flex flex-col gap-1.5">
+            <p className="text-[13px] text-[var(--color-text-main)] font-medium">What is Vercel Relay?</p>
+            <p className="text-[11px] text-[var(--color-text-muted)]">
               Deploys an edge relay function to Vercel. All AI provider requests will be forwarded through Vercel&apos;s edge network, masking your real IP from providers.
             </p>
-            <ul className="text-xs text-text-muted list-disc pl-4 space-y-0.5">
+            <ul className="text-[11px] text-[var(--color-text-muted)] list-disc pl-4 space-y-0.5">
               <li>Your IP is replaced by Vercel&apos;s dynamic edge IPs (hundreds of IPs across 20+ global regions)</li>
               <li>Vercel serves millions of apps — providers can&apos;t block Vercel IPs without affecting legitimate traffic</li>
               <li>Free tier: 100GB bandwidth/month, 500K edge invocations</li>
@@ -487,7 +487,7 @@ export default function ProxyPoolsPage() {
             value={vercelForm.vercelToken}
             onChange={(e) => setVercelForm((prev) => ({ ...prev, vercelToken: e.target.value }))}
             placeholder="your-vercel-api-token"
-            hint={<>Token is used once for deployment and not stored. <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Get token →</a></>}
+            hint={<>Token is used once for deployment and not stored. <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] hover:underline">Get token →</a></>}
             type="password"
           />
           <Input
@@ -538,10 +538,10 @@ export default function ProxyPoolsPage() {
             hint="Comma-separated hosts/domains to bypass proxy"
           />
 
-          <div className="rounded-lg border border-border/50 p-3 flex items-center justify-between">
+          <div className="rounded border border-[var(--color-border)]/50 p-3 flex items-center justify-between">
             <div>
-              <p className="font-medium text-sm">Active</p>
-              <p className="text-xs text-text-muted">Inactive pools are ignored by runtime resolution.</p>
+              <p className="font-medium text-[13px]">Active</p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">Inactive pools are ignored by runtime resolution.</p>
             </div>
             <Toggle
               checked={formData.isActive === true}
@@ -550,10 +550,10 @@ export default function ProxyPoolsPage() {
             />
           </div>
 
-          <div className="rounded-lg border border-border/50 p-3 flex items-center justify-between">
+          <div className="rounded border border-[var(--color-border)]/50 p-3 flex items-center justify-between">
             <div>
-              <p className="font-medium text-sm">Strict Proxy</p>
-              <p className="text-xs text-text-muted">Fail request if proxy is unreachable instead of falling back to direct.</p>
+              <p className="font-medium text-[13px]">Strict Proxy</p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">Fail request if proxy is unreachable instead of falling back to direct.</p>
             </div>
             <Toggle
               checked={formData.strictProxy === true}

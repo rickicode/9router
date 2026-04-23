@@ -10,7 +10,7 @@ import Image from "next/image";
 export default function MitmLinkCard({ tool }) {
   return (
     <Link href="/dashboard/mitm" className="block">
-      <Card padding="sm" className="overflow-hidden hover:border-primary/50 transition-colors cursor-pointer">
+      <Card padding="sm" className="overflow-hidden hover:border-[rgba(0,122,255,0.5)] transition-colors cursor-pointer">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="size-8 flex items-center justify-center shrink-0">
@@ -19,20 +19,20 @@ export default function MitmLinkCard({ tool }) {
                 alt={tool.name}
                 width={32}
                 height={32}
-                className="size-8 object-contain rounded-lg"
+                className="size-8 object-contain rounded"
                 sizes="32px"
                 onError={(e) => { e.target.style.display = "none"; }}
               />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-medium text-sm">{tool.name}</h3>
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full">MITM</span>
+                <h3 className="font-medium text-[13px]">{tool.name}</h3>
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-accent)]/10 text-[var(--color-accent)]  rounded">MITM</span>
               </div>
-              <p className="text-xs text-text-muted truncate">{tool.description}</p>
+              <p className="text-[11px] text-[var(--color-text-muted)] truncate">{tool.description}</p>
             </div>
           </div>
-          <span className="material-symbols-outlined text-text-muted text-[20px]">chevron_right</span>
+          <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[20px]">chevron_right</span>
         </div>
       </Card>
     </Link>

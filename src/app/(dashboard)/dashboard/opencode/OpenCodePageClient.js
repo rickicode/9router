@@ -75,7 +75,7 @@ function ModelSelector({ preferences, modelCatalog, saving, onSave, activeProvid
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
           Model selection
         </p>
         <div className="flex gap-2">
@@ -83,10 +83,10 @@ function ModelSelector({ preferences, modelCatalog, saving, onSave, activeProvid
             type="button"
             onClick={() => onSave?.({ modelSelectionMode: "exclude" })}
             className={cn(
-              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+              "rounded border px-3 py-1.5 text-[11px] font-medium transition-colors",
               mode === "exclude"
-                ? "border-primary/30 bg-primary/10 text-primary"
-                : "border-border bg-surface text-text-muted hover:text-text-main"
+                ? "border-[rgba(0,122,255,0.3)] bg-[var(--color-primary)]/10 text-[var(--color-accent)]"
+                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
             )}
           >
             Exclude from catalog
@@ -95,10 +95,10 @@ function ModelSelector({ preferences, modelCatalog, saving, onSave, activeProvid
             type="button"
             onClick={() => onSave?.({ modelSelectionMode: "include" })}
             className={cn(
-              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+              "rounded border px-3 py-1.5 text-[11px] font-medium transition-colors",
               mode === "include"
-                ? "border-primary/30 bg-primary/10 text-primary"
-                : "border-border bg-surface text-text-muted hover:text-text-main"
+                ? "border-[rgba(0,122,255,0.3)] bg-[var(--color-primary)]/10 text-[var(--color-accent)]"
+                : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
             )}
           >
             Include only
@@ -106,20 +106,20 @@ function ModelSelector({ preferences, modelCatalog, saving, onSave, activeProvid
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border bg-surface/50 p-3">
+      <div className="flex flex-wrap items-center gap-2 rounded border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/50 p-3">
         {selectedModels.length === 0 ? (
-          <p className="text-xs text-text-muted">
+          <p className="text-[11px] text-[var(--color-text-muted)]">
             {mode === "include"
               ? "No included models selected yet."
               : "No excluded models. Full catalog will be used."}
           </p>
         ) : (
           selectedModels.map((modelId) => (
-            <Badge key={modelId} className="gap-1.5 pr-1 shadow-sm">
-              <span className="max-w-[200px] truncate text-xs">{modelId}</span>
+            <Badge key={modelId} className="gap-1.5 pr-1 ">
+              <span className="max-w-[200px] truncate text-[11px]">{modelId}</span>
               <button
                 type="button"
-                className="rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                className="rounded p-0.5 hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[var(--color-surface)]"
                 onClick={() => removeModel(modelId)}
               >
                 <span className="material-symbols-outlined text-[12px]">close</span>
@@ -154,7 +154,7 @@ function ModelSelector({ preferences, modelCatalog, saving, onSave, activeProvid
 function VariantToggle({ variant, onVariantChange }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
         Variant
       </p>
       <div className="flex gap-2">
@@ -162,39 +162,39 @@ function VariantToggle({ variant, onVariantChange }) {
           type="button"
           onClick={() => onVariantChange("openagent")}
           className={cn(
-            "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer",
+            "flex-1 rounded border px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer",
             variant === "openagent"
-              ? "border-primary/30 bg-primary/10 text-text-main"
-              : "border-border bg-surface text-text-muted hover:text-text-main hover:border-primary/20"
+              ? "border-[rgba(0,122,255,0.3)] bg-[var(--color-primary)]/10 text-[var(--color-text-main)]"
+              : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/20"
           )}
         >
-          <div className="font-semibold">Oh My Open Agent</div>
+          <div className="font-medium">Oh My Open Agent</div>
           <div className="mt-0.5 text-[10px] opacity-70">Recommended · Full preset</div>
         </button>
         <button
           type="button"
           onClick={() => onVariantChange("slim")}
           className={cn(
-            "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer",
+            "flex-1 rounded border px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer",
             variant === "slim"
-              ? "border-primary/30 bg-primary/10 text-text-main"
-              : "border-border bg-surface text-text-muted hover:text-text-main hover:border-primary/20"
+              ? "border-[rgba(0,122,255,0.3)] bg-[var(--color-primary)]/10 text-[var(--color-text-main)]"
+              : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/20"
           )}
         >
-          <div className="font-semibold">Oh My OpenCode Slim</div>
+          <div className="font-medium">Oh My OpenCode Slim</div>
           <div className="mt-0.5 text-[10px] opacity-70">Lighter preset</div>
         </button>
         <button
           type="button"
           onClick={() => onVariantChange("custom")}
           className={cn(
-            "flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer",
+            "flex-1 rounded border px-3 py-2 text-[11px] font-medium transition-colors cursor-pointer",
             variant === "custom"
-              ? "border-primary/30 bg-primary/10 text-text-main"
-              : "border-border bg-surface text-text-muted hover:text-text-main hover:border-primary/20"
+              ? "border-[rgba(0,122,255,0.3)] bg-[var(--color-primary)]/10 text-[var(--color-text-main)]"
+              : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-primary/20"
           )}
         >
-          <div className="font-semibold">Custom / No preset</div>
+          <div className="font-medium">Custom / No preset</div>
           <div className="mt-0.5 text-[10px] opacity-70">Manual overrides only</div>
         </button>
       </div>
@@ -205,21 +205,21 @@ function VariantToggle({ variant, onVariantChange }) {
 function PluginSection({ plugins, pluginInput, onPluginInputChange, onAddPlugin, onRemovePlugin }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
         Plugins
       </p>
       <div className="flex flex-wrap gap-2">
         {plugins.map((plugin) => (
           <span
             key={plugin}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs text-text-main"
+            className="inline-flex items-center gap-1.5 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-[11px] text-[var(--color-text-main)]"
           >
-            <span className="material-symbols-outlined text-[12px] text-primary">extension</span>
+            <span className="material-symbols-outlined text-[12px] text-[var(--color-accent)]">extension</span>
             {plugin}
             <button
               type="button"
               onClick={() => onRemovePlugin(plugin)}
-              className="ml-0.5 rounded-full p-0.5 text-text-muted hover:bg-black/10 hover:text-text-main dark:hover:bg-white/10"
+              className="ml-0.5 rounded p-0.5 text-[var(--color-text-muted)] hover:bg-[rgba(0,0,0,0.1)] hover:text-[var(--color-text-main)] dark:hover:bg-[var(--color-surface)]"
             >
               <span className="material-symbols-outlined text-[12px]">close</span>
             </button>
@@ -233,7 +233,7 @@ function PluginSection({ plugins, pluginInput, onPluginInputChange, onAddPlugin,
           onChange={(e) => onPluginInputChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onAddPlugin()}
           placeholder="my-plugin@latest"
-          className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-main placeholder:text-text-muted focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+          className="flex-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
         <Button variant="ghost" size="sm" onClick={onAddPlugin} disabled={!pluginInput.trim()}>
           Add
@@ -268,7 +268,7 @@ function McpSection({ mcps, onAddMcp, onRemoveMcp, onToggleMcpEnabled }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
         MCP Servers
       </p>
       {mcps.length > 0 && (
@@ -276,11 +276,11 @@ function McpSection({ mcps, onAddMcp, onRemoveMcp, onToggleMcpEnabled }) {
           {mcps.map((mcp) => (
             <div
               key={mcp.name}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
             >
-              <div className="flex items-center gap-2 text-xs">
-                <span className="material-symbols-outlined text-[14px] text-primary">dns</span>
-                <span className="font-medium text-text-main">{mcp.name}</span>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="material-symbols-outlined text-[14px] text-[var(--color-accent)]">dns</span>
+                <span className="font-medium text-[var(--color-text-main)]">{mcp.name}</span>
                 <Badge size="sm">{mcp.type || "local"}</Badge>
                 {mcp.enabled === false && <Badge size="sm" variant="secondary">disabled</Badge>}
               </div>
@@ -288,7 +288,7 @@ function McpSection({ mcps, onAddMcp, onRemoveMcp, onToggleMcpEnabled }) {
                 <button
                   type="button"
                   onClick={() => onToggleMcpEnabled(mcp.name)}
-                  className="rounded p-1 text-text-muted hover:text-text-main"
+                  className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
                   title={mcp.enabled === false ? "Enable" : "Disable"}
                 >
                   <span className="material-symbols-outlined text-[14px]">
@@ -298,7 +298,7 @@ function McpSection({ mcps, onAddMcp, onRemoveMcp, onToggleMcpEnabled }) {
                 <button
                   type="button"
                   onClick={() => onRemoveMcp(mcp.name)}
-                  className="rounded p-1 text-text-muted hover:text-red-500"
+                  className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
                 >
                   <span className="material-symbols-outlined text-[14px]">close</span>
                 </button>
@@ -313,12 +313,12 @@ function McpSection({ mcps, onAddMcp, onRemoveMcp, onToggleMcpEnabled }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Server name"
-          className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-main placeholder:text-text-muted focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+          className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-main focus:border-primary/30 focus:outline-none"
+          className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[11px] text-[var(--color-text-main)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none"
         >
           <option value="local">Local</option>
           <option value="remote">Remote</option>
@@ -329,7 +329,7 @@ function McpSection({ mcps, onAddMcp, onRemoveMcp, onToggleMcpEnabled }) {
           onChange={(e) => (type === "remote" ? setUrl(e.target.value) : setCommand(e.target.value))}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder={type === "remote" ? "https://example.com/mcp" : "npx @modelcontextprotocol/server-filesystem /workspace"}
-          className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-main placeholder:text-text-muted focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+          className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
         <Button variant="ghost" size="sm" onClick={handleAdd} disabled={!name.trim()}>
           Add
@@ -354,7 +354,7 @@ function EnvVarsSection({ envVars, onAddEnvVar, onRemoveEnvVar }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
         Environment Variables
       </p>
       {envVars.length > 0 && (
@@ -362,17 +362,17 @@ function EnvVarsSection({ envVars, onAddEnvVar, onRemoveEnvVar }) {
           {envVars.map((env, idx) => (
             <div
               key={`${env.key}-${idx}`}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
             >
-              <div className="flex items-center gap-2 text-xs">
-                <span className="material-symbols-outlined text-[14px] text-primary">key</span>
-                <span className="font-mono font-medium text-text-main">{env.key}</span>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="material-symbols-outlined text-[14px] text-[var(--color-accent)]">key</span>
+                <span className="font-mono font-medium text-[var(--color-text-main)]">{env.key}</span>
                 {env.secret && <Badge size="sm" variant="secondary">secret</Badge>}
               </div>
               <button
                 type="button"
                 onClick={() => onRemoveEnvVar(idx)}
-                className="rounded p-1 text-text-muted hover:text-red-500"
+                className="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
               >
                 <span className="material-symbols-outlined text-[14px]">close</span>
               </button>
@@ -386,7 +386,7 @@ function EnvVarsSection({ envVars, onAddEnvVar, onRemoveEnvVar }) {
           value={key}
           onChange={(e) => setKey(e.target.value)}
           placeholder="OPENAI_API_KEY"
-          className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-main placeholder:text-text-muted focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+          className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
         <input
           type={secret ? "password" : "text"}
@@ -394,9 +394,9 @@ function EnvVarsSection({ envVars, onAddEnvVar, onRemoveEnvVar }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="value"
-          className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-main placeholder:text-text-muted focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+          className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[11px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none focus:ring-1 focus:ring-primary/20"
         />
-        <label className="flex items-center gap-1.5 text-xs text-text-muted">
+        <label className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
           <input
             type="checkbox"
             checked={secret}
@@ -473,15 +473,15 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-3 py-8">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-primary" />
-        <span className="text-sm text-text-muted">Generating preview…</span>
+        <div className="h-5 w-5 animate-spin rounded border-2 border-[var(--color-border)] border-t-primary" />
+        <span className="text-[13px] text-[var(--color-text-muted)]">Generating preview…</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+      <div className="rounded border border-[var(--color-danger)]/20 bg-[rgba(255,59,48,0.05)] px-4 py-3 text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">
         {error}
         <Button variant="ghost" size="sm" onClick={onRefresh} className="ml-2">
           Retry
@@ -492,7 +492,7 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
 
   if (!opencodeConfig) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-6 text-center text-sm text-text-muted">
+      <div className="rounded border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/50 px-4 py-6 text-center text-[13px] text-[var(--color-text-muted)]">
         No config preview available yet.
         <Button variant="ghost" size="sm" onClick={onRefresh} className="ml-2">
           Refresh
@@ -504,10 +504,10 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
   return (
     <div className="space-y-3">
       {/* Sync info banner */}
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-3">
-        <p className="text-sm text-text-muted">
+      <div className="flex items-start gap-3 rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+        <p className="text-[13px] text-[var(--color-text-muted)]">
           Auto-sync keeps this config updated via{" "}
-          <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs text-primary">
+          <code className="rounded bg-[var(--color-primary)]/10 px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-accent)]">
             opencode-9router-sync@latest
           </code>
         </p>
@@ -515,26 +515,26 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
 
       {/* Slim first-time setup banner */}
       {variant === "slim" && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 space-y-1">
+        <div className="rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/10 px-3 py-2 space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-red-600 shrink-0">First-time setup:</span>
-            <code className="text-xs font-mono select-all truncate text-red-600">
+            <span className="text-[11px] font-medium text-[var(--color-danger)] shrink-0">First-time setup:</span>
+            <code className="text-[11px] font-mono select-all truncate text-[var(--color-danger)]">
               bunx oh-my-opencode-slim@latest install --no-tui --skills=no
             </code>
-            <span className="text-[10px] text-red-600/70 shrink-0">(run once)</span>
+            <span className="text-[10px] text-[var(--color-danger)]/70 shrink-0">(run once)</span>
           </div>
-          <p className="text-[10px] text-red-600/50">
-            Registers agents and hooks. Use <code className="text-red-600/60">--skills=yes</code> to also install community skills.
+          <p className="text-[10px] text-[var(--color-danger)]/50">
+            Registers agents and hooks. Use <code className="text-[var(--color-danger)]/60">--skills=yes</code> to also install community skills.
           </p>
         </div>
       )}
 
       {/* Main config preview */}
-      <div className="rounded-xl border border-border overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2.5">
+      <div className="rounded border border-[var(--color-border)] overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[16px] text-primary">data_object</span>
-            <span className="text-sm font-semibold text-text-main">opencode.json</span>
+            <span className="material-symbols-outlined text-[16px] text-[var(--color-accent)]">data_object</span>
+            <span className="text-[13px] font-medium text-[var(--color-text-main)]">opencode.json</span>
             <Badge size="sm">
               {Object.keys(opencodeConfig?.provider?.["9router"]?.models || {}).length} models
             </Badge>
@@ -552,7 +552,7 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-muted hover:text-text-main"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
             >
               <span className={cn(
                 "material-symbols-outlined text-[14px] transition-transform",
@@ -565,7 +565,7 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
           </div>
         </div>
         {isExpanded && (
-          <pre className="max-h-[32rem] overflow-auto bg-[#0b1020] px-4 py-4 text-xs leading-6 text-slate-100">
+          <pre className="max-h-[32rem] overflow-auto bg-[var(--color-primary)] px-4 py-4 text-[11px] leading-6 text-[var(--color-text-inverse)]">
             <code>{configJson}</code>
           </pre>
         )}
@@ -573,11 +573,11 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
 
       {/* Variant artifact preview */}
       {variantArtifact && (
-        <div className="rounded-xl border border-border overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2.5">
+        <div className="rounded border border-[var(--color-border)] overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[16px] text-primary">tune</span>
-              <span className="text-sm font-semibold text-text-main">{variantArtifact.filename}</span>
+              <span className="material-symbols-outlined text-[16px] text-[var(--color-accent)]">tune</span>
+              <span className="text-[13px] font-medium text-[var(--color-text-main)]">{variantArtifact.filename}</span>
               <Badge size="sm" variant="secondary">Preset artifact</Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -601,17 +601,17 @@ function ConfigPreview({ preview, variant, loading, error, onRefresh, selectedAp
       )}
 
       {/* Tips */}
-      <div className="space-y-1.5 text-sm text-text-muted">
+      <div className="space-y-1.5 text-[13px] text-[var(--color-text-muted)]">
         <p className="flex items-start gap-2">
           <span>•</span>
           <span>
-            Set default model: <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:text-amber-400">9router/cx/model-name</code>
+            Set default model: <code className="rounded bg-[var(--color-surface)] px-1.5 py-0.5 font-mono text-[11px] text-amber-700 dark:text-[var(--color-warning)]">9router/cx/model-name</code>
           </span>
         </p>
         <p className="flex items-start gap-2">
           <span>•</span>
           <span>
-            Place at <code className="break-all rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-amber-700 dark:text-amber-400">~/.config/opencode/opencode.json</code>
+            Place at <code className="break-all rounded bg-[var(--color-surface)] px-1.5 py-0.5 font-mono text-[11px] text-amber-700 dark:text-[var(--color-warning)]">~/.config/opencode/opencode.json</code>
           </span>
         </p>
       </div>
@@ -916,24 +916,24 @@ export default function OpenCodePageClient() {
   return (
     <div className="flex flex-col gap-6">
         {/* Header */}
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <h1 className="text-xl font-semibold tracking-tight text-text-main">
+        <section className="rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <h1 className="text-[20px] font-medium tracking-tight text-[var(--color-text-main)]">
             OpenCode Quick Start
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
             Configure your OpenCode setup, generate config, and manage auto-sync from one place.
           </p>
         </section>
 
         {/* Global error */}
         {error && (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+          <div className="rounded border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/8 px-4 py-3 text-[13px] text-[var(--color-danger)] dark:text-red-300">
             {error}
           </div>
         )}
 
         {savingKey && (
-          <p className="text-xs text-text-muted">Saving {savingKey}…</p>
+          <p className="text-[11px] text-[var(--color-text-muted)]">Saving {savingKey}…</p>
         )}
 
         {/* Model Selection */}
@@ -942,7 +942,7 @@ export default function OpenCodePageClient() {
             title="Model Selection"
             subtitle="Choose which models appear in your generated config."
             icon="model_training"
-            className="rounded-xl"
+            className="rounded"
           >
             <ModelSelector
               preferences={normalizedPreferences}
@@ -960,14 +960,14 @@ export default function OpenCodePageClient() {
           <Card
             title={
               <span className="flex items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-sm text-text-muted" aria-hidden="true">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[13px] text-[var(--color-text-muted)]" aria-hidden="true">
                   ▶
                 </span>
                 Using with OpenCode
               </span>
             }
             icon="terminal"
-            className="rounded-xl"
+            className="rounded"
           >
             <div className="space-y-5">
               {/* Variant toggle */}
@@ -1019,11 +1019,11 @@ export default function OpenCodePageClient() {
                   />
                 </div>
               ) : (
-                <div className="rounded-lg border border-border bg-surface/50 px-3 py-2">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="material-symbols-outlined text-[14px] text-primary">info</span>
-                    <span className="text-text-muted">
-                      API key will be set to <code className="text-primary font-mono">sk_9router</code> (endpoint doesn't require API key)
+                <div className="rounded border border-[var(--color-border)] bg-[var(--color-surface)]/50 px-3 py-2">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="material-symbols-outlined text-[14px] text-[var(--color-accent)]">info</span>
+                    <span className="text-[var(--color-text-muted)]">
+                      API key will be set to <code className="text-[var(--color-accent)] font-mono">sk_9router</code> (endpoint doesn't require API key)
                     </span>
                   </div>
                 </div>
@@ -1074,7 +1074,7 @@ export default function OpenCodePageClient() {
               />
 
               {/* Divider */}
-              <div className="border-t border-border" />
+              <div className="border-t border-[var(--color-border)]" />
 
               {/* Config Preview */}
               <ConfigPreview
@@ -1174,19 +1174,19 @@ function AdvancedOverridesCollapsible({ preferences, preview, modelCatalog, savi
   };
 
   return (
-    <details className="group/details rounded-xl border border-border bg-surface">
+    <details className="group/details rounded border border-[var(--color-border)] bg-[var(--color-surface)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-        <span className="flex items-center gap-3 text-sm font-semibold text-text-main">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-sm text-text-muted" aria-hidden="true">
+        <span className="flex items-center gap-3 text-[13px] font-medium text-[var(--color-text-main)]">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[13px] text-[var(--color-text-muted)]" aria-hidden="true">
             ▶
           </span>
           {title}
         </span>
-        <span className="material-symbols-outlined text-[18px] text-text-muted transition-transform duration-200 group-open/details:rotate-180">
+        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)] transition-transform duration-200 group-open/details:rotate-180">
           expand_more
         </span>
       </summary>
-      <div className="border-t border-border px-4 py-4 space-y-4">
+      <div className="border-t border-[var(--color-border)] px-4 py-4 space-y-4">
         {/* Advanced Config Editor with Agent/Category Assignments */}
         <AdvancedConfigEditor
           variant={variant}
@@ -1201,8 +1201,8 @@ function AdvancedOverridesCollapsible({ preferences, preview, modelCatalog, savi
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-text-main">{variantArtifact.filename}</p>
-                <p className="mt-1 text-xs text-text-muted">
+                <p className="text-[13px] font-medium text-[var(--color-text-main)]">{variantArtifact.filename}</p>
+                <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
                   Generated advanced config for the selected variant.
                 </p>
               </div>
@@ -1214,28 +1214,28 @@ function AdvancedOverridesCollapsible({ preferences, preview, modelCatalog, savi
                 Download
               </Button>
             </div>
-            <pre className="max-h-[18rem] overflow-auto rounded-xl border border-border bg-[#0b1020] px-4 py-4 text-xs leading-6 text-slate-100">
+            <pre className="max-h-[18rem] overflow-auto rounded border border-[var(--color-border)] bg-[var(--color-primary)] px-4 py-4 text-[11px] leading-6 text-[var(--color-text-inverse)]">
               <code>{prettyJson(variantArtifact.content)}</code>
             </pre>
           </div>
         )}
 
         {/* Raw JSON Editor (Advanced) */}
-        <details className="rounded-lg border border-border bg-surface/50">
-          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-text-muted hover:text-text-main transition-colors">
+        <details className="rounded border border-[var(--color-border)] bg-[var(--color-surface)]/50">
+          <summary className="cursor-pointer px-3 py-2 text-[11px] font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
             Advanced: Edit Raw JSON
           </summary>
-          <div className="border-t border-border px-3 py-3 space-y-3">
+          <div className="border-t border-[var(--color-border)] px-3 py-3 space-y-3">
             {editMode ? (
               <>
                 <textarea
                   value={draftJson}
                   onChange={(e) => setDraftJson(e.target.value)}
-                  className="w-full h-64 px-3 py-2 font-mono text-xs rounded-lg border border-border bg-surface text-text-main focus:border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  className="w-full h-64 px-3 py-2 font-mono text-[11px] rounded border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-main)] focus:border-[rgba(0,122,255,0.3)] focus:outline-none focus:ring-1 focus:ring-primary/20"
                   placeholder='{\n  "agentAssignments": {\n    "explorer": "cx/gpt-5.3-codex"\n  }\n}'
                 />
                 {jsonError && (
-                  <p className="text-sm text-red-600 dark:text-red-400">{jsonError}</p>
+                  <p className="text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">{jsonError}</p>
                 )}
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
@@ -1248,7 +1248,7 @@ function AdvancedOverridesCollapsible({ preferences, preview, modelCatalog, savi
               </>
             ) : (
               <>
-                <pre className="max-h-[18rem] overflow-auto rounded-xl border border-border bg-surface px-4 py-4 text-xs leading-6 text-text-main">
+                <pre className="max-h-[18rem] overflow-auto rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 text-[11px] leading-6 text-[var(--color-text-main)]">
                   <code>{Object.keys(currentOverrides).length > 0 ? prettyJson(currentOverrides) : "{}"}</code>
                 </pre>
                 <Button variant="secondary" size="sm" onClick={handleEditClick}>

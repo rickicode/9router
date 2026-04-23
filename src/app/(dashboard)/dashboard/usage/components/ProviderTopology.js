@@ -25,7 +25,7 @@ function ProviderNode({ data }) {
   const [imgError, setImgError] = useState(false);
   return (
     <div
-      className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border-2 transition-all duration-300 bg-bg"
+      className="flex items-center gap-2.5 px-4 py-2.5 rounded border-2 transition-all duration-300 bg-[var(--color-bg-alt)]"
       style={{
         borderColor: active ? color : "var(--color-border)",
         boxShadow: active ? `0 0 16px ${color}40` : "none",
@@ -45,7 +45,7 @@ function ProviderNode({ data }) {
         {!imgError ? (
           <img src={imageUrl} alt={label} className="w-6 h-6 rounded-sm object-contain" onError={() => setImgError(true)} />
         ) : (
-          <span className="text-sm font-bold" style={{ color }}>{textIcon}</span>
+          <span className="text-[13px] font-medium" style={{ color }}>{textIcon}</span>
         )}
       </div>
 
@@ -60,8 +60,8 @@ function ProviderNode({ data }) {
       {/* Active indicator */}
       {active && (
         <span className="relative flex h-2 w-2 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: color }} />
-          <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: color }} />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded opacity-75" style={{ backgroundColor: color }} />
+          <span className="relative inline-flex rounded h-2 w-2" style={{ backgroundColor: color }} />
         </span>
       )}
     </div>
@@ -75,16 +75,16 @@ ProviderNode.propTypes = {
 // Center 9Router node
 function RouterNode({ data }) {
   return (
-    <div className="flex items-center justify-center px-5 py-3 rounded-xl border-2 border-primary bg-primary/5 shadow-md min-w-[130px]">
+    <div className="flex items-center justify-center px-5 py-3 rounded border-2 border-primary bg-[var(--color-primary)]/5  min-w-[130px]">
       <Handle type="source" position={Position.Top} id="top" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Bottom} id="bottom" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Left} id="left" className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Right} id="right" className="!bg-transparent !border-0 !w-0 !h-0" />
 
       <img src="/favicon.svg" alt="9Router" className="w-6 h-6 mr-2" />
-      <span className="text-sm font-bold text-primary">9Router</span>
+      <span className="text-[13px] font-medium text-[var(--color-accent)]">9Router</span>
       {data.activeCount > 0 && (
-        <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-xs font-bold">
+        <span className="ml-2 px-1.5 py-0.5 rounded bg-[var(--color-primary)] text-[var(--color-text-main)] text-[11px] font-medium">
           {data.activeCount}
         </span>
       )}
@@ -221,9 +221,9 @@ export default function ProviderTopology({ providers = [], activeRequests = [], 
   }, []);
 
   return (
-    <div className="w-full rounded-lg border border-border bg-bg-subtle/30" style={{ height: 480 }}>
+    <div className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-alt)]/30" style={{ height: 480 }}>
       {providers.length === 0 ? (
-        <div className="h-full flex items-center justify-center text-text-muted text-sm">
+        <div className="h-full flex items-center justify-center text-[var(--color-text-muted)] text-[13px]">
           No providers connected
         </div>
       ) : (

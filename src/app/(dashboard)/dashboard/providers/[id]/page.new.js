@@ -415,9 +415,9 @@ export default function ProviderDetailPage() {
     const availableModels = allProviderModels;
     if (availableModels.length === 0) {
       if (loadingRemoteModels) {
-        return <p className="text-sm text-text-muted">Loading models from provider...</p>;
+        return <p className="text-[13px] text-[var(--color-text-muted)]">Loading models from provider...</p>;
       }
-      return <p className="text-sm text-text-muted">No models configured</p>;
+      return <p className="text-[13px] text-[var(--color-text-muted)]">No models configured</p>;
     }
 
     const selectedSet = new Set(selectedModelIds);
@@ -449,7 +449,7 @@ export default function ProviderDetailPage() {
               <button
                 type="button"
                 onClick={() => setModelSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
                 title="Clear search"
               >
                 <span className="material-symbols-outlined text-[16px]">close</span>
@@ -479,7 +479,7 @@ export default function ProviderDetailPage() {
             {savingSelectedModels ? "Saving..." : "Save selection"}
           </Button>
           <div className="flex items-center gap-1 pl-2">
-            <span className="text-xs text-text-muted">Selected only</span>
+            <span className="text-[11px] text-[var(--color-text-muted)]">Selected only</span>
             <Toggle
               size="sm"
               checked={showSelectedOnly}
@@ -489,14 +489,14 @@ export default function ProviderDetailPage() {
           </div>
         </div>
 
-        <p className="text-xs text-text-muted">
+        <p className="text-[11px] text-[var(--color-text-muted)]">
           {selectedModelIds.length > 0
             ? `${selectedModelIds.length} selected`
             : "All models enabled"}
         </p>
 
         {visibleModels.length === 0 ? (
-          <p className="text-sm text-text-muted">No models match your filter.</p>
+          <p className="text-[13px] text-[var(--color-text-muted)]">No models match your filter.</p>
         ) : (
           <div className="flex flex-wrap gap-3">
             {visibleModels.map((model) => {
@@ -538,8 +538,8 @@ export default function ProviderDetailPage() {
   if (!providerInfo) {
     return (
       <div className="text-center py-20">
-        <p className="text-text-muted">Provider not found</p>
-        <Link href="/dashboard/providers" className="text-primary mt-4 inline-block">
+        <p className="text-[var(--color-text-muted)]">Provider not found</p>
+        <Link href="/dashboard/providers" className="text-[var(--color-accent)] mt-4 inline-block">
           Back to Providers
         </Link>
       </div>
@@ -563,18 +563,18 @@ export default function ProviderDetailPage() {
       <div>
         <Link
           href="/dashboard/providers"
-          className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
+          className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
           Back to Providers
         </Link>
         <div className="flex items-center gap-4">
           <div
-            className="rounded-lg flex items-center justify-center"
+            className="rounded flex items-center justify-center"
             style={{ backgroundColor: `${providerInfo.color}15` }}
           >
             {headerImgError ? (
-              <span className="text-sm font-bold" style={{ color: providerInfo.color }}>
+              <span className="text-[13px] font-medium" style={{ color: providerInfo.color }}>
                 {providerInfo.textIcon || providerInfo.id.slice(0, 2).toUpperCase()}
               </span>
             ) : (
@@ -583,15 +583,15 @@ export default function ProviderDetailPage() {
                 alt={providerInfo.name}
                 width={48}
                 height={48}
-                className="object-contain rounded-lg max-w-[48px] max-h-[48px]"
+                className="object-contain rounded max-w-[48px] max-h-[48px]"
                 sizes="48px"
                 onError={() => setHeaderImgError(true)}
               />
             )}
           </div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{providerInfo.name}</h1>
-            <p className="text-text-muted">
+            <h1 className="text-[30px] font-medium tracking-tight">{providerInfo.name}</h1>
+            <p className="text-[var(--color-text-muted)]">
               {connections.length} connection{connections.length === 1 ? "" : "s"}
             </p>
           </div>
@@ -602,8 +602,8 @@ export default function ProviderDetailPage() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold">{isAnthropicCompatible ? "Anthropic Compatible Details" : "OpenAI Compatible Details"}</h2>
-              <p className="text-sm text-text-muted">
+              <h2 className="text-[16px] font-medium">{isAnthropicCompatible ? "Anthropic Compatible Details" : "OpenAI Compatible Details"}</h2>
+              <p className="text-[13px] text-[var(--color-text-muted)]">
                 {isAnthropicCompatible ? "Messages API" : (providerNode.apiType === "responses" ? "Responses API" : "Chat Completions")} · {(providerNode.baseUrl || "").replace(/\/$/, "")}/
                 {isAnthropicCompatible ? "messages" : (providerNode.apiType === "responses" ? "responses" : "chat/completions")}
               </p>
@@ -646,7 +646,7 @@ export default function ProviderDetailPage() {
             </div>
           </div>
           {connections.length > 0 && (
-            <p className="text-sm text-text-muted">
+            <p className="text-[13px] text-[var(--color-text-muted)]">
               Only one connection is allowed per compatible node. Add another node if you need more connections.
             </p>
           )}
@@ -656,7 +656,7 @@ export default function ProviderDetailPage() {
       {/* Connections */}
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Connections</h2>
+          <h2 className="text-[16px] font-medium">Connections</h2>
           {!isCompatible && (
             <Button
               size="sm"
@@ -670,11 +670,11 @@ export default function ProviderDetailPage() {
 
         {connections.length === 0 ? (
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded bg-[var(--color-primary)]/10 text-[var(--color-accent)] mb-4">
               <span className="material-symbols-outlined text-[32px]">{isOAuth ? "lock" : "key"}</span>
             </div>
-            <p className="text-text-main font-medium mb-1">No connections yet</p>
-            <p className="text-sm text-text-muted mb-4">Add your first connection to get started</p>
+            <p className="text-[var(--color-text-main)] font-medium mb-1">No connections yet</p>
+            <p className="text-[13px] text-[var(--color-text-muted)] mb-4">Add your first connection to get started</p>
             {!isCompatible && (
               <Button icon="add" onClick={() => isOAuth ? setShowOAuthModal(true) : setShowAddApiKeyModal(true)}>
                 Add Connection
@@ -682,7 +682,7 @@ export default function ProviderDetailPage() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-black/[0.03] dark:divide-white/[0.03]">
+          <div className="flex flex-col divide-y divide-[var(--color-border)] ">
             {connections
               .sort((a, b) => (a.priority || 0) - (b.priority || 0))
               .map((conn, index) => (
@@ -708,7 +708,7 @@ export default function ProviderDetailPage() {
 
       {/* Models */}
       <Card>
-        <h2 className="text-lg font-semibold mb-4">
+        <h2 className="text-[16px] font-medium mb-4">
           {providerInfo.passthroughModels ? "Model Aliases" : "Available Models"}
         </h2>
         {renderModelsSection()}
@@ -768,25 +768,25 @@ export default function ProviderDetailPage() {
 
 function ModelRow({ model, fullModel, alias, selected, onToggleSelect, copied, onCopy }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-sidebar/50">
+    <div className="flex items-center gap-2 px-3 py-2 rounded border border-[var(--color-border)] hover:bg-[var(--color-primary)]/50">
       <button
         type="button"
         onClick={onToggleSelect}
-        className={`p-0.5 rounded ${selected ? "text-primary" : "text-text-muted hover:text-primary"}`}
+        className={`p-0.5 rounded ${selected ? "text-[var(--color-accent)]" : "text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"}`}
         title={selected ? "Deselect model" : "Select model"}
       >
         <span className="material-symbols-outlined text-[18px]">
           {selected ? "check_box" : "check_box_outline_blank"}
         </span>
       </button>
-      <span className="material-symbols-outlined text-base text-text-muted">smart_toy</span>
-      <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
+      <span className="material-symbols-outlined text-base text-[var(--color-text-muted)]">smart_toy</span>
+      <code className="text-[11px] text-[var(--color-text-muted)] font-mono bg-[var(--color-primary)] px-1.5 py-0.5 rounded">{fullModel}</code>
       <button
         onClick={() => onCopy(fullModel, `model-${model.id}`)}
-        className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
+        className="p-0.5 hover:bg-[var(--color-primary)] rounded text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
         title="Copy model"
       >
-        <span className="material-symbols-outlined text-sm">
+        <span className="material-symbols-outlined text-[13px]">
           {copied === `model-${model.id}` ? "check" : "content_copy"}
         </span>
       </button>
@@ -851,14 +851,14 @@ function PassthroughModelsSection({ providerAlias, modelAliases, copied, onCopy,
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-text-muted">
+      <p className="text-[13px] text-[var(--color-text-muted)]">
         OpenRouter supports any model. Add models and create aliases for quick access.
       </p>
 
       {/* Add new model */}
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <label htmlFor="new-model-input" className="text-xs text-text-muted mb-1 block">Model ID (from OpenRouter)</label>
+          <label htmlFor="new-model-input" className="text-[11px] text-[var(--color-text-muted)] mb-1 block">Model ID (from OpenRouter)</label>
           <input
             id="new-model-input"
             type="text"
@@ -866,7 +866,7 @@ function PassthroughModelsSection({ providerAlias, modelAliases, copied, onCopy,
             onChange={(e) => setNewModel(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="anthropic/claude-3-opus"
-            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+            className="w-full px-3 py-2 text-[13px] border border-[var(--color-border)] rounded bg-background focus:outline-none focus:border-primary"
           />
         </div>
         <Button size="sm" icon="add" onClick={handleAdd} disabled={!newModel.trim() || adding}>
@@ -904,20 +904,20 @@ PassthroughModelsSection.propTypes = {
 
 function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-sidebar/50">
-      <span className="material-symbols-outlined text-base text-text-muted">smart_toy</span>
+    <div className="flex items-center gap-3 p-3 rounded border border-[var(--color-border)] hover:bg-[var(--color-primary)]/50">
+      <span className="material-symbols-outlined text-base text-[var(--color-text-muted)]">smart_toy</span>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{modelId}</p>
+        <p className="text-[13px] font-medium truncate">{modelId}</p>
 
         <div className="flex items-center gap-1 mt-1">
-          <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
+          <code className="text-[11px] text-[var(--color-text-muted)] font-mono bg-[var(--color-primary)] px-1.5 py-0.5 rounded">{fullModel}</code>
           <button
             onClick={() => onCopy(fullModel, `model-${modelId}`)}
-            className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
+            className="p-0.5 hover:bg-[var(--color-primary)] rounded text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"
             title="Copy model"
           >
-            <span className="material-symbols-outlined text-sm">
+            <span className="material-symbols-outlined text-[13px]">
               {copied === `model-${modelId}` ? "check" : "content_copy"}
             </span>
           </button>
@@ -927,10 +927,10 @@ function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias
       {/* Delete button */}
       <button
         onClick={onDeleteAlias}
-        className="p-1 hover:bg-red-50 rounded text-red-500"
+        className="p-1 hover:bg-[var(--color-danger)]/10 rounded text-[var(--color-danger)]"
         title="Remove model"
       >
-        <span className="material-symbols-outlined text-sm">delete</span>
+        <span className="material-symbols-outlined text-[13px]">delete</span>
       </button>
     </div>
   );
@@ -1033,13 +1033,13 @@ function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, m
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-text-muted">
+      <p className="text-[13px] text-[var(--color-text-muted)]">
         Add {isAnthropic ? "Anthropic" : "OpenAI"}-compatible models manually or import them from the /models endpoint.
       </p>
 
       <div className="flex items-end gap-2 flex-wrap">
         <div className="flex-1 min-w-[240px]">
-          <label htmlFor="new-compatible-model-input" className="text-xs text-text-muted mb-1 block">Model ID</label>
+          <label htmlFor="new-compatible-model-input" className="text-[11px] text-[var(--color-text-muted)] mb-1 block">Model ID</label>
           <input
             id="new-compatible-model-input"
             type="text"
@@ -1047,7 +1047,7 @@ function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, m
             onChange={(e) => setNewModel(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder={isAnthropic ? "claude-3-opus-20240229" : "gpt-4o"}
-            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+            className="w-full px-3 py-2 text-[13px] border border-[var(--color-border)] rounded bg-background focus:outline-none focus:border-primary"
           />
         </div>
         <Button size="sm" icon="add" onClick={handleAdd} disabled={!newModel.trim() || adding}>
@@ -1059,7 +1059,7 @@ function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, m
       </div>
 
       {!canImport && (
-        <p className="text-xs text-text-muted">
+        <p className="text-[11px] text-[var(--color-text-muted)]">
           Add a connection to enable importing models.
         </p>
       )}
@@ -1127,7 +1127,7 @@ function CooldownTimer({ until }) {
   if (!remaining) return null;
 
   return (
-    <span className="text-xs text-orange-500 font-mono">
+    <span className="text-[11px] text-[var(--color-warning)] font-mono">
       ⏱ {remaining}
     </span>
   );
@@ -1179,43 +1179,43 @@ function ConnectionRow({ connection, isOAuth, isFirst, isLast, onMoveUp, onMoveD
   };
 
   return (
-    <div className={`group flex items-center justify-between p-3 rounded-lg hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors ${connection.isActive === false ? "opacity-60" : ""}`}>
+    <div className={`group flex items-center justify-between p-3 rounded hover:bg-black/[0.02] dark:hover:bg-[var(--color-surface)]/[0.02] transition-colors ${connection.isActive === false ? "opacity-60" : ""}`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {/* Priority arrows */}
         <div className="flex flex-col">
           <button
             onClick={onMoveUp}
             disabled={isFirst}
-            className={`p-0.5 rounded ${isFirst ? "text-text-muted/30 cursor-not-allowed" : "hover:bg-sidebar text-text-muted hover:text-primary"}`}
+            className={`p-0.5 rounded ${isFirst ? "text-[var(--color-text-muted)]/30 cursor-not-allowed" : "hover:bg-[var(--color-primary)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"}`}
           >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_up</span>
+            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_up</span>
           </button>
           <button
             onClick={onMoveDown}
             disabled={isLast}
-            className={`p-0.5 rounded ${isLast ? "text-text-muted/30 cursor-not-allowed" : "hover:bg-sidebar text-text-muted hover:text-primary"}`}
+            className={`p-0.5 rounded ${isLast ? "text-[var(--color-text-muted)]/30 cursor-not-allowed" : "hover:bg-[var(--color-primary)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]"}`}
           >
-            <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+            <span className="material-symbols-outlined text-[13px]">keyboard_arrow_down</span>
           </button>
         </div>
-        <span className="material-symbols-outlined text-base text-text-muted">
+        <span className="material-symbols-outlined text-base text-[var(--color-text-muted)]">
           {isOAuth ? "lock" : "key"}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{displayName}</p>
+          <p className="text-[13px] font-medium truncate">{displayName}</p>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant={getStatusVariant()} size="sm" dot>
               {connection.isActive === false ? "disabled" : (effectiveStatus || "Unknown")}
             </Badge>
             {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
             {connection.lastError && connection.isActive !== false && (
-              <span className="text-xs text-red-500 truncate max-w-[300px]" title={connection.lastError}>
+              <span className="text-[11px] text-[var(--color-danger)] truncate max-w-[300px]" title={connection.lastError}>
                 {connection.lastError}
               </span>
             )}
-            <span className="text-xs text-text-muted">#{connection.priority}</span>
+            <span className="text-[11px] text-[var(--color-text-muted)]">#{connection.priority}</span>
             {connection.globalPriority && (
-              <span className="text-xs text-text-muted">Auto: {connection.globalPriority}</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">Auto: {connection.globalPriority}</span>
             )}
           </div>
         </div>
@@ -1228,10 +1228,10 @@ function ConnectionRow({ connection, isOAuth, isFirst, isLast, onMoveUp, onMoveD
           title={(connection.isActive ?? true) ? "Disable connection" : "Enable connection"}
         />
         <div className="flex gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEdit} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary">
+          <button onClick={onEdit} className="p-2 hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] rounded text-[var(--color-text-muted)] hover:text-[var(--color-accent)]">
             <span className="material-symbols-outlined text-[18px]">edit</span>
           </button>
-          <button onClick={onDelete} className="p-2 hover:bg-red-500/10 rounded text-red-500">
+          <button onClick={onDelete} className="p-2 hover:bg-[var(--color-danger)]/10 rounded text-[var(--color-danger)]">
             <span className="material-symbols-outlined text-[18px]">delete</span>
           </button>
         </div>
@@ -1355,7 +1355,7 @@ function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthro
           </Badge>
         )}
         {isCompatible && (
-          <p className="text-xs text-text-muted">
+          <p className="text-[11px] text-[var(--color-text-muted)]">
             {isAnthropic
               ? `Validation checks ${providerName || "Anthropic Compatible"} by verifying the API key.`
               : `Validation checks ${providerName || "OpenAI Compatible"} via /models on your base URL.`
@@ -1501,8 +1501,8 @@ function EditConnectionModal({ isOpen, connection, onSave, onClose }) {
           placeholder={isOAuth ? "Account name" : "Production Key"}
         />
         {isOAuth && connection.email && (
-          <div className="bg-sidebar/50 p-3 rounded-lg">
-            <p className="text-sm text-text-muted mb-1">Email</p>
+          <div className="bg-[var(--color-primary)]/50 p-3 rounded">
+            <p className="text-[13px] text-[var(--color-text-muted)] mb-1">Email</p>
             <p className="font-medium">{connection.email}</p>
           </div>
         )}

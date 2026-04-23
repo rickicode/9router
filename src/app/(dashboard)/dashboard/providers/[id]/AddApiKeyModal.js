@@ -134,12 +134,12 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
           </div>
         )}
         {isCookie && authHint && (
-          <p className="text-xs text-text-muted">
+          <p className="text-[11px] text-[var(--color-text-muted)]">
             {authHint}
             {website && (
               <>
                 {" "}
-                <a href={website} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                <a href={website} target="_blank" rel="noopener noreferrer" className="text-[var(--color-accent)] underline">
                   Open {website.replace(/^https?:\/\//, "")}
                 </a>
               </>
@@ -147,7 +147,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
           </p>
         )}
         {isOllamaLocal && (
-          <p className="text-xs text-text-muted">
+          <p className="text-[11px] text-[var(--color-text-muted)]">
             Leave blank to use <code>http://localhost:11434</code>. For remote Ollama, enter the full host URL (e.g. <code>http://192.168.1.10:11434</code>).
           </p>
         )}
@@ -157,7 +157,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
           </Badge>
         )}
         {isCompatible && (
-          <p className="text-xs text-text-muted">
+          <p className="text-[11px] text-[var(--color-text-muted)]">
             {isAnthropic 
               ? `Validation checks ${providerName || "Anthropic Compatible"} by verifying the API key.`
               : `Validation checks ${providerName || "OpenAI Compatible"} via /models on your base URL.`
@@ -183,12 +183,12 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         />
 
         {(proxyPools || []).length === 0 && (
-          <p className="text-xs text-text-muted">
+          <p className="text-[11px] text-[var(--color-text-muted)]">
             No active proxy pools available. Create one in Proxy Pools page first.
           </p>
         )}
 
-        <p className="text-xs text-text-muted">
+        <p className="text-[11px] text-[var(--color-text-muted)]">
           Legacy manual proxy fields are still accepted by API for backward compatibility.
         </p>
 

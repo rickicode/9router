@@ -48,14 +48,14 @@ export default function Drawer({
     <div className="fixed inset-0 z-50">
       {/* Overlay */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity cursor-pointer" 
+        className="absolute inset-0 bg-black/50  transition-opacity cursor-pointer" 
         onClick={onClose}
         aria-hidden="true"
       />
       
       {/* Drawer panel */}
       <div className={cn(
-        "absolute right-0 top-0 h-full bg-surface shadow-2xl flex flex-col",
+        "absolute right-0 top-0 h-full bg-[var(--color-surface)]  flex flex-col",
         "animate-in slide-in-from-right duration-200",
         "border-l border-black/10 dark:border-white/10",
         widths[width] || widths.md,
@@ -65,7 +65,7 @@ export default function Drawer({
         <div className="flex items-center justify-between p-6 border-b border-black/5 dark:border-white/5 flex-shrink-0">
           <div className="flex items-center gap-3">
             {title && (
-              <h2 className="text-lg font-semibold text-text-main">
+              <h2 className="text-[16px] font-medium text-[var(--color-text-main)]">
                 {title}
               </h2>
             )}
@@ -73,7 +73,7 @@ export default function Drawer({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            className="p-1.5 rounded text-[var(--color-text-muted)] hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[rgba(255,255,255,0.05)] transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>

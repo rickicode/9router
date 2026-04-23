@@ -165,7 +165,7 @@ export default function OpenCodeModelSelectModal({
     <Modal isOpen={isOpen} onClose={handleClose} title={title} size="md" className="p-4!" footer={footer}>
       <div className="mb-3">
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-text-muted">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-[var(--color-text-muted)]">
             search
           </span>
           <input
@@ -173,7 +173,7 @@ export default function OpenCodeModelSelectModal({
             placeholder="Search..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            className="w-full rounded border border-border bg-surface py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full rounded border border-[var(--color-border)] bg-[var(--color-surface)] py-1.5 pl-8 pr-3 text-[11px] focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
       </div>
@@ -181,10 +181,10 @@ export default function OpenCodeModelSelectModal({
       <div className="max-h-[400px] space-y-3 overflow-y-auto">
         {filteredCombos.length > 0 ? (
           <div>
-            <div className="sticky top-0 mb-1.5 flex items-center gap-1.5 bg-surface py-0.5">
-              <span className="material-symbols-outlined text-[14px] text-primary">layers</span>
-              <span className="text-xs font-medium text-primary">Combos</span>
-              <span className="text-[10px] text-text-muted">({filteredCombos.length})</span>
+            <div className="sticky top-0 mb-1.5 flex items-center gap-1.5 bg-[var(--color-surface)] py-0.5">
+              <span className="material-symbols-outlined text-[14px] text-[var(--color-accent)]">layers</span>
+              <span className="text-[11px] font-medium text-[var(--color-accent)]">Combos</span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">({filteredCombos.length})</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {filteredCombos.map((combo, index) => {
@@ -199,12 +199,12 @@ export default function OpenCodeModelSelectModal({
                     disabled={isDisabled}
                     onClick={() => handleSelect({ id: comboName, name: comboName, value: comboName })}
                     className={[
-                      "rounded-xl border px-2 py-1 text-xs font-medium transition-all hover:cursor-pointer",
+                      "rounded border px-2 py-1 text-[11px] font-medium transition-all hover:cursor-pointer",
                       isDisabled
-                        ? "cursor-not-allowed border-border bg-black/[0.03] text-text-muted opacity-50 dark:bg-white/[0.04]"
+                        ? "cursor-not-allowed border-[var(--color-border)] bg-black/[0.03] text-[var(--color-text-muted)] opacity-50 dark:bg-[var(--color-surface)]/[0.04]"
                         : isSelected
-                        ? "border-primary bg-primary text-white"
-                        : "border-border bg-surface text-text-main hover:border-primary/50 hover:bg-primary/5",
+                        ? "border-primary bg-[var(--color-primary)] text-[var(--color-text-main)]"
+                        : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:border-[rgba(0,122,255,0.5)] hover:bg-[var(--color-primary)]/5",
                     ].join(" ")}
                   >
                     {comboName || `Combo ${index + 1}`}
@@ -217,10 +217,10 @@ export default function OpenCodeModelSelectModal({
 
         {Object.entries(filteredGroups).map(([providerId, group]) => (
           <div key={`group:${providerId}`}>
-            <div className="sticky top-0 mb-1.5 flex items-center gap-1.5 bg-surface py-0.5">
-              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: group.color }} />
-              <span className="text-xs font-medium text-primary">{group.name}</span>
-              <span className="text-[10px] text-text-muted">({group.models.length})</span>
+            <div className="sticky top-0 mb-1.5 flex items-center gap-1.5 bg-[var(--color-surface)] py-0.5">
+              <div className="h-2 w-2 rounded" style={{ backgroundColor: group.color }} />
+              <span className="text-[11px] font-medium text-[var(--color-accent)]">{group.name}</span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">({group.models.length})</span>
             </div>
 
             <div className="flex flex-wrap gap-1.5">
@@ -237,14 +237,14 @@ export default function OpenCodeModelSelectModal({
                     onClick={() => handleSelect(model)}
                     title={isPlaceholder ? "Select to pre-fill, then edit model ID in the input" : undefined}
                     className={[
-                      "rounded-xl border px-2 py-1 text-xs font-medium transition-all hover:cursor-pointer",
+                      "rounded border px-2 py-1 text-[11px] font-medium transition-all hover:cursor-pointer",
                       isDisabled
-                        ? "cursor-not-allowed border-border bg-black/[0.03] text-text-muted opacity-50 dark:bg-white/[0.04]"
+                        ? "cursor-not-allowed border-[var(--color-border)] bg-black/[0.03] text-[var(--color-text-muted)] opacity-50 dark:bg-[var(--color-surface)]/[0.04]"
                         : isPlaceholder
-                        ? "border-border bg-surface italic text-text-muted hover:border-primary/50 hover:text-primary border-dashed"
+                        ? "border-[var(--color-border)] bg-[var(--color-surface)] italic text-[var(--color-text-muted)] hover:border-[rgba(0,122,255,0.5)] hover:text-[var(--color-accent)] border-dashed"
                         : isSelected
-                          ? "border-primary bg-primary text-white"
-                          : "border-border bg-surface text-text-main hover:border-primary/50 hover:bg-primary/5",
+                          ? "border-primary bg-[var(--color-primary)] text-[var(--color-text-main)]"
+                          : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:border-[rgba(0,122,255,0.5)] hover:bg-[var(--color-primary)]/5",
                     ].join(" ")}
                   >
                     {isPlaceholder ? (
@@ -268,9 +268,9 @@ export default function OpenCodeModelSelectModal({
         ))}
 
         {Object.keys(filteredGroups).length === 0 && filteredCombos.length === 0 ? (
-          <div className="py-4 text-center text-text-muted">
-            <span className="material-symbols-outlined mb-1 block text-2xl">search_off</span>
-            <p className="text-xs">No models found</p>
+          <div className="py-4 text-center text-[var(--color-text-muted)]">
+            <span className="material-symbols-outlined mb-1 block text-[24px]">search_off</span>
+            <p className="text-[11px]">No models found</p>
           </div>
         ) : null}
       </div>

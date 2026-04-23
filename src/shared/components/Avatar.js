@@ -10,11 +10,11 @@ export default function Avatar({
   className,
 }) {
   const sizes = {
-    xs: "size-6 text-xs",
-    sm: "size-8 text-sm",
+    xs: "size-6 text-[12px]",
+    sm: "size-8 text-[14px]",
     md: "size-10 text-base",
-    lg: "size-12 text-lg",
-    xl: "size-16 text-xl",
+    lg: "size-12 text-[16px]",
+    xl: "size-16 text-[20px]",
   };
 
   // Get initials from name
@@ -29,9 +29,9 @@ export default function Avatar({
 
   // Generate color from name
   const getColorFromName = (name) => {
-    if (!name) return "bg-primary";
+    if (!name) return "bg-[var(--color-primary)]";
     const colors = [
-      "bg-red-500",
+      "bg-[var(--color-danger)]",
       "bg-orange-500",
       "bg-amber-500",
       "bg-yellow-500",
@@ -57,8 +57,8 @@ export default function Avatar({
     return (
       <div
         className={cn(
-          "rounded-full bg-cover bg-center bg-no-repeat",
-          "ring-2 ring-white dark:ring-surface-dark shadow-sm",
+          "rounded bg-cover bg-center bg-no-repeat",
+          "ring-2 ring-white dark:ring-surface-dark ",
           sizes[size],
           className
         )}
@@ -72,8 +72,8 @@ export default function Avatar({
   return (
     <div
       className={cn(
-        "rounded-full flex items-center justify-center font-semibold text-white",
-        "ring-2 ring-white dark:ring-surface-dark shadow-sm",
+        "rounded flex items-center justify-center font-medium text-[var(--color-text-main)]",
+        "ring-2 ring-white dark:ring-surface-dark ",
         sizes[size],
         getColorFromName(name),
         className

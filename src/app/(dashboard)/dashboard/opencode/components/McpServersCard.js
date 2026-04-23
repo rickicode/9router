@@ -97,7 +97,7 @@ export default function McpServersCard({ preferences, saving = false, error = ""
       title="MCP servers"
       subtitle="Optional: attach local command-based or remote MCP servers so they appear in the generated config when you need them."
       icon="dns"
-      className="rounded-[24px] border-black/5 shadow-[0_16px_42px_rgba(0,0,0,0.04)] dark:border-white/5"
+      className="rounded-[24px] border-[var(--color-border)] shadow-[0_16px_42px_rgba(0,0,0,0.04)] dark:border-white/5"
       action={
         <Button variant="secondary" size="sm" onClick={saveServers} loading={saving}>
           Save MCP servers
@@ -108,18 +108,18 @@ export default function McpServersCard({ preferences, saving = false, error = ""
         <div className="rounded-[24px] border border-primary/10 bg-gradient-to-br from-primary/[0.05] via-transparent to-transparent px-5 py-[1.125rem]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-text-main">Connected MCP endpoints</p>
-              <p className="text-xs leading-5 text-text-muted">Mix local command runners and remote URLs without overcrowding the main setup flow.</p>
+              <p className="text-[13px] font-medium text-[var(--color-text-main)]">Connected MCP endpoints</p>
+              <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">Mix local command runners and remote URLs without overcrowding the main setup flow.</p>
             </div>
             <Badge size="sm">{draftServers.length} configured</Badge>
           </div>
         </div>
 
-        <Card.Section className="rounded-[24px] border border-black/5 bg-white/[0.78] px-5 py-5 dark:border-white/5 dark:bg-white/[0.02]">
+        <Card.Section className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/[0.78] px-5 py-5 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-text-main">Add a server</p>
-              <p className="mt-1 text-xs leading-5 text-text-muted">Create the next MCP entry, then save the whole list once it feels complete.</p>
+              <p className="text-[13px] font-medium text-[var(--color-text-main)]">Add a server</p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--color-text-muted)]">Create the next MCP entry, then save the whole list once it feels complete.</p>
             </div>
           </div>
 
@@ -173,23 +173,23 @@ export default function McpServersCard({ preferences, saving = false, error = ""
           </div>
         </Card.Section>
 
-        {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-        {localError ? <p className="text-sm text-red-600 dark:text-red-400">{localError}</p> : null}
+        {error ? <p className="text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">{error}</p> : null}
+        {localError ? <p className="text-[13px] text-[var(--color-danger)] dark:text-[var(--color-danger)]">{localError}</p> : null}
 
         <div className="space-y-4">
           {draftServers.length === 0 ? (
-            <div className="rounded-[22px] border border-dashed border-black/8 bg-black/[0.015] px-5 py-6 text-sm text-text-muted dark:border-white/10 dark:bg-white/[0.015]">No MCP servers configured yet.</div>
+            <div className="rounded-[22px] border border-dashed border-black/8 bg-black/[0.015] px-5 py-6 text-[13px] text-[var(--color-text-muted)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/[0.015]">No MCP servers configured yet.</div>
           ) : (
             draftServers.map((draftServer, index) => {
 
               return (
-                <Card.Section key={`${draftServer.name || "server"}-${index}`} className="space-y-5 rounded-[24px] border border-black/5 bg-white/[0.75] px-5 py-5 dark:border-white/5 dark:bg-white/[0.02]">
+                <Card.Section key={`${draftServer.name || "server"}-${index}`} className="space-y-5 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)]/[0.75] px-5 py-5 dark:border-white/5 dark:bg-[var(--color-surface)]/[0.02]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-text-main">{draftServer.name || `Server ${index + 1}`}</div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                      <div className="text-[13px] font-medium text-[var(--color-text-main)]">{draftServer.name || `Server ${index + 1}`}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-muted)]">
                         <span>{draftServer.type === "remote" ? "Remote URL" : "Local command"}</span>
-                        <span className="inline-block h-1 w-1 rounded-full bg-text-muted/50" />
+                        <span className="inline-block h-1 w-1 rounded bg-text-muted/50" />
                         <span>{draftServer.type === "remote" ? "Network-based" : "Runs locally"}</span>
                       </div>
                     </div>

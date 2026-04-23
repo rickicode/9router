@@ -10,11 +10,11 @@ export default function NineRemoteButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5"
+        className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded transition-all text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[rgba(255,255,255,0.05)]"
         title="9Remote"
       >
         <span className="material-symbols-outlined text-[18px]">computer</span>
-        <span className="text-xs font-medium">Remote</span>
+        <span className="text-[12px] font-medium">Remote</span>
       </button>
 
       <NineRemotePromoModal isOpen={isOpen} onClose={() => setIsOpen(false)} />

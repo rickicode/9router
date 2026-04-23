@@ -78,13 +78,13 @@ export default function NewProviderPage() {
       <div className="mb-8">
         <Link
           href="/dashboard/providers"
-          className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-primary transition-colors mb-4"
+          className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors mb-4"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
           Back to Providers
         </Link>
-        <h1 className="text-3xl font-semibold tracking-tight">Add New Provider</h1>
-        <p className="text-text-muted mt-2">
+        <h1 className="text-[30px] font-medium tracking-tight">Add New Provider</h1>
+        <p className="text-[var(--color-text-muted)] mt-2">
           Configure a new AI provider to use with your applications.
         </p>
       </div>
@@ -107,10 +107,10 @@ export default function NewProviderPage() {
           {selectedProvider && (
             <Card.Section className="flex items-center gap-3">
               <div
-                className="size-10 rounded-lg flex items-center justify-center bg-bg border border-border"
+                className="size-10 rounded flex items-center justify-center bg-[var(--color-bg-alt)] border border-[var(--color-border)]"
               >
                 <span
-                  className="material-symbols-outlined text-xl"
+                  className="material-symbols-outlined text-[20px]"
                   style={{ color: selectedProvider.color }}
                 >
                   {selectedProvider.icon}
@@ -118,7 +118,7 @@ export default function NewProviderPage() {
               </div>
               <div>
                 <p className="font-medium">{selectedProvider.name}</p>
-                <p className="text-sm text-text-muted">
+                <p className="text-[13px] text-[var(--color-text-muted)]">
                   Selected provider
                 </p>
               </div>
@@ -127,8 +127,8 @@ export default function NewProviderPage() {
 
           {/* Auth Method */}
           <div className="flex flex-col gap-3">
-            <label className="text-sm font-medium">
-              Authentication Method <span className="text-red-500">*</span>
+            <label className="text-[13px] font-medium">
+              Authentication Method <span className="text-[var(--color-danger)]">*</span>
             </label>
             <div className="flex gap-3">
               {authMethodOptions.map((method) => (
@@ -136,10 +136,10 @@ export default function NewProviderPage() {
                   key={method.value}
                   type="button"
                   onClick={() => handleChange("authMethod", method.value)}
-                  className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-lg border transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-2 p-4 rounded border transition-all ${
                     formData.authMethod === method.value
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary bg-[var(--color-primary)]/5 text-[var(--color-accent)]"
+                      : "border-[var(--color-border)] hover:border-[rgba(0,122,255,0.5)]"
                   }`}
                 >
                   <span className="material-symbols-outlined">
@@ -168,7 +168,7 @@ export default function NewProviderPage() {
           {/* OAuth2 Button */}
           {formData.authMethod === "oauth2" && (
             <Card.Section>
-              <p className="text-sm text-text-muted mb-4">
+              <p className="text-[13px] text-[var(--color-text-muted)] mb-4">
                 Connect your account using OAuth2 authentication.
               </p>
               <Button type="button" variant="secondary" icon="link">
@@ -196,13 +196,13 @@ export default function NewProviderPage() {
 
           {/* Error Message */}
           {errors.submit && (
-            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
+            <div className="p-4 rounded bg-[var(--color-danger)]/10 dark:bg-red-900/20 border border-[rgba(255,59,48,0.3)] dark:border-[rgba(200,0,0,0.6)] text-[var(--color-danger)] dark:text-[var(--color-danger)] text-[13px]">
               {errors.submit}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-border">
+          <div className="flex gap-3 pt-4 border-t border-[var(--color-border)]">
             <Link href="/dashboard/providers" className="flex-1">
               <Button type="button" variant="ghost" fullWidth>
                 Cancel

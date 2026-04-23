@@ -52,7 +52,7 @@ export default function AddCustomModelModal({ isOpen, providerAlias, providerDis
     <Modal isOpen={isOpen} onClose={onClose} title="Add Custom Model">
       <div className="flex flex-col gap-4">
         <div>
-          <label className="text-sm font-medium mb-1.5 block">Model ID</label>
+          <label className="text-[13px] font-medium mb-1.5 block">Model ID</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -60,7 +60,7 @@ export default function AddCustomModelModal({ isOpen, providerAlias, providerDis
               onChange={(e) => { setModelId(e.target.value); setTestStatus(null); setTestError(""); }}
               onKeyDown={handleKeyDown}
               placeholder="e.g. claude-opus-4-5"
-              className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              className="flex-1 px-3 py-2 text-[13px] border border-[var(--color-border)] rounded bg-background focus:outline-none focus:border-primary"
               autoFocus
             />
             <Button
@@ -73,20 +73,20 @@ export default function AddCustomModelModal({ isOpen, providerAlias, providerDis
               {testStatus === "testing" ? "Testing..." : "Test"}
             </Button>
           </div>
-          <p className="text-xs text-text-muted mt-1">
-            Sent to provider as: <code className="font-mono bg-sidebar px-1 rounded">{modelId.trim() || "model-id"}</code>
+          <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
+            Sent to provider as: <code className="font-mono bg-[var(--color-primary)] px-1 rounded">{modelId.trim() || "model-id"}</code>
           </p>
         </div>
 
         {/* Test result */}
         {testStatus === "ok" && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
+          <div className="flex items-center gap-2 text-[13px] text-[var(--color-success)]">
             <span className="material-symbols-outlined text-base">check_circle</span>
             Model is reachable
           </div>
         )}
         {testStatus === "error" && (
-          <div className="flex items-start gap-2 text-sm text-red-500">
+          <div className="flex items-start gap-2 text-[13px] text-[var(--color-danger)]">
             <span className="material-symbols-outlined text-base shrink-0">cancel</span>
             <span>{testError || "Model not reachable"}</span>
           </div>

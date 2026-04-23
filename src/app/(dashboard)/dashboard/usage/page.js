@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { UsageStats, RequestLogger, CardSkeleton, SegmentedControl } from "@/shared/components";
+import { CardSkeleton, SegmentedControl } from "@/shared/components";
 import RequestDetailsTab from "./components/RequestDetailsTab";
 
 export default function UsagePage() {
@@ -30,7 +30,6 @@ function UsageContent() {
     const params = new URLSearchParams(searchParams);
     params.set("tab", value);
     router.push(`/dashboard/usage?${params.toString()}`, { scroll: false });
-    // Brief loading flash so user sees feedback
     setTimeout(() => setTabLoading(false), 300);
   };
 
@@ -49,11 +48,7 @@ function UsageContent() {
         <CardSkeleton />
       ) : (
         <>
-          {activeTab === "overview" && (
-            <Suspense fallback={<CardSkeleton />}>
-              <UsageStats />
-            </Suspense>
-          )}
+          {activeTab === "overview" && <UsageStatsWrapper />}
           {activeTab === "logs" && <RequestLogger />}
           {activeTab === "details" && <RequestDetailsTab />}
         </>
@@ -62,3 +57,9 @@ function UsageContent() {
   );
 }
 
+import UsageStats from "@/shared/components/UsageStats";
+import RequestLogger from "@/shared/components/RequestLogger";
+
+function UsageStatsWrapper() {
+  return <UsageStats />;
+}

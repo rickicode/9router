@@ -138,7 +138,7 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
       ? selectedApiKey
       : (!cloudEnabled ? "sk_9router" : "<API_KEY_FROM_DASHBOARD>");
 
-    const modelsToShow = selectedModels.length > 0 ? selectedModels : ["provider/model-id"];
+    const modelsToShow = selectedModels?.length > 0 ? selectedModels : ["provider/model-id"];
     const modelsArray = modelsToShow.map(m => ({ id: m }));
 
     return [{
@@ -161,25 +161,25 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
       <div className="flex items-center justify-between hover:cursor-pointer" onClick={onToggle}>
         <div className="flex items-center gap-3">
           <div className="size-8 flex items-center justify-center shrink-0">
-            <Image src="/providers/pi.svg" alt={tool.name} width={32} height={32} className="size-8 object-contain rounded-lg" sizes="32px" onError={(e) => { e.target.style.display = "none"; }} />
+            <Image src="/providers/pi.svg" alt={tool.name} width={32} height={32} className="size-8 object-contain rounded" sizes="32px" onError={(e) => { e.target.style.display = "none"; }} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-sm">{tool.name}</h3>
-              {configStatus === "configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-600 dark:text-green-400 rounded-full">Connected</span>}
-              {configStatus === "not_configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-full">Not configured</span>}
-              {configStatus === "other" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">Other</span>}
+              <h3 className="font-medium text-[13px]">{tool.name}</h3>
+              {configStatus === "configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-success)]/10 text-[var(--color-success)]  rounded">Connected</span>}
+              {configStatus === "not_configured" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-warning)]/10 text-[var(--color-warning)]  rounded">Not configured</span>}
+              {configStatus === "other" && <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-accent)]/10 text-[var(--color-accent)] dark:text-[var(--color-accent)] rounded">Other</span>}
             </div>
-            <p className="text-xs text-text-muted truncate">{tool.description}</p>
+            <p className="text-[11px] text-[var(--color-text-muted)] truncate">{tool.description}</p>
           </div>
         </div>
-        <span className={`material-symbols-outlined text-text-muted text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
+        <span className={`material-symbols-outlined text-[var(--color-text-muted)] text-[20px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
       </div>
 
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-border flex flex-col gap-4">
+        <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex flex-col gap-4">
           {checking && (
-            <div className="flex items-center gap-2 text-text-muted">
+            <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
               <span className="material-symbols-outlined animate-spin">progress_activity</span>
               <span>Checking Pi CLI...</span>
             </div>
@@ -187,16 +187,16 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
 
           {!checking && status && !status.installed && (
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <div className="flex flex-col gap-3 p-4 bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/30 rounded">
                 <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-yellow-500">warning</span>
+                  <span className="material-symbols-outlined text-[var(--color-warning)]">warning</span>
                   <div className="flex-1">
-                    <p className="font-medium text-yellow-600 dark:text-yellow-400">Pi CLI not detected locally</p>
-                    <p className="text-sm text-text-muted">Manual configuration is still available if 9router is deployed on a remote server.</p>
+                    <p className="font-medium text-[var(--color-warning)] ">Pi CLI not detected locally</p>
+                    <p className="text-[13px] text-[var(--color-text-muted)]">Manual configuration is still available if 9router is deployed on a remote server.</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pl-9">
-                  <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-yellow-500/20 !border-yellow-500/40 !text-yellow-700 dark:!text-yellow-300 hover:!bg-yellow-500/30">
+                  <Button variant="secondary" size="sm" onClick={() => setShowManualConfigModal(true)} className="!bg-[var(--color-warning)]/20 !border-[var(--color-warning)]/40 !text-[var(--color-warning)] !text-[var(--color-warning)] hover:!bg-[var(--color-warning)]/30">
                     <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
                     Manual Config
                   </Button>
@@ -207,18 +207,18 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
                 </div>
               </div>
               {showInstallGuide && (
-                <div className="p-4 bg-surface border border-border rounded-lg">
+                <div className="p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded">
                   <h4 className="font-medium mb-3">Installation Guide</h4>
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-3 text-[13px]">
                     <div>
-                      <p className="text-text-muted mb-1">npm:</p>
-                      <code className="block px-3 py-2 bg-black/5 dark:bg-white/5 rounded font-mono text-xs">npm install -g @mariozechner/pi-coding-agent</code>
+                      <p className="text-[var(--color-text-muted)] mb-1">npm:</p>
+                      <code className="block px-3 py-2 bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] rounded font-mono text-[11px]">npm install -g @mariozechner/pi-coding-agent</code>
                     </div>
                     <div>
-                      <p className="text-text-muted mb-1">bun:</p>
-                      <code className="block px-3 py-2 bg-black/5 dark:bg-white/5 rounded font-mono text-xs">bun install -g @mariozechner/pi-coding-agent</code>
+                      <p className="text-[var(--color-text-muted)] mb-1">bun:</p>
+                      <code className="block px-3 py-2 bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] rounded font-mono text-[11px]">bun install -g @mariozechner/pi-coding-agent</code>
                     </div>
-                    <p className="text-text-muted">After installation, run <code className="px-1 bg-black/5 dark:bg-white/5 rounded">pi</code> to verify.</p>
+                    <p className="text-[var(--color-text-muted)]">After installation, run <code className="px-1 bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] rounded">pi</code> to verify.</p>
                   </div>
                 </div>
               )}
@@ -230,57 +230,57 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
               <div className="flex flex-col gap-2">
                 {status?.config?.providers?.["9router"]?.baseUrl && (
                   <div className="flex items-center gap-2">
-                    <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Current</span>
-                    <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
-                    <span className="flex-1 px-2 py-1.5 text-xs text-text-muted truncate">
+                    <span className="w-32 shrink-0 text-[13px] font-medium text-[var(--color-text-main)] text-right">Current</span>
+                    <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px]">arrow_forward</span>
+                    <span className="flex-1 px-2 py-1.5 text-[11px] text-[var(--color-text-muted)] truncate">
                       {status.config.providers["9router"].baseUrl}
                     </span>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2">
-                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">Base URL</span>
-                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
+                  <span className="w-32 shrink-0 text-[13px] font-medium text-[var(--color-text-main)] text-right">Base URL</span>
+                  <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px]">arrow_forward</span>
                   <input
                     type="text"
                     value={getDisplayUrl()}
                     onChange={(e) => setCustomBaseUrl(e.target.value)}
                     placeholder="https://.../v1"
-                    className="flex-1 px-2 py-1.5 bg-surface rounded border border-border text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    className="flex-1 px-2 py-1.5 bg-[var(--color-surface)] rounded border border-[var(--color-border)] text-[11px] focus:outline-none focus:ring-1 focus:ring-primary/50"
                   />
                   {customBaseUrl && customBaseUrl !== `${baseUrl}/v1` && (
-                    <button onClick={() => setCustomBaseUrl("")} className="p-1 text-text-muted hover:text-primary rounded transition-colors" title="Reset to default">
+                    <button onClick={() => setCustomBaseUrl("")} className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] rounded transition-colors" title="Reset to default">
                       <span className="material-symbols-outlined text-[14px]">restart_alt</span>
                     </button>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right">API Key</span>
-                  <span className="material-symbols-outlined text-text-muted text-[14px]">arrow_forward</span>
-                  {apiKeys.length > 0 ? (
-                    <select value={selectedApiKey} onChange={(e) => setSelectedApiKey(e.target.value)} className="flex-1 px-2 py-1.5 bg-surface rounded text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary/50">
+                  <span className="w-32 shrink-0 text-[13px] font-medium text-[var(--color-text-main)] text-right">API Key</span>
+                  <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px]">arrow_forward</span>
+                  {apiKeys?.length > 0 ? (
+                    <select value={selectedApiKey} onChange={(e) => setSelectedApiKey(e.target.value)} className="flex-1 px-2 py-1.5 bg-[var(--color-surface)] rounded text-[11px] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-primary/50">
                       {apiKeys.map((key) => <option key={key.id} value={key.key}>{key.key}</option>)}
                     </select>
                   ) : (
-                    <span className="flex-1 text-xs text-text-muted px-2 py-1.5">
+                    <span className="flex-1 text-[11px] text-[var(--color-text-muted)] px-2 py-1.5">
                       {cloudEnabled ? "No API keys - Create one in Keys page" : "sk_9router (default)"}
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-start gap-2">
-                  <span className="w-32 shrink-0 text-sm font-semibold text-text-main text-right pt-1">Models</span>
-                  <span className="material-symbols-outlined text-text-muted text-[14px] mt-1.5">arrow_forward</span>
+                  <span className="w-32 shrink-0 text-[13px] font-medium text-[var(--color-text-main)] text-right pt-1">Models</span>
+                  <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[14px] mt-1.5">arrow_forward</span>
                   <div className="flex-1 flex flex-col gap-2">
-                    <div className="flex flex-wrap gap-1.5 min-h-[28px] px-2 py-1.5 bg-surface rounded border border-border">
-                      {selectedModels.length === 0 ? (
-                        <span className="text-xs text-text-muted">No models selected</span>
+                    <div className="flex flex-wrap gap-1.5 min-h-[28px] px-2 py-1.5 bg-[var(--color-surface)] rounded border border-[var(--color-border)]">
+                      {selectedModels?.length === 0 ? (
+                        <span className="text-[11px] text-[var(--color-text-muted)]">No models selected</span>
                       ) : (
                         selectedModels.map((model) => (
                           <span
                             key={model}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-black/5 dark:bg-white/5 text-text-muted border border-transparent hover:border-border"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-[rgba(0,0,0,0.05)] dark:bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-transparent hover:border-[var(--color-border)]"
                           >
                             {model}
                             <button
@@ -297,7 +297,7 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
                                   console.log("Error removing model:", error);
                                 }
                               }}
-                              className="ml-0.5 hover:text-red-500"
+                              className="ml-0.5 hover:text-[var(--color-danger)]"
                             >
                               <span className="material-symbols-outlined text-[12px]">close</span>
                             </button>
@@ -306,9 +306,9 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setModalOpen(true)} disabled={!activeProviders?.length} className={`px-2 py-1 rounded border text-xs transition-colors ${activeProviders?.length ? "bg-surface border-border text-text-main hover:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed border-border"}`}>Add Model</button>
-                      <span className="text-xs text-text-muted">
-                        {selectedModels.length > 0 ? `${selectedModels.length} model(s) selected` : "Select models to add"}
+                      <button onClick={() => setModalOpen(true)} disabled={!activeProviders?.length} className={`px-2 py-1 rounded border text-[11px] transition-colors ${activeProviders?.length ? "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-main)] hover:border-primary cursor-pointer" : "opacity-50 cursor-not-allowed border-[var(--color-border)]"}`}>Add Model</button>
+                      <span className="text-[11px] text-[var(--color-text-muted)]">
+                        {selectedModels?.length > 0 ? `${selectedModels?.length} model(s) selected` : "Select models to add"}
                       </span>
                     </div>
                   </div>
@@ -316,14 +316,14 @@ export default function PiToolCard({ tool, isExpanded, onToggle, baseUrl, apiKey
               </div>
 
               {message && (
-                <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs ${message.type === "success" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
+                <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${message.type === "success" ? "bg-[var(--color-success)]/10 text-[var(--color-success)]" : "bg-[var(--color-danger)]/10 text-[var(--color-danger)]"}`}>
                   <span className="material-symbols-outlined text-[14px]">{message.type === "success" ? "check_circle" : "error"}</span>
                   <span>{message.text}</span>
                 </div>
               )}
 
               <div className="flex items-center gap-2">
-                <Button variant="primary" size="sm" onClick={handleApply} disabled={selectedModels.length === 0} loading={applying}>
+                <Button variant="primary" size="sm" onClick={handleApply} disabled={selectedModels?.length === 0} loading={applying}>
                   <span className="material-symbols-outlined text-[14px] mr-1">save</span>Apply
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleReset} disabled={!status.has9Router} loading={restoring}>

@@ -34,38 +34,38 @@ function RecentRequests({ requests = [] }) {
   return (
     <Card className="flex flex-col overflow-hidden" padding="sm" style={{ height: 480 }}>
       {/* Header */}
-      <div className="px-1 py-2 border-b border-border shrink-0">
-        <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Recent Requests</span>
+      <div className="px-1 py-2 border-b border-[var(--color-border)] shrink-0">
+        <span className="text-[12px] font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Recent Requests</span>
       </div>
 
-      {!requests.length ? (
-        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No requests yet.</div>
+      {!requests?.length ? (
+        <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-[14px]">No requests yet.</div>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead className="sticky top-0 bg-bg z-10">
-              <tr className="border-b border-border">
-                <th className="py-1.5 text-left font-semibold text-text-muted w-2"></th>
-                <th className="py-1.5 text-left font-semibold text-text-muted">Model</th>
-                <th className="py-1.5 text-right font-semibold text-text-muted whitespace-nowrap">In / Out</th>
-                <th className="py-1.5 text-right font-semibold text-text-muted">When</th>
+          <table className="w-full text-[12px] border-collapse">
+            <thead className="sticky top-0 bg-[var(--color-bg-alt)] z-10">
+              <tr className="border-b border-[var(--color-border)]">
+                <th className="py-1.5 text-left font-medium text-[var(--color-text-muted)] w-2"></th>
+                <th className="py-1.5 text-left font-medium text-[var(--color-text-muted)]">Model</th>
+                <th className="py-1.5 text-right font-medium text-[var(--color-text-muted)] whitespace-nowrap">In / Out</th>
+                <th className="py-1.5 text-right font-medium text-[var(--color-text-muted)]">When</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {requests.map((r, i) => {
                 const ok = !r.status || r.status === "ok" || r.status === "success";
                 return (
-                  <tr key={i} className="hover:bg-bg-subtle transition-colors">
+                  <tr key={i} className="hover:bg-[var(--color-bg-alt)] transition-colors">
                     <td className="py-1.5">
-                      <span className={`block w-1.5 h-1.5 rounded-full ${ok ? "bg-success" : "bg-error"}`} />
+                      <span className={`block w-1.5 h-1.5 rounded ${ok ? "bg-success" : "bg-error"}`} />
                     </td>
                     <td className="py-1.5 font-mono truncate max-w-[120px]" title={r.model}>{r.model}</td>
                     <td className="py-1.5 text-right whitespace-nowrap">
-                      <span className="text-primary">{fmt(r.promptTokens)}↑</span>
+                      <span className="text-[var(--color-accent)]">{fmt(r.promptTokens)}↑</span>
                       {" "}
                       <span className="text-success">{fmt(r.completionTokens)}↓</span>
                     </td>
-                    <td className="py-1.5 text-right text-text-muted whitespace-nowrap"><TimeAgo timestamp={r.timestamp} /></td>
+                    <td className="py-1.5 text-right text-[var(--color-text-muted)] whitespace-nowrap"><TimeAgo timestamp={r.timestamp} /></td>
                   </tr>
                 );
               })}
@@ -284,17 +284,17 @@ export default function UsageStats() {
           emptyMessage: "No usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
           ),
           renderDetailCells: (item) => (
             <>
-              <td className={`px-6 py-3 font-medium transition-colors ${item.pending > 0 ? "text-primary" : ""}`}>{item.rawModel}</td>
+              <td className={`px-6 py-3 font-medium transition-colors ${item.pending > 0 ? "text-[var(--color-accent)]" : ""}`}>{item.rawModel}</td>
               <td className="px-6 py-3"><Badge variant={item.pending > 0 ? "primary" : "neutral"} size="sm">{item.provider}</Badge></td>
               <td className="px-6 py-3 text-right">{fmt(item.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
             </>
           ),
         };
@@ -317,19 +317,19 @@ export default function UsageStats() {
           emptyMessage: "No account-specific usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
           ),
           renderDetailCells: (item) => (
             <>
-              <td className={`px-6 py-3 font-medium transition-colors ${item.pending > 0 ? "text-primary" : ""}`}>{item.accountName || `Account ${item.connectionId?.slice(0, 8)}...`}</td>
-              <td className={`px-6 py-3 font-medium transition-colors ${item.pending > 0 ? "text-primary" : ""}`}>{item.rawModel}</td>
+              <td className={`px-6 py-3 font-medium transition-colors ${item.pending > 0 ? "text-[var(--color-accent)]" : ""}`}>{item.accountName || `Account ${item.connectionId?.slice(0, 8)}...`}</td>
+              <td className={`px-6 py-3 font-medium transition-colors ${item.pending > 0 ? "text-[var(--color-accent)]" : ""}`}>{item.rawModel}</td>
               <td className="px-6 py-3"><Badge variant={item.pending > 0 ? "primary" : "neutral"} size="sm">{item.provider}</Badge></td>
               <td className="px-6 py-3 text-right">{fmt(item.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
             </>
           ),
         };
@@ -342,10 +342,10 @@ export default function UsageStats() {
           emptyMessage: "No API key usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
           ),
           renderDetailCells: (item) => (
@@ -354,7 +354,7 @@ export default function UsageStats() {
               <td className="px-6 py-3">{item.rawModel}</td>
               <td className="px-6 py-3"><Badge variant="neutral" size="sm">{item.provider}</Badge></td>
               <td className="px-6 py-3 text-right">{fmt(item.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
             </>
           ),
         };
@@ -368,19 +368,19 @@ export default function UsageStats() {
           emptyMessage: "No endpoint usage recorded yet.",
           renderSummaryCells: (group) => (
             <>
-              <td className="px-6 py-3 text-text-muted">—</td>
-              <td className="px-6 py-3 text-text-muted">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
+              <td className="px-6 py-3 text-[var(--color-text-muted)]">—</td>
               <td className="px-6 py-3 text-right">{fmt(group.summary.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(group.summary.lastUsed)}</td>
             </>
           ),
           renderDetailCells: (item) => (
             <>
-              <td className="px-6 py-3 font-medium font-mono text-sm">{item.endpoint}</td>
+              <td className="px-6 py-3 font-medium font-mono text-[14px]">{item.endpoint}</td>
               <td className="px-6 py-3">{item.rawModel}</td>
               <td className="px-6 py-3"><Badge variant="neutral" size="sm">{item.provider}</Badge></td>
               <td className="px-6 py-3 text-right">{fmt(item.requests)}</td>
-              <td className="px-6 py-3 text-right text-text-muted whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
+              <td className="px-6 py-3 text-right text-[var(--color-text-muted)] whitespace-nowrap">{fmtTime(item.lastUsed)}</td>
             </>
           ),
         };
@@ -388,10 +388,10 @@ export default function UsageStats() {
     }
   }, [stats, tableView, sortBy, sortOrder]);
 
-  if (!stats && !loading) return <div className="text-text-muted">Failed to load usage statistics.</div>;
+  if (!stats && !loading) return <div className="text-[var(--color-text-muted)]">Failed to load usage statistics.</div>;
 
   const spinner = (
-    <div className="flex items-center justify-center py-12 text-text-muted">
+    <div className="flex items-center justify-center py-12 text-[var(--color-text-muted)]">
       <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
     </div>
   );
@@ -400,20 +400,20 @@ export default function UsageStats() {
     <div className="flex flex-col gap-6">
       {/* Period selector */}
       <div className="flex items-center gap-2 self-end">
-        <div className="flex items-center gap-1 bg-bg-subtle rounded-lg p-1 border border-border">
+        <div className="flex items-center gap-1 bg-[var(--color-bg-alt)] rounded p-1 border border-[var(--color-border)]">
           {PERIODS.map((p) => (
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
               disabled={fetching}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${period === p.value ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+              className={`px-3 py-1 rounded-md text-[14px] font-medium transition-colors ${period === p.value ? "bg-[var(--color-primary)] text-[var(--color-text-main)] " : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-bg-alt)]"}`}
             >
               {p.label}
             </button>
           ))}
         </div>
         {fetching && (
-          <span className="material-symbols-outlined text-[16px] text-text-muted animate-spin">progress_activity</span>
+          <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)] animate-spin">progress_activity</span>
         )}
       </div>
 
@@ -442,22 +442,22 @@ export default function UsageStats() {
           <select
             value={tableView}
             onChange={(e) => setTableView(e.target.value)}
-            className="px-3 py-1.5 rounded-lg border border-border bg-bg-subtle text-sm font-medium text-text focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="px-3 py-1.5 rounded border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[14px] font-medium text-[var(--color-text-main)] focus:outline-none focus:ring-2 focus:ring-primary/50"
           >
             {TABLE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <div className="flex items-center gap-1 bg-bg-subtle rounded-lg p-1 border border-border">
+          <div className="flex items-center gap-1 bg-[var(--color-bg-alt)] rounded p-1 border border-[var(--color-border)]">
             <button
               onClick={() => setViewMode("costs")}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === "costs" ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+              className={`px-3 py-1 rounded-md text-[14px] font-medium transition-colors ${viewMode === "costs" ? "bg-[var(--color-primary)] text-[var(--color-text-main)] " : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-bg-alt)]"}`}
             >
               Costs
             </button>
             <button
               onClick={() => setViewMode("tokens")}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === "tokens" ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+              className={`px-3 py-1 rounded-md text-[14px] font-medium transition-colors ${viewMode === "tokens" ? "bg-[var(--color-primary)] text-[var(--color-text-main)] " : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-bg-alt)]"}`}
             >
               Tokens
             </button>

@@ -50,25 +50,25 @@ export default function UsageChart({ period = "7d" }) {
 
   return (
     <Card className="p-4 flex flex-col gap-3">
-      <div className="flex items-center gap-1 bg-bg-subtle rounded-lg p-1 border border-border self-start">
+      <div className="flex items-center gap-1 bg-[var(--color-bg-alt)] rounded p-1 border border-[var(--color-border)] self-start">
         <button
           onClick={() => setViewMode("tokens")}
-          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === "tokens" ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+          className={`px-3 py-1 rounded-md text-[13px] font-medium transition-colors ${viewMode === "tokens" ? "bg-[var(--color-primary)] text-[var(--color-text-main)] " : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-bg-alt)]"}`}
         >
           Tokens
         </button>
         <button
           onClick={() => setViewMode("cost")}
-          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === "cost" ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+          className={`px-3 py-1 rounded-md text-[13px] font-medium transition-colors ${viewMode === "cost" ? "bg-[var(--color-primary)] text-[var(--color-text-main)] " : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-bg-alt)]"}`}
         >
           Cost
         </button>
       </div>
 
       {loading ? (
-        <div className="h-48 flex items-center justify-center text-text-muted text-sm">Loading...</div>
+        <div className="h-48 flex items-center justify-center text-[var(--color-text-muted)] text-[13px]">Loading...</div>
       ) : !hasData ? (
-        <div className="h-48 flex items-center justify-center text-text-muted text-sm">No data for this period</div>
+        <div className="h-48 flex items-center justify-center text-[var(--color-text-muted)] text-[13px]">No data for this period</div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>

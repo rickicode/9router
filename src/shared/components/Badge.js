@@ -3,18 +3,18 @@
 import { cn } from "@/shared/utils/cn";
 
 const variants = {
-  default: "bg-black/5 dark:bg-white/10 text-text-muted",
-  primary: "bg-primary/10 text-primary",
-  success: "bg-green-500/10 text-green-600 dark:text-green-400",
-  warning: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  error: "bg-red-500/10 text-red-600 dark:text-red-400",
-  info: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  default: "bg-[var(--color-bg-alt)] text-[var(--color-text-muted)]",
+  primary: "bg-[var(--color-accent)]/15 text-[var(--color-accent)]",
+  success: "bg-[var(--color-success)]/15 text-[var(--color-success)]",
+  warning: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
+  danger: "bg-[var(--color-danger)]/15 text-[var(--color-danger)]",
+  info: "bg-[var(--color-accent)]/15 text-[var(--color-accent)]",
 };
 
 const sizes = {
   sm: "px-2 py-0.5 text-[10px]",
-  md: "px-2.5 py-1 text-xs",
-  lg: "px-3 py-1.5 text-sm",
+  md: "px-2.5 py-1 text-[11px]",
+  lg: "px-3 py-1.5 text-[12px]",
 };
 
 export default function Badge({
@@ -28,7 +28,7 @@ export default function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-semibold",
+        "inline-flex items-center gap-1.5 rounded font-medium",
         variants[variant],
         sizes[size],
         className
@@ -38,18 +38,17 @@ export default function Badge({
         <span
           className={cn(
             "size-1.5 rounded-full",
-            variant === "success" && "bg-green-500",
-            variant === "warning" && "bg-yellow-500",
-            variant === "error" && "bg-red-500",
-            variant === "info" && "bg-blue-500",
-            variant === "primary" && "bg-primary",
-            variant === "default" && "bg-gray-500"
+            variant === "success" && "bg-[var(--color-success)]",
+            variant === "warning" && "bg-[var(--color-warning)]",
+            variant === "danger" && "bg-[var(--color-danger)]",
+            variant === "info" && "bg-[var(--color-accent)]",
+            variant === "primary" && "bg-[var(--color-accent)]",
+            variant === "default" && "bg-[var(--color-text-muted)]"
           )}
         />
       )}
-      {icon && <span className="material-symbols-outlined text-[14px]">{icon}</span>}
+      {icon && <span className="material-symbols-outlined text-[12px]">{icon}</span>}
       {children}
     </span>
   );
 }
-

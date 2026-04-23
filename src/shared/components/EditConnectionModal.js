@@ -124,8 +124,8 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
           placeholder={isOAuth ? "Account name" : "Production Key"}
         />
         {isOAuth && connection.email && (
-          <div className="bg-sidebar/50 p-3 rounded-lg">
-            <p className="text-sm text-text-muted mb-1">Email</p>
+          <div className="bg-[var(--color-primary)]/50 p-3 rounded">
+            <p className="text-[14px] text-[var(--color-text-muted)] mb-1">Email</p>
             <p className="font-medium">{connection.email}</p>
           </div>
         )}

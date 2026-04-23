@@ -100,8 +100,8 @@ function getSchedulerTone(status, enabled) {
     return {
       icon: "pause_circle",
       label: "Scheduler paused",
-      tone: "text-text-muted",
-      surface: "border-black/5 dark:border-white/10 bg-surface",
+      tone: "text-[var(--color-text-muted)]",
+      surface: "border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)]",
     };
   }
 
@@ -110,29 +110,29 @@ function getSchedulerTone(status, enabled) {
       return {
         icon: "progress_activity",
         label: "Sweep running",
-        tone: "text-primary",
-        surface: "border-primary/20 bg-primary/5",
+        tone: "text-[var(--color-accent)]",
+        surface: "border-primary/20 bg-[var(--color-primary)]/5",
       };
     case "cancelling":
       return {
         icon: "sync",
         label: "Restarting sweep",
-        tone: "text-amber-600 dark:text-amber-400",
-        surface: "border-amber-500/20 bg-amber-500/10",
+        tone: "text-[var(--color-warning)] dark:text-[var(--color-warning)]",
+        surface: "border-[rgba(255,159,10,0.2)] bg-[var(--color-warning)]/10",
       };
     case "error":
       return {
         icon: "error",
         label: "Scheduler error",
-        tone: "text-red-500",
-        surface: "border-red-500/20 bg-red-500/10",
+        tone: "text-[var(--color-danger)]",
+        surface: "border-red-500/20 bg-[var(--color-danger)]/10",
       };
     default:
       return {
         icon: "schedule",
         label: "Watching shared state",
-        tone: "text-emerald-600 dark:text-emerald-400",
-        surface: "border-emerald-500/20 bg-emerald-500/10",
+        tone: "text-[var(--color-success)] dark:text-[var(--color-success)]",
+        surface: "border-emerald-500/20 bg-[var(--color-success)]/10",
       };
   }
 }
@@ -494,13 +494,13 @@ export default function ProviderLimits() {
     return (
       <Card padding="lg">
         <div className="text-center py-12">
-          <span className="material-symbols-outlined text-[64px] text-text-muted opacity-20">
+          <span className="material-symbols-outlined text-[64px] text-[var(--color-text-muted)] opacity-20">
             cloud_off
           </span>
-          <h3 className="mt-4 text-lg font-semibold text-text-primary">
+          <h3 className="mt-4 text-[16px] font-medium text-[var(--color-accent)]">
             No Providers Connected
           </h3>
-          <p className="mt-2 text-sm text-text-muted max-w-md mx-auto">
+          <p className="mt-2 text-[13px] text-[var(--color-text-muted)] max-w-md mx-auto">
             Connect to providers with OAuth to observe backend-maintained API quota state.
           </p>
         </div>
@@ -510,38 +510,38 @@ export default function ProviderLimits() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-sm shadow-sm px-4 py-4 space-y-4">
+      <div className="rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)]/70 dark:bg-[var(--color-surface)]   px-4 py-4 space-y-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3 min-w-0">
             <div>
-              <h2 className="text-xl font-semibold text-text-primary">
+              <h2 className="text-[20px] font-medium text-[var(--color-accent)]">
                 Provider Limits
               </h2>
-              <p className="mt-1 text-sm text-text-muted">
+              <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
                 Read-only observer of backend-maintained shared quota state.
               </p>
             </div>
 
-            <div className={`inline-flex max-w-full items-start gap-3 rounded-2xl border px-3 py-3 ${schedulerTone.surface}`}>
+            <div className={`inline-flex max-w-full items-start gap-3 rounded border px-3 py-3 ${schedulerTone.surface}`}>
               <span className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${schedulerTone.tone} ${schedulerStatus?.status === "running" ? "animate-spin" : schedulerStatus?.restartRequested ? "animate-pulse" : ""}`}>
                 {schedulerTone.icon}
               </span>
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className={`text-sm font-medium ${schedulerTone.tone}`}>
+                  <span className={`text-[13px] font-medium ${schedulerTone.tone}`}>
                     {schedulerTone.label}
                   </span>
                   {schedulerLastUpdated && (
-                    <span className="text-xs text-text-muted">
+                    <span className="text-[11px] text-[var(--color-text-muted)]">
                       updated {getRelativeTime(schedulerLastUpdated)}
                     </span>
                   )}
                 </div>
-                <p className="text-xs leading-5 text-text-muted">
+                <p className="text-[11px] leading-5 text-[var(--color-text-muted)]">
                   {schedulerMessage}
                 </p>
                 {(schedulerStatus?.nextScheduledAt || schedulerStatus?.currentRun?.trigger) && (
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-muted">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--color-text-muted)]">
                     {schedulerStatus?.currentRun?.trigger && (
                       <span>Trigger: {schedulerStatus.currentRun.trigger}</span>
                     )}
@@ -554,26 +554,26 @@ export default function ProviderLimits() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-muted)]">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {sortedConnections.length} matching {sortedConnections.length === 1 ? "connection" : "connections"}
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {activeWithLimits} with quota data
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {canonicalStatusCounts.eligible} eligible
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {canonicalStatusCounts.exhausted} exhausted
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {canonicalStatusCounts.blocked} blocked
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {canonicalStatusCounts.disabled} disabled
             </span>
-            <span className="inline-flex items-center rounded-full border border-black/5 dark:border-white/10 bg-surface px-3 py-1.5">
+            <span className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
               {canonicalStatusCounts.unknown} unknown
             </span>
           </div>
@@ -628,13 +628,13 @@ export default function ProviderLimits() {
         </div>
 
         {(schedulerStatusError || refreshActionError) && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+          <div className="rounded border border-red-500/20 bg-[var(--color-danger)]/10 px-3 py-2 text-[11px] text-[var(--color-danger)] dark:text-red-300">
             {refreshActionError || schedulerStatusError}
           </div>
         )}
 
         {schedulerStatusLoading && !schedulerStatus && (
-          <div className="rounded-xl border border-black/5 dark:border-white/10 bg-surface px-3 py-2 text-xs text-text-muted">
+          <div className="rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
             Loading scheduler status…
           </div>
         )}
@@ -654,7 +654,7 @@ export default function ProviderLimits() {
               padding="none"
               className={`min-w-0 ${isInactive ? "opacity-60" : ""}`}
             >
-              <div className="px-4 py-3 border-b border-black/10 dark:border-white/10">
+              <div className="px-4 py-3 border-b border-[var(--color-border)] dark:border-[var(--color-border)]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 shrink-0 rounded-md flex items-center justify-center overflow-hidden">
@@ -667,11 +667,11 @@ export default function ProviderLimits() {
                       />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-sm font-semibold text-text-primary capitalize truncate">
+                      <h3 className="text-[13px] font-medium text-[var(--color-accent)] capitalize truncate">
                         {conn.provider}
                       </h3>
                       {conn.name && (
-                        <p className="text-xs text-text-muted truncate">
+                        <p className="text-[11px] text-[var(--color-text-muted)] truncate">
                           {conn.name}
                         </p>
                       )}
@@ -680,7 +680,7 @@ export default function ProviderLimits() {
 
                   <div className="flex items-center gap-1 shrink-0">
                     <div
-                      className="inline-flex items-center rounded-lg border border-black/5 dark:border-white/10 bg-surface px-2 py-1 text-[11px] text-text-muted"
+                      className="inline-flex items-center rounded border border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[11px] text-[var(--color-text-muted)]"
                       title="Quota data is maintained by the backend scheduler"
                     >
                       shared state
@@ -689,7 +689,7 @@ export default function ProviderLimits() {
                       type="button"
                       onClick={() => refreshConnectionUsage(conn.id)}
                       disabled={rowBusy || isRefreshingConnection}
-                      className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Refresh quota"
                     >
                       <span
@@ -705,7 +705,7 @@ export default function ProviderLimits() {
                         setShowEditModal(true);
                       }}
                       disabled={rowBusy}
-                      className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-text-muted hover:text-primary transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded hover:bg-[rgba(0,0,0,0.05)] dark:hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-50"
                       title="Edit connection"
                     >
                       <span className="material-symbols-outlined text-[18px]">
@@ -716,7 +716,7 @@ export default function ProviderLimits() {
                       type="button"
                       onClick={() => handleDeleteConnection(conn.id)}
                       disabled={rowBusy}
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded hover:bg-[var(--color-danger)]/10 text-[var(--color-danger)] transition-colors disabled:opacity-50"
                       title="Delete connection"
                     >
                       <span
@@ -742,20 +742,20 @@ export default function ProviderLimits() {
 
               <div className="px-3 py-3">
                 {connectionRefreshError && (
-                  <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+                  <div className="mb-3 rounded border border-red-500/20 bg-[var(--color-danger)]/10 px-3 py-2 text-[11px] text-[var(--color-danger)] dark:text-red-300">
                     {connectionRefreshError}
                   </div>
                 )}
                 {quota.message ? (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs text-text-muted">
+                  <div className="rounded border border-[rgba(255,159,10,0.2)] bg-[var(--color-warning)]/10 px-3 py-3 text-[11px] text-[var(--color-text-muted)]">
                     {quota.message}
                   </div>
                 ) : quota.quotas?.length > 0 ? (
                   <QuotaTable quotas={quota.quotas} compact />
                 ) : (
-                  <div className="rounded-xl border border-dashed border-black/10 dark:border-white/10 bg-surface/70 px-3 py-4 text-center">
-                    <p className="text-xs font-medium text-text-primary">Waiting for backend quota snapshot</p>
-                    <p className="mt-1 text-xs text-text-muted">
+                  <div className="rounded border border-dashed border-[var(--color-border)] dark:border-[var(--color-border)] bg-[var(--color-surface)]/70 px-3 py-4 text-center">
+                    <p className="text-[11px] font-medium text-[var(--color-accent)]">Waiting for backend quota snapshot</p>
+                    <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
                       Use the reload icon to refresh just this account, or Refresh All to request a backend sweep.
                     </p>
                   </div>

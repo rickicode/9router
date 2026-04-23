@@ -25,7 +25,7 @@ function MediaProviderCard({ provider, kind, connections }) {
   const renderStatus = () => {
     if (isNoAuth) return <Badge variant="success" size="sm">Ready</Badge>;
     if (allDisabled) return <Badge variant="default" size="sm">Disabled</Badge>;
-    if (total === 0) return <span className="text-xs text-text-muted">No connections</span>;
+    if (total === 0) return <span className="text-[11px] text-[var(--color-text-muted)]">No connections</span>;
     return (
       <>
         {connected > 0 && <Badge variant="success" size="sm" dot>{connected} Connected</Badge>}
@@ -39,24 +39,24 @@ function MediaProviderCard({ provider, kind, connections }) {
     <Link href={`/dashboard/media-providers/${kind}/${provider.id}`} className="group">
       <Card
         padding="xs"
-        className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
+        className={`h-full hover:bg-black/[0.01] dark:hover:bg-[var(--color-surface)]/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
       >
         <div className="flex items-center gap-3">
           <div
-            className="size-8 rounded-lg flex items-center justify-center shrink-0"
+            className="size-8 rounded flex items-center justify-center shrink-0"
             style={{ backgroundColor: `${provider.color?.length > 7 ? provider.color : (provider.color ?? "#888") + "15"}` }}
           >
             <ProviderIcon
               src={`/providers/${provider.id}.png`}
               alt={provider.name}
               size={30}
-              className="object-contain rounded-lg max-w-[30px] max-h-[30px]"
+              className="object-contain rounded max-w-[30px] max-h-[30px]"
               fallbackText={provider.textIcon || provider.id.slice(0, 2).toUpperCase()}
               fallbackColor={provider.color}
             />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">{provider.name}</h3>
+            <h3 className="font-medium text-[13px]">{provider.name}</h3>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {renderStatus()}
             </div>
@@ -86,7 +86,7 @@ export default function MediaProviderKindPage() {
   return (
     <div className="flex flex-col gap-6">
       {providers.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-border rounded-xl text-text-muted text-sm">
+        <div className="text-center py-12 border border-dashed border-[var(--color-border)] rounded text-[var(--color-text-muted)] text-[13px]">
           No providers support <strong>{kindConfig.label}</strong> yet.
         </div>
       ) : (

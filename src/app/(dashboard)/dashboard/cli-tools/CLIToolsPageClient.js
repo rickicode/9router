@@ -102,7 +102,7 @@ export default function CLIToolsPageClient({ machineId }) {
     }
   };
 
-  const getActiveProviders = () => connections.filter(c => c.isActive !== false);
+  const getActiveProviders = () => (connections || []).filter(c => c.isActive !== false);
 
   const getAllAvailableModels = () => {
     const activeProviders = getActiveProviders();
@@ -147,7 +147,7 @@ export default function CLIToolsPageClient({ machineId }) {
   }
 
   const availableModels = getAllAvailableModels();
-  const hasActiveProviders = availableModels.length > 0;
+  const hasActiveProviders = availableModels?.length > 0;
 
   const renderToolCard = (toolId, tool) => {
     const commonProps = {
@@ -187,8 +187,8 @@ export default function CLIToolsPageClient({ machineId }) {
     }
   };
 
-  const regularTools = Object.entries(CLI_TOOLS);
-  const mitmTools = Object.entries(MITM_TOOLS);
+  const regularTools = Object.entries(CLI_TOOLS || {});
+  const mitmTools = Object.entries(MITM_TOOLS || {});
 
   return (
     <div className="flex flex-col gap-6">
