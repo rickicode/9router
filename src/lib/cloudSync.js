@@ -1,5 +1,5 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { getAllConnections, getAllModelAliases, getAllCombos, getSettings, getApiKeys } from "./localDb.js";
+import { getProviderConnections, getModelAliases, getCombos, getSettings, getApiKeys } from "./localDb.js";
 import { getCloudUrl } from "./cloudUrlResolver.js";
 
 async function getFirstApiKey() {
@@ -35,9 +35,9 @@ export async function syncToCloud() {
     throw new Error(error?.message || "Cloud URL unavailable");
   }
 
-  const connections = await getAllConnections();
-  const modelAliases = await getAllModelAliases();
-  const combos = await getAllCombos();
+  const connections = await getProviderConnections();
+  const modelAliases = await getModelAliases();
+  const combos = await getCombos();
   const apiKeys = await getApiKeys();
   const settings = await getSettings();
 
