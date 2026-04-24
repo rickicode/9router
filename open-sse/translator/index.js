@@ -148,6 +148,10 @@ export function translateRequest(sourceFormat, targetFormat, model, body, stream
 // Translate response chunk: target -> openai -> source
 export function translateResponse(targetFormat, sourceFormat, chunk, state) {
   ensureInitialized();
+  // Null chunk is a flush signal; same-format passthrough should not emit a synthetic payload.
+  if (chunk == null && sourceFormat === targetFormat) {
+    return [];
+  }
   // If same format, return as-is
   if (sourceFormat === targetFormat) {
     return [chunk];
@@ -237,6 +241,7 @@ export function initState(sourceFormat) {
       funcCallIds: {},
       funcArgsDone: {},
       funcItemDone: {},
+      completedOutputItems: [],
       completedSent: false
     };
   }
