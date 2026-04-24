@@ -1,3 +1,30 @@
+# v0.4.5-custom (2026-04-24)
+
+## Merged from upstream v0.4.1-v0.4.5
+
+### Features
+- Added Azure OpenAI provider support with SSRF protection
+- Added Volcengine Ark provider (built-in)
+- Added GPT 5.5 model
+- Added Hermes CLI tool with settings management
+- Added in-app version update mechanism (appUpdater + /api/version/update)
+
+### Improvements
+- Rate limit handling with precise cooldown (`resetsAtMs`) for Codex provider
+- Dynamic custom model fetching for model selection
+- CLI token validation for enhanced security
+- Sidebar layout improvements for CLI tools
+
+### Technical
+- Integrated `resetsAtMs` parameter through error handling pipeline
+- Provider-specific precise cooldown overrides exponential backoff
+- Prevents account thrashing on rate limits
+
+### Notes
+- RTK context filtering skipped (not integrated)
+- Preserved local security fixes (SSRF protection, error sanitization)
+- Preserved local custom features (Go proxy, translation layer)
+
 # Unreleased
 
 ## Security
