@@ -366,6 +366,7 @@ Default URLs:
 | 📝 **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
 | 💾 **Cloud Sync** | Sync config across devices | Same setup everywhere |
 | 📊 **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
+| ⚡ **Go Proxy Runtime** | High-performance data plane for request forwarding | 2x faster than Node.js |
 | 🌐 **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
 
 <details>
