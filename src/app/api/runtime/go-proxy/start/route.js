@@ -1,21 +1,41 @@
 import { NextResponse } from "next/server";
-import { getGoProxyRuntimeStatus, startGoProxyRuntime } from "@/lib/goProxyRuntime";
+import { goProxyManager } from "@/lib/goProxyManager";
+import { startGoProxyRuntime } from "@/lib/goProxyRuntime";
+import { readSettings } from "@/lib/settings";
 
 export async function POST(request) {
-  let body;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "invalid_request" }, { status: 400 });
-  }
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // Use defaults if no body
+    }
 
-  try {
-    const runtime = await startGoProxyRuntime(body);
+    const settings = await readSettings();
+    const config = {
+      host: "127.0.0.1",
+      port: body.port || settings.goProxyPort || 20138,
+      httpTimeoutSeconds: body.httpTimeoutSeconds || settings.goProxyHttpTimeout || 30,
+      ninerouterBaseUrl: "http://localhost:20128",
+      internalResolveToken: process.env.INTERNAL_PROXY_RESOLVE_TOKEN,
+      internalReportToken: process.env.INTERNAL_PROXY_REPORT_TOKEN,
+      credentialsFile: settings.credentialsFilePath || `${process.env.HOME}/.9router/db.json`,
+      binaryPath: `${process.env.HOME}/.9router/bin/9router-go-proxy`,
+    };
+
+    const processInfo = goProxyManager.start(config);
+    const runtime = await startGoProxyRuntime({
+      ...config,
+      pid: processInfo.pid,
+      startedAt: processInfo.startedAt,
+    });
+
     return NextResponse.json(runtime);
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error.message.replace("[Go Proxy Runtime] Runtime manager verification failed: ", ""), runtime: getGoProxyRuntimeStatus() },
-      { status: 500 },
+      { error: error.message },
+      { status: 500 }
     );
   }
 }
