@@ -106,7 +106,10 @@ func ClaudeToOpenAIRequest(model string, body map[string]any, stream bool) (map[
 	}
 
 	if rawMessages, ok := body["messages"].([]any); ok {
-		messages := result["messages"].([]any)
+		messages, ok := result["messages"].([]any)
+		if !ok {
+			return nil, fmt.Errorf("messages is not a slice")
+		}
 		for _, raw := range rawMessages {
 			msg, ok := raw.(map[string]any)
 			if !ok {
@@ -183,7 +186,10 @@ func GeminiToOpenAIRequest(model string, body map[string]any, stream bool) (map[
 	}
 
 	if rawContents, ok := body["contents"].([]any); ok {
-		messages := result["messages"].([]any)
+		messages, ok := result["messages"].([]any)
+		if !ok {
+			return nil, fmt.Errorf("messages is not a slice")
+		}
 		for _, raw := range rawContents {
 			content, ok := raw.(map[string]any)
 			if !ok {
@@ -483,7 +489,10 @@ func filterToOpenAIFormat(body map[string]any) map[string]any {
 		if allText(cleaned) {
 			texts := make([]string, 0, len(cleaned))
 			for _, rawPart := range cleaned {
-				part := rawPart.(map[string]any)
+				part, ok := rawPart.(map[string]any)
+				if !ok {
+					continue
+				}
 				texts = append(texts, stringValue(part["text"]))
 			}
 			msg["content"] = strings.Join(texts, "\n")
@@ -788,7 +797,10 @@ func collapseOpenAIContent(parts []any) any {
 	if allText(parts) {
 		texts := make([]string, 0, len(parts))
 		for _, raw := range parts {
-			part := raw.(map[string]any)
+			part, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
 			texts = append(texts, stringValue(part["text"]))
 		}
 		return strings.Join(texts, "\n")

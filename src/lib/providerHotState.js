@@ -716,17 +716,23 @@ export async function setConnectionHotState(connectionId, providerId, updates = 
       // Persist first so the in-memory cache never gets ahead of Redis.
       persisted = await persistConnectionField(providerId, connectionId, sanitizedUpdates);
     } catch (error) {
-      console.warn(`[Redis] Failed to update hot state cache for provider ${providerId}: ${error?.message || error}`);
+      console.warn(`[Redis] Failed to update hot state cache for provider ${providerId}: ${error?.message || error}. Check Redis connectivity.`);
+      providerStateCache.set(providerId, cachedProviderState);
       return { storedInRedis: false, state: null };
     }
     storedInRedis = persisted.storedInRedis;
     if (!storedInRedis) {
+      providerStateCache.set(providerId, cachedProviderState);
       return { storedInRedis: false, state: null };
     }
     providerStateCache.set(providerId, persisted.providerState || providerState);
   } else {
     storedInRedis = await persistProviderState(providerId, providerState);
-    providerStateCache.set(providerId, providerState);
+    if (storedInRedis) {
+      providerStateCache.set(providerId, providerState);
+    } else {
+      providerStateCache.set(providerId, cachedProviderState);
+    }
   }
 
   const latestProviderState = providerStateCache.get(providerId) || providerState;

@@ -1,6 +1,7 @@
 package translate
 
 import (
+	"fmt"
 	"log"
 	"strings"
 )
@@ -34,7 +35,10 @@ func OpenAIToGeminiRequest(model string, body map[string]any, stream bool, opts 
 		"safetySettings":   safetySettings,
 	}
 
-	generationConfig := result["generationConfig"].(map[string]any)
+	generationConfig, ok := result["generationConfig"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("generationConfig is not a map")
+	}
 	if temperature, ok := body["temperature"]; ok {
 		generationConfig["temperature"] = temperature
 	}

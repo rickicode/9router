@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import PropTypes from "prop-types";
 import { Card, Button, Input, Modal, CardSkeleton, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -170,7 +170,7 @@ export default function APIPageClient({ machineId }) {
     }
   };
 
-  const checkCloudHealth = async () => {
+  const checkCloudHealth = useCallback(async () => {
     if (!machineId || cloudUrls.length === 0) return;
 
     const primaryUrl = cloudUrls[0]?.url;
@@ -191,7 +191,7 @@ export default function APIPageClient({ machineId }) {
     } finally {
       setCloudHealthLoading(false);
     }
-  };
+  }, [machineId, cloudUrls]);
 
   useEffect(() => {
     if (!machineId || cloudUrls.length === 0) return;
@@ -204,7 +204,7 @@ export default function APIPageClient({ machineId }) {
       clearTimeout(initialDelay);
       clearInterval(interval);
     };
-  }, [machineId, cloudUrls]);
+  }, [machineId, cloudUrls, checkCloudHealth]);
 
   const handleTunnelDashboardAccess = async (value) => {
     try {
@@ -282,59 +282,65 @@ export default function APIPageClient({ machineId }) {
     }
   };
 
-  const testConnection = async (id, url, retries = 3) => {
+  const testConnection = async (id, url) => {
     setTestingUrl(id);
-    try {
-      let data = null;
+    const maxRetries = 3;
+    const retryDelay = 2000;
+    let lastError = null;
 
-      for (let i = 0; i < retries; i++) {
+    try {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          const res = await fetch("/api/cloud-urls/test", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url }),
+          const res = await fetch(`${url}/worker/health/${machineId}`, {
+            signal: AbortSignal.timeout(5000),
           });
 
-          if (res.ok) {
-            data = await res.json();
+          if (!res.ok) {
+            lastError = `HTTP ${res.status}: ${res.statusText}`;
+            if (attempt < maxRetries - 1) {
+              await new Promise((resolve) => setTimeout(resolve, retryDelay));
+              continue;
+            }
             break;
           }
 
-          if (i === retries - 1) {
-            throw new Error("Cloud URL test failed after retries");
+          const data = await res.json();
+
+          if (!data || !data.status) {
+            lastError = "Invalid response format";
+            if (attempt < maxRetries - 1) {
+              await new Promise((resolve) => setTimeout(resolve, retryDelay));
+              continue;
+            }
+            break;
           }
 
-          const delay = 1000 * Math.pow(2, i);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          const checkedAt = new Date().toISOString();
+
+          setCloudUrls((prev) => prev.map((u) =>
+            u.url === url ? { ...u, status: data.status, lastChecked: checkedAt } : u
+          ));
+
+          await fetch("/api/cloud-urls", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id,
+              status: data.status,
+              lastChecked: checkedAt,
+            }),
+          });
+
+          return;
         } catch (err) {
-          if (i === retries - 1) throw err;
-          const delay = 1000 * Math.pow(2, i);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          lastError = err.message;
+          if (attempt < maxRetries - 1) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          }
         }
       }
 
-      if (!data) {
-        throw new Error("Cloud URL test failed after retries");
-      }
-
-      if (data) {
-        const checkedAt = new Date().toISOString();
-
-        await fetch("/api/cloud-urls", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id,
-            status: data.status,
-            lastChecked: checkedAt,
-          }),
-        });
-
-        // Optimistic update keeps the UI responsive even if the PATCH response is delayed.
-        setCloudUrls((prev) => prev.map((u) =>
-          u.id === id ? { ...u, status: data.status, lastChecked: checkedAt } : u
-        ));
-      }
+      alert(`Cloud URL test failed after ${maxRetries} retries: ${lastError}`);
     } finally {
       setTestingUrl(null);
     }

@@ -56,6 +56,7 @@ function isCanonicalFallbackEligible(connection = {}) {
 
 // Mutex to prevent race conditions during account selection
 let selectionMutex = Promise.resolve();
+const MUTEX_TIMEOUT_MS = 5_000;
 
 /**
  * Get provider credentials from localDb
@@ -69,13 +70,21 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
   const excludeSet = excludeConnectionIds instanceof Set
     ? excludeConnectionIds
     : (excludeConnectionIds ? new Set([excludeConnectionIds]) : new Set());
-  // Wait for the current selector before enqueueing the next one so selection/state updates stay atomic.
+
   const currentMutex = selectionMutex;
-  await currentMutex;
   let resolveMutex;
-  selectionMutex = new Promise(resolve => { resolveMutex = resolve; });
+  const nextMutex = new Promise(resolve => { resolveMutex = resolve; });
+  selectionMutex = nextMutex;
+
+  let timeoutId;
+  const mutexTimeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("Mutex timeout")), MUTEX_TIMEOUT_MS);
+  });
 
   try {
+    await Promise.race([currentMutex, mutexTimeout]);
+    clearTimeout(timeoutId);
+
     // Resolve alias to provider ID (e.g., "kc" -> "kilocode")
     const providerId = resolveProviderId(provider);
 
@@ -225,6 +234,14 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       // Pass full connection for clearAccountError to read modelLock_* keys
       _connection: connection
     };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error?.message === "Mutex timeout") {
+      log.error("AUTH", `Mutex timeout after ${MUTEX_TIMEOUT_MS}ms, forcing release`);
+      selectionMutex = Promise.resolve();
+      if (resolveMutex) resolveMutex();
+    }
+    throw error;
   } finally {
     if (resolveMutex) resolveMutex();
   }

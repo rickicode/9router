@@ -104,6 +104,64 @@ describe("auth account selection", () => {
     vi.resetModules();
   });
 
+  it("resets the mutex chain after a timeout so later requests can proceed", async () => {
+    vi.useFakeTimers();
+
+    let releaseFirstRequest;
+    const deferred = new Promise((resolve) => {
+      releaseFirstRequest = resolve;
+    });
+    getProviderConnections.mockImplementationOnce(async () => {
+      await deferred;
+      return mockConnections;
+    });
+    getProviderConnections.mockImplementation(async () => mockConnections);
+
+    mockConnections.push({
+      id: "conn-eligible",
+      provider: "codex",
+      isActive: true,
+      priority: 1,
+      displayName: "Eligible",
+      accessToken: "eligible-token",
+      testStatus: "active",
+      routingStatus: "eligible",
+      authState: "ok",
+      healthStatus: "healthy",
+      quotaState: "ok",
+    });
+    getEligibleConnections.mockResolvedValue([mockConnections[0]]);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      const { getProviderCredentials } = await import("../../src/sse/services/auth.js");
+
+      const firstRequest = getProviderCredentials("codex", null, "gpt-4.1");
+      const secondRequest = getProviderCredentials("codex", null, "gpt-4.1");
+      const secondExpectation = expect(secondRequest).rejects.toThrow("Mutex timeout");
+
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      await secondExpectation;
+
+      const thirdRequest = getProviderCredentials("codex", null, "gpt-4.1");
+      await expect(thirdRequest).resolves.toEqual(expect.objectContaining({
+        connectionId: "conn-eligible",
+        accessToken: "eligible-token",
+      }));
+
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Mutex timeout after 5000ms, forcing release"));
+    } finally {
+      releaseFirstRequest();
+      await vi.runAllTimersAsync();
+      logSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it("prefers centralized eligible accounts over merely available ones", async () => {
     mockConnections.push(
       {

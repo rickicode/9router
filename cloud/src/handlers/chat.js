@@ -12,6 +12,7 @@ import { recordUsage } from "../services/usage.js";
 import { getMachineData, saveMachineData } from "../services/storage.js";
 
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
+const refreshLocks = new Map();
 
 async function getModelInfo(modelStr, machineId, env) {
   const data = await getMachineData(machineId, env);
@@ -101,8 +102,11 @@ async function handleSingleModelChat(body, modelStr, machineId, env, request) {
   let excludeConnectionId = null;
   let lastError = null;
   let lastStatus = null;
+  let retryCount = 0;
+  const MAX_RETRIES = 10;
 
-  while (true) {
+  while (retryCount < MAX_RETRIES) {
+    retryCount++;
     const data = await getMachineData(machineId, env);
     let connection;
     try {
@@ -192,11 +196,18 @@ async function handleSingleModelChat(body, modelStr, machineId, env, request) {
       excludeConnectionId = credentials.id;
       lastError = result.error;
       lastStatus = result.status;
+      if (retryCount >= MAX_RETRIES) {
+        log.error("CHAT", "Max retries exceeded, all accounts failed");
+        return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, "All accounts unavailable after max retries");
+      }
       continue;
     }
 
     return result.response;
   }
+
+  log.error("CHAT", "Max retries exceeded, all accounts failed");
+  return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, "All accounts unavailable after max retries");
 }
 
 async function checkAndRefreshToken(machineId, provider, credentials, env) {
@@ -205,22 +216,37 @@ async function checkAndRefreshToken(machineId, provider, credentials, env) {
   const expiresAt = new Date(credentials.expiresAt).getTime();
   if (expiresAt - Date.now() >= TOKEN_EXPIRY_BUFFER_MS) return credentials;
 
-  log.debug("TOKEN", `${provider.toUpperCase()} | expiring, refreshing`);
+  const lockKey = credentials.id;
 
-  const newCredentials = await refreshTokenByProvider(provider, credentials);
-  if (newCredentials?.accessToken) {
-    await updateCredentials(machineId, credentials.id, newCredentials, env);
-    return {
-      ...credentials,
-      accessToken: newCredentials.accessToken,
-      refreshToken: newCredentials.refreshToken || credentials.refreshToken,
-      expiresAt: newCredentials.expiresIn
-        ? new Date(Date.now() + newCredentials.expiresIn * 1000).toISOString()
-        : credentials.expiresAt
-    };
+  if (refreshLocks.has(lockKey)) {
+    await refreshLocks.get(lockKey);
+    const data = await getMachineData(machineId, env);
+    return data?.providers?.[credentials.id] || credentials;
   }
 
-  return credentials;
+  const refreshPromise = (async () => {
+    try {
+      log.debug("TOKEN", `${provider.toUpperCase()} | expiring, refreshing`);
+      const newCredentials = await refreshTokenByProvider(provider, credentials);
+      if (newCredentials?.accessToken) {
+        await updateCredentials(machineId, credentials.id, newCredentials, env);
+        return {
+          ...credentials,
+          accessToken: newCredentials.accessToken,
+          refreshToken: newCredentials.refreshToken || credentials.refreshToken,
+          expiresAt: newCredentials.expiresIn
+            ? new Date(Date.now() + newCredentials.expiresIn * 1000).toISOString()
+            : credentials.expiresAt
+        };
+      }
+      return credentials;
+    } finally {
+      refreshLocks.delete(lockKey);
+    }
+  })();
+
+  refreshLocks.set(lockKey, refreshPromise);
+  return await refreshPromise;
 }
 
 export async function validateApiKey(request, machineId, env) {

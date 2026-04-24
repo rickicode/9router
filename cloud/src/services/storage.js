@@ -1,5 +1,14 @@
 import * as log from "../utils/logger.js";
 
+async function withTimeout(promise, timeoutMs = 5000, operation = "D1 operation") {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${operation} timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
 // Request-scoped cache with LRU eviction
 const requestCache = new Map();
 const MAX_CACHE_SIZE = 100;
@@ -29,9 +38,13 @@ export async function getMachineData(machineId, env) {
     return cached.data;
   }
 
-  const row = await env.DB.prepare("SELECT data FROM machines WHERE machineId = ?")
-    .bind(machineId)
-    .first();
+  const row = await withTimeout(
+    env.DB.prepare("SELECT data FROM machines WHERE machineId = ?")
+      .bind(machineId)
+      .first(),
+    5000,
+    "getMachineData"
+  );
   
   if (!row) {
     log.debug("STORAGE", `Not found: ${machineId}`);
@@ -56,13 +69,16 @@ export async function saveMachineData(machineId, data, env) {
   data.updatedAt = now;
   
   // Upsert to D1
-  await env.DB.prepare(`
-    INSERT INTO machines (machineId, data, updatedAt) 
-    VALUES (?, ?, ?)
-    ON CONFLICT(machineId) DO UPDATE SET data = ?, updatedAt = ?
-  `)
-    .bind(machineId, JSON.stringify(data), now, JSON.stringify(data), now)
-    .run();
+  await withTimeout(
+    env.DB.prepare(
+      "INSERT INTO machines (machineId, data, updatedAt) VALUES (?, ?, ?) " +
+      "ON CONFLICT(machineId) DO UPDATE SET data = ?, updatedAt = ?"
+    )
+      .bind(machineId, JSON.stringify(data), now, JSON.stringify(data), now)
+      .run(),
+    5000,
+    "saveMachineData"
+  );
   
   // Update cache after save
   requestCache.set(machineId, { data, timestamp: Date.now() });

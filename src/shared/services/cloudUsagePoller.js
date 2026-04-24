@@ -1,5 +1,5 @@
 import { getConsistentMachineId } from "@/shared/utils/machineId";
-import { getProviderConnections, updateProviderConnection } from "@/lib/localDb";
+import { atomicUpdateProviderConnection } from "@/lib/localDb";
 import { getCloudUrl } from "@/lib/cloudUrlResolver";
 
 /**
@@ -13,6 +13,8 @@ export class CloudUsagePoller {
     this.intervalId = null;
     this.machineIdPromise = null;
     this.lastError = null;
+    this.lastPollDuration = null;
+    this.lastPollSuccess = false;
   }
 
   /**
@@ -62,46 +64,82 @@ export class CloudUsagePoller {
   async poll() {
     await this.initializeMachineId();
 
+    if (!this.machineId) {
+      console.error("[CloudUsagePoller] No machineId available");
+      return;
+    }
+
     let cloudUrl = "";
     try {
       cloudUrl = await getCloudUrl();
+      if (!cloudUrl || !cloudUrl.startsWith("http")) {
+        console.error("[CloudUsagePoller] Invalid cloud URL");
+        return;
+      }
     } catch (error) {
-      console.error("[USAGE_POLL] Cloud URL unavailable:", error);
+      console.error("[CloudUsagePoller] Cloud URL unavailable:", error);
       return;
     }
 
-    const response = await fetch(`${cloudUrl}/worker/usage/${this.machineId}`, {
-      signal: AbortSignal.timeout(5000),
-    });
+    const startTime = Date.now();
 
-    if (!response.ok) {
-      this.lastError = `Poll failed: ${response.statusText}`;
-      console.error("[USAGE_POLL] Failed:", response.statusText);
-      return;
-    }
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    this.lastError = null;
-
-    const data = await response.json();
-
-    // Update local usage DB
-    for (const [connId, usage] of Object.entries(data.usage || {})) {
       try {
-        // Get existing connection to merge data
-        const connections = await getProviderConnections();
-        const conn = connections.find(c => c.id === connId);
-        
-        if (conn) {
-          // WARNING: This merge/update sequence is not transactional and may overwrite concurrent providerSpecificData changes.
-          await updateProviderConnection(connId, {
-            providerSpecificData: {
-              ...(conn.providerSpecificData || {}),
-              cloudUsage: usage
-            }
-          });
+        const response = await fetch(`${cloudUrl}/worker/usage/${this.machineId}`, {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          this.lastError = `Poll failed: ${response.statusText}`;
+          console.error("[CloudUsagePoller] Failed:", response.statusText);
+          return;
         }
-      } catch (err) {
-        console.error('[USAGE_POLL] Update failed for', connId, err);
+
+        this.lastError = null;
+        const data = await response.json();
+
+        for (const [connId, usage] of Object.entries(data.usage || {})) {
+          try {
+            await atomicUpdateProviderConnection(connId, (current) => ({
+              providerSpecificData: {
+                ...(current.providerSpecificData || {}),
+                cloudUsage: usage,
+              },
+            }));
+          } catch (err) {
+            console.error("[CloudUsagePoller] Atomic update failed for", connId, err);
+          }
+        }
+
+        const duration = Date.now() - startTime;
+        if (duration > 3000) {
+          console.warn(`[CloudUsagePoller] Slow poll: ${duration}ms`);
+        }
+
+        this.lastPollDuration = duration;
+        this.lastPollSuccess = true;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.lastPollDuration = duration;
+      this.lastPollSuccess = false;
+
+      if (error.name === "AbortError") {
+        this.lastError = "Poll timeout after 5s";
+        console.warn("[CloudUsagePoller] Timeout after 5s");
+      } else {
+        this.lastError = `Poll failed: ${error.message}`;
+        console.error("[CloudUsagePoller] Failed:", error);
       }
     }
   }
@@ -118,6 +156,10 @@ let usagePoller = null;
 
 export async function getCloudUsagePoller(machineId = null, intervalMs = 1000) {
   if (!usagePoller || usagePoller.intervalMs !== intervalMs) {
+    if (usagePoller?.isRunning()) {
+      console.log(`[CloudUsagePoller] Stopping existing poller (interval: ${usagePoller.intervalMs}ms)`);
+      usagePoller.stop();
+    }
     usagePoller = new CloudUsagePoller(machineId, intervalMs);
   }
   return usagePoller;

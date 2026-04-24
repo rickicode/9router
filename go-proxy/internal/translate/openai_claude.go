@@ -188,9 +188,11 @@ func OpenAIToClaudeRequest(model string, body map[string]any, stream bool, opts 
 			})
 		}
 		if len(tools) > 0 {
-			last := tools[len(tools)-1].(map[string]any)
-			last["cache_control"] = map[string]any{"type": "ephemeral"}
-			result["tools"] = tools
+			last, ok := tools[len(tools)-1].(map[string]any)
+			if ok {
+				last["cache_control"] = map[string]any{"type": "ephemeral"}
+				result["tools"] = tools
+			}
 		}
 	}
 

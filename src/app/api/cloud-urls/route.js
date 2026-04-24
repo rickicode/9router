@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSettings, updateSettings } from "@/lib/localDb";
+import { atomicUpdateSettings, getSettings } from "@/lib/localDb";
 import { v4 as uuidv4 } from "uuid";
 
 const VALID_STATUSES = new Set(["unknown", "online", "offline", "error"]);
@@ -75,12 +75,17 @@ async function readCloudUrls() {
 }
 
 async function writeCloudUrls(mutator) {
-  const currentSettings = await getSettings();
-  const currentUrls = Array.isArray(currentSettings.cloudUrls) ? currentSettings.cloudUrls : [];
-  const clonedUrls = currentUrls.map((entry) => structuredClone(entry));
-  const nextUrls = mutator(clonedUrls);
-  // WARNING: This read-modify-write flow is not transactional and can lose updates under concurrent writes.
-  const settings = await updateSettings({ cloudUrls: nextUrls });
+  const settings = await atomicUpdateSettings(async (currentSettings) => {
+    const currentUrls = Array.isArray(currentSettings.cloudUrls) ? currentSettings.cloudUrls : [];
+    const clonedUrls = currentUrls.map((entry) => structuredClone(entry));
+    const nextUrls = await mutator(clonedUrls);
+
+    return {
+      ...currentSettings,
+      cloudUrls: nextUrls,
+    };
+  });
+
   return settings.cloudUrls;
 }
 

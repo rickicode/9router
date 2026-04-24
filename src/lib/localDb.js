@@ -769,6 +769,84 @@ export async function updateProviderConnection(id, data) {
   return db.data.providerConnections[index];
 }
 
+export async function atomicUpdateProviderConnection(id, mutator) {
+  const db = await getDb();
+  let result = null;
+
+  await withFileLock(db, async () => {
+    await db.read();
+
+    const index = db.data.providerConnections.findIndex(c => c.id === id);
+    if (index === -1) {
+      result = null;
+      return;
+    }
+
+    const current = db.data.providerConnections[index];
+    const patch = await mutator({ ...current });
+    if (!patch || typeof patch !== "object") {
+      result = await mergeConnectionsWithHotState([db.data.providerConnections[index]]).then((connections) => connections[0] || db.data.providerConnections[index]);
+      return;
+    }
+
+    const providerId = current.provider;
+    const sanitizedInput = stripLegacyMirrorStatusPatch(patch);
+    const hotStatePatch = extractHotState(sanitizedInput);
+    const hasHotStateUpdates = Object.keys(hotStatePatch).length > 0;
+    const dbPatch = Object.fromEntries(
+      Object.entries(sanitizedInput).filter(([key]) => !(key in hotStatePatch))
+    );
+    const shouldStoreHotState = isHotOnlyUpdate(sanitizedInput);
+    const canUseRedisForHotState = shouldStoreHotState && await isRedisHotStateReady();
+
+    if (hasHotStateUpdates) {
+      const hotStateResult = await setConnectionHotState(id, providerId, hotStatePatch);
+      const persistedHotState = hotStateResult?.state || hotStatePatch;
+
+      db.data.providerConnections[index] = stripLegacyMirrorStatusFields({
+        ...db.data.providerConnections[index],
+        ...dbPatch,
+        ...persistedHotState,
+        updatedAt: new Date().toISOString(),
+      });
+
+      await db.write();
+
+      if (patch.priority !== undefined) await reorderProviderConnections(providerId);
+
+      if (current && patch.isActive === false) {
+        await deleteConnectionHotState(id, providerId);
+      }
+
+      result = await mergeConnectionsWithHotState([db.data.providerConnections[index]]).then((connections) => connections[0] || db.data.providerConnections[index]);
+      return;
+    }
+
+    db.data.providerConnections[index] = stripLegacyMirrorStatusFields({
+      ...db.data.providerConnections[index],
+      ...dbPatch,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (shouldSeedEligibility(db.data.providerConnections[index])) {
+      Object.assign(db.data.providerConnections[index], buildEligibilityRecoveryPatch());
+    }
+
+    if (!canUseRedisForHotState) {
+      await db.write();
+    }
+    if (patch.priority !== undefined) await reorderProviderConnections(providerId);
+
+    if (current && patch.isActive === false) {
+      await deleteConnectionHotState(id, providerId);
+    }
+
+    result = await mergeConnectionsWithHotState([db.data.providerConnections[index]]).then((connections) => connections[0] || db.data.providerConnections[index]);
+  });
+
+  return result;
+}
+
 export async function deleteProviderConnection(id) {
   const db = await getDb();
   const index = db.data.providerConnections.findIndex(c => c.id === id);
@@ -1020,6 +1098,31 @@ export async function cleanupProviderConnections() {
 export async function getSettings() {
   const db = await getDb();
   return mergeSettingsWithDefaults(db.data.settings || { cloudEnabled: false });
+}
+
+export async function atomicUpdateSettings(mutator) {
+  if (typeof mutator !== "function") {
+    throw new Error("Settings mutator is required");
+  }
+
+  const db = await getDb();
+  let result = null;
+
+  await withFileLock(db, async () => {
+    await db.read();
+    const current = mergeSettingsWithDefaults(db.data.settings || { cloudEnabled: false });
+    const updated = await mutator(structuredClone(current));
+
+    if (!updated || typeof updated !== "object" || Array.isArray(updated)) {
+      throw new Error("Mutator must return settings object");
+    }
+
+    db.data.settings = mergeSettingsWithDefaults(updated);
+    await db.write();
+    result = db.data.settings;
+  });
+
+  return result;
 }
 
 export async function mutateOpenCodeTokens(mutator) {
