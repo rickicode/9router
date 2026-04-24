@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"go-proxy/internal/config"
@@ -140,9 +141,9 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 		return
 	}
 
-	model, stream := extractModelAndStream(body)
-	if model == "" {
-		http.Error(w, "missing model", http.StatusBadRequest)
+	model, stream, err := extractModelAndStream(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -338,7 +339,7 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 
 func translateRequestBody(body []byte, resolved resolve.Response, stream bool) (string, []byte, error) {
 	if len(body) == 0 {
-		return translate.FormatOpenAI, body, nil
+		return "", nil, fmt.Errorf("empty request body")
 	}
 
 	var payload map[string]any
@@ -346,13 +347,13 @@ func translateRequestBody(body []byte, resolved resolve.Response, stream bool) (
 		return "", nil, fmt.Errorf("translation failed: request body is not valid JSON: %w", err)
 	}
 
-	sourceFormat := normalizeTranslateFormat(translate.DetectFormat(payload))
+	sourceFormat := translate.DetectFormat(payload)
 	targetFormat := normalizeProviderFormat(provider.GetTargetFormat(resolved.Provider))
-	if sourceFormat == targetFormat {
+	if equivalentTranslateFormat(sourceFormat, targetFormat) {
 		return sourceFormat, body, nil
 	}
 
-	translated, err := translate.TranslateRequest(sourceFormat, targetFormat, payload, translate.TranslateOptions{
+	translated, err := translate.TranslateRequest(canonicalTranslateFormat(sourceFormat), canonicalTranslateFormat(targetFormat), payload, translate.TranslateOptions{
 		Model:    resolved.Model,
 		Stream:   stream,
 		Provider: resolved.Provider,
@@ -417,6 +418,10 @@ func normalizeProviderFormat(format provider.TargetFormat) string {
 }
 
 func normalizeTranslateFormat(format string) string {
+	return canonicalTranslateFormat(format)
+}
+
+func canonicalTranslateFormat(format string) string {
 	switch format {
 	case translate.FormatOpenAIResponses:
 		return translate.FormatOpenAI
@@ -427,10 +432,12 @@ func normalizeTranslateFormat(format string) string {
 	}
 }
 
+func equivalentTranslateFormat(left, right string) bool {
+	return canonicalTranslateFormat(left) == canonicalTranslateFormat(right)
+}
+
 func translateResponseBody(body []byte, fromFormat, toFormat, model string) ([]byte, error) {
-	current := normalizeTranslateFormat(fromFormat)
-	target := normalizeTranslateFormat(toFormat)
-	if current == target {
+	if equivalentTranslateFormat(fromFormat, toFormat) {
 		return body, nil
 	}
 
@@ -439,11 +446,11 @@ func translateResponseBody(body []byte, fromFormat, toFormat, model string) ([]b
 		return nil, fmt.Errorf("invalid JSON body: %w", err)
 	}
 
-	openAIResponse, err := responseToOpenAI(payload, current, model)
+	openAIResponse, err := responseToOpenAI(payload, fromFormat, model)
 	if err != nil {
 		return nil, err
 	}
-	translated, err := openAIResponseToFormat(openAIResponse, target, model)
+	translated, err := openAIResponseToFormat(openAIResponse, toFormat, model)
 	if err != nil {
 		return nil, err
 	}
@@ -455,15 +462,15 @@ func translateResponseBody(body []byte, fromFormat, toFormat, model string) ([]b
 }
 
 func responseToOpenAI(payload map[string]any, fromFormat, model string) (map[string]any, error) {
-	switch normalizeTranslateFormat(fromFormat) {
-	case translate.FormatOpenAI:
+	switch fromFormat {
+	case translate.FormatOpenAI, translate.FormatOpenAIResponses:
 		return payload, nil
 	case translate.FormatClaude:
 		if _, ok := payload["content"].([]any); !ok && payload["content"] != nil {
 			return nil, fmt.Errorf("invalid claude response content")
 		}
 		return claudeResponseToOpenAI(payload, model), nil
-	case translate.FormatGemini:
+	case translate.FormatGemini, translate.FormatGeminiCLI, translate.FormatAntigravity:
 		if candidate := firstCandidateLocal(payload); candidate != nil {
 			if content, ok := candidate["content"].(map[string]any); ok && content["parts"] != nil {
 				if _, ok := content["parts"].([]any); !ok {
@@ -478,12 +485,12 @@ func responseToOpenAI(payload map[string]any, fromFormat, model string) (map[str
 }
 
 func openAIResponseToFormat(payload map[string]any, toFormat, model string) (map[string]any, error) {
-	switch normalizeTranslateFormat(toFormat) {
-	case translate.FormatOpenAI:
+	switch toFormat {
+	case translate.FormatOpenAI, translate.FormatOpenAIResponses:
 		return payload, nil
 	case translate.FormatClaude:
 		return openAIResponseToClaude(payload, model), nil
-	case translate.FormatGemini:
+	case translate.FormatGemini, translate.FormatGeminiCLI, translate.FormatAntigravity:
 		return openAIResponseToGemini(payload, model), nil
 	default:
 		return nil, fmt.Errorf("unsupported response target format: %s", toFormat)
@@ -711,6 +718,7 @@ func stringifyAny(value any) string {
 }
 
 type translatedStream struct {
+	mu         sync.Mutex
 	upstream   io.ReadCloser
 	reader     *bufio.Reader
 	buffer     bytes.Buffer
@@ -734,18 +742,27 @@ func newTranslatedStream(upstream io.ReadCloser, fromFormat, toFormat, model str
 }
 
 func (s *translatedStream) Read(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	for s.buffer.Len() == 0 {
+		s.mu.Unlock()
 		if err := s.fill(); err != nil {
+			s.mu.Lock()
 			if err == io.EOF && s.buffer.Len() > 0 {
 				break
 			}
 			return 0, err
 		}
+		s.mu.Lock()
 	}
 	return s.buffer.Read(p)
 }
 
 func (s *translatedStream) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.closed {
 		return nil
 	}
@@ -756,6 +773,8 @@ func (s *translatedStream) Close() error {
 func (s *translatedStream) fill() error {
 	frame, err := s.readFrame()
 	if err != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		if err == io.EOF && !s.doneSent && s.toFormat == translate.FormatOpenAI {
 			s.buffer.WriteString("data: [DONE]\n\n")
 			s.doneSent = true
@@ -765,11 +784,14 @@ func (s *translatedStream) fill() error {
 	}
 	translated, err := translateStreamFrame(frame, s.fromFormat, s.toFormat, s.state, s.model)
 	if err != nil {
+		_ = s.Close()
 		return fmt.Errorf("stream translation failed: %w", err)
 	}
 	if len(translated) == 0 {
 		return nil
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.buffer.Write(translated)
 	return nil
 }
@@ -786,6 +808,9 @@ func (s *translatedStream) readFrame() ([]byte, error) {
 		}
 		if err != nil {
 			if err == io.EOF && frame.Len() > 0 {
+				if !bytes.Contains(frame.Bytes(), []byte("data:")) {
+					return nil, io.ErrUnexpectedEOF
+				}
 				return frame.Bytes(), nil
 			}
 			return nil, err
@@ -794,23 +819,22 @@ func (s *translatedStream) readFrame() ([]byte, error) {
 }
 
 func translateStreamFrame(frame []byte, fromFormat, toFormat string, state *translate.StreamState, model string) ([]byte, error) {
-	fromFormat = normalizeTranslateFormat(fromFormat)
-	toFormat = normalizeTranslateFormat(toFormat)
-	if fromFormat == toFormat {
+	if equivalentTranslateFormat(fromFormat, toFormat) {
 		return frame, nil
 	}
-	if toFormat == translate.FormatOpenAI {
-		return translateStreamFrameToOpenAI(frame, fromFormat, state)
+	canonicalFrom := canonicalTranslateFormat(fromFormat)
+	canonicalTo := canonicalTranslateFormat(toFormat)
+	if canonicalTo == translate.FormatOpenAI {
+		return translateStreamFrameToOpenAI(frame, canonicalFrom, state)
 	}
-	if fromFormat == translate.FormatOpenAI {
-		return translateOpenAIStreamFrame(frame, toFormat, state, model)
+	if canonicalFrom == translate.FormatOpenAI {
+		return translateOpenAIStreamFrame(frame, canonicalTo, state, model)
 	}
-	openAIFrame, err := translateStreamFrameToOpenAI(frame, fromFormat, state)
+	openAIFrame, err := translateStreamFrameToOpenAI(frame, canonicalFrom, state)
 	if err != nil || len(openAIFrame) == 0 {
 		return openAIFrame, err
 	}
-	intermediateState := &translate.StreamState{Model: model}
-	return translateOpenAIStreamFrame(openAIFrame, toFormat, intermediateState, model)
+	return translateOpenAIStreamFrame(openAIFrame, canonicalTo, state, model)
 }
 
 func translateStreamFrameToOpenAI(frame []byte, fromFormat string, state *translate.StreamState) ([]byte, error) {
@@ -860,22 +884,23 @@ func translateOpenAIStreamFrame(frame []byte, toFormat string, state *translate.
 
 func extractFrameData(frame []byte) ([]byte, bool) {
 	lines := strings.Split(string(frame), "\n")
-	parts := make([]string, 0, len(lines))
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "data:") {
-			continue
+		if strings.HasPrefix(trimmed, "data:") {
+			data := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))
+			if data == "[DONE]" {
+				return nil, false
+			}
+			return []byte(data), true
 		}
-		parts = append(parts, strings.TrimSpace(strings.TrimPrefix(trimmed, "data:")))
 	}
-	if len(parts) == 0 {
+	{
 		trimmed := strings.TrimSpace(string(frame))
 		if trimmed == "" {
 			return nil, false
 		}
 		return []byte(trimmed), true
 	}
-	return []byte(strings.Join(parts, "\n")), true
 }
 
 func openAIChunkToClaudeSSE(chunk map[string]any, state *translate.StreamState, model string) ([]byte, error) {
@@ -1095,26 +1120,25 @@ func cloneForwardHeaders(header http.Header) http.Header {
 }
 
 func sanitizeClientErrorMessage(message string) string {
-	sanitized := strings.TrimSpace(message)
-	if sanitized == "" {
+	message = strings.TrimSpace(message)
+	if message == "" {
 		return "upstream forwarding failed"
 	}
-	sanitized = clientErrorURLPattern.ReplaceAllString(sanitized, "[redacted-url]")
-	sanitized = clientErrorIPPattern.ReplaceAllString(sanitized, "[redacted-ip]")
-	sanitized = clientErrorBearerPattern.ReplaceAllString(sanitized, "Bearer [redacted-token]")
-	sanitized = clientErrorSKPattern.ReplaceAllString(sanitized, "[redacted-token]")
-	fields := strings.Fields(sanitized)
-	if len(fields) == 0 {
+	message = clientErrorURLPattern.ReplaceAllString(message, "[redacted-url]")
+	message = clientErrorIPPattern.ReplaceAllString(message, "[redacted-ip]")
+	message = clientErrorBearerPattern.ReplaceAllString(message, "Bearer [redacted-token]")
+	message = clientErrorSKPattern.ReplaceAllString(message, "[redacted-token]")
+	message = strings.TrimSpace(message)
+	if message == "" {
 		return "upstream forwarding failed"
 	}
-	if len(fields) > 12 {
-		fields = fields[:12]
+	if len(message) > 200 {
+		message = message[:200] + "..."
 	}
-	sanitized = strings.Join(fields, " ")
-	if sanitized == "" || sanitized == "[redacted-url]" || sanitized == "[redacted-ip]" {
+	if message == "[redacted-url]" || message == "[redacted-ip]" {
 		return "upstream forwarding failed"
 	}
-	return sanitized
+	return message
 }
 
 
@@ -1204,12 +1228,16 @@ func extractUsageAndQuotasFromPayload(body []byte) (map[string]any, map[string]a
 func newStreamEvidenceCapture(header http.Header) *streamEvidenceCapture {
 	contentType := strings.ToLower(strings.TrimSpace(header.Get("Content-Type")))
 	return &streamEvidenceCapture{
+		maxSize: 64 * 1024,
 		sseLike: strings.Contains(contentType, "text/event-stream"),
 	}
 }
 
 type streamEvidenceCapture struct {
-	buf     bytes.Buffer
+	ring    []byte
+	pos     int
+	size    int
+	maxSize int
 	sseLike bool
 	usage   map[string]any
 	quotas  map[string]any
@@ -1219,10 +1247,26 @@ func (c *streamEvidenceCapture) Write(p []byte) (int, error) {
 	if c.usage != nil {
 		return len(p), nil
 	}
-	if c.buf.Len()+len(p) > 512*1024 {
+	if c.maxSize <= 0 {
+		c.maxSize = 64 * 1024
+	}
+	if len(c.ring) != c.maxSize {
+		c.ring = make([]byte, c.maxSize)
+	}
+	if len(p) >= c.maxSize {
+		copy(c.ring, p[len(p)-c.maxSize:])
+		c.pos = 0
+		c.size = c.maxSize
+		c.scan()
 		return len(p), nil
 	}
-	_, _ = c.buf.Write(p)
+	for _, b := range p {
+		c.ring[c.pos] = b
+		c.pos = (c.pos + 1) % c.maxSize
+		if c.size < c.maxSize {
+			c.size++
+		}
+	}
 	c.scan()
 	return len(p), nil
 }
@@ -1239,7 +1283,7 @@ func (c *streamEvidenceCapture) scan() {
 	if c.usage != nil {
 		return
 	}
-	data := c.buf.Bytes()
+	data := c.bytes()
 	if len(data) == 0 {
 		return
 	}
@@ -1254,6 +1298,19 @@ func (c *streamEvidenceCapture) scan() {
 	if usage != nil {
 		c.usage, c.quotas = usage, quotas
 	}
+}
+
+func (c *streamEvidenceCapture) bytes() []byte {
+	if c.size == 0 || len(c.ring) == 0 {
+		return nil
+	}
+	if c.size < len(c.ring) {
+		return append([]byte(nil), c.ring[:c.size]...)
+	}
+	data := make([]byte, c.size)
+	copy(data, c.ring[c.pos:])
+	copy(data[len(c.ring)-c.pos:], c.ring[:c.pos])
+	return data
 }
 
 func extractUsageAndQuotasFromSSE(data []byte) (map[string]any, map[string]any) {
@@ -1289,17 +1346,21 @@ func readPublicAPIKey(r *http.Request) string {
 	return ""
 }
 
-func extractModelAndStream(body []byte) (string, bool) {
+func extractModelAndStream(body []byte) (string, bool, error) {
 	if len(body) == 0 {
-		return "", false
+		return "", false, fmt.Errorf("model field is required")
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return "", false
+		return "", false, err
 	}
 	model, _ := payload["model"].(string)
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return "", false, fmt.Errorf("model field is required")
+	}
 	stream, _ := payload["stream"].(bool)
-	return strings.TrimSpace(model), stream
+	return model, stream, nil
 }
 
 func buildUpstreamURL(provider, publicPath string) string {
@@ -1333,6 +1394,8 @@ func applyUpstreamAuth(header *http.Header, protocolFamily string, credential cr
 	}
 }
 
+// isHopByHopHeader checks if a header name (case-insensitive) is a hop-by-hop header.
+// The input is normalized to lowercase before checking.
 func isHopByHopHeader(k string) bool {
 	switch strings.ToLower(k) {
 	case "connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailers", "transfer-encoding", "upgrade":
@@ -1345,7 +1408,7 @@ func isHopByHopHeader(k string) bool {
 func generateRequestID() string {
 	buf := make([]byte, 8)
 	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("req_%d", time.Now().UnixNano())
+		panic(fmt.Sprintf("crypto/rand failed: %v", err))
 	}
 	return "req_" + hex.EncodeToString(buf)
 }

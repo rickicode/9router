@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,12 +102,25 @@ func TestBuildUpstreamURLUsesApprovedPublicPaths(t *testing.T) {
 }
 
 func TestExtractModelAndStream(t *testing.T) {
-	model, stream := extractModelAndStream([]byte(`{"model":"gpt-4.1","stream":true}`))
+	model, stream, err := extractModelAndStream([]byte(`{"model":"gpt-4.1","stream":true}`))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
 	if model != "gpt-4.1" {
 		t.Fatalf("expected model gpt-4.1, got %q", model)
 	}
 	if !stream {
 		t.Fatalf("expected stream flag true")
+	}
+}
+
+func TestExtractModelAndStream_RequiresModel(t *testing.T) {
+	_, _, err := extractModelAndStream([]byte(`{"model":"   ","stream":true}`))
+	if err == nil {
+		t.Fatal("expected error for empty model")
+	}
+	if err.Error() != "model field is required" {
+		t.Fatalf("expected required-model error, got %v", err)
 	}
 }
 
@@ -870,6 +885,67 @@ func TestForward_StreamingTranslation(t *testing.T) {
 	}
 }
 
+func TestStreamingTranslationConcurrentRead(t *testing.T) {
+	payload := strings.Join([]string{
+		"data: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\",\"model\":\"claude-sonnet-4\"}}",
+		"",
+		"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}",
+		"",
+		"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"input_tokens\":2,\"output_tokens\":3}}",
+		"",
+		"data: {\"type\":\"message_stop\"}",
+		"",
+	}, "\n")
+
+	stream := newTranslatedStream(io.NopCloser(strings.NewReader(payload)), "anthropic", "openai", "claude-sonnet-4")
+	t.Cleanup(func() { _ = stream.Close() })
+
+	var wg sync.WaitGroup
+	var total atomic.Int64
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			buf := make([]byte, 16)
+			for {
+				n, err := stream.Read(buf)
+				if n > 0 {
+					total.Add(int64(n))
+				}
+				if err != nil {
+					if err == io.EOF {
+						return
+					}
+					t.Errorf("unexpected read error: %v", err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	if total.Load() == 0 {
+		t.Fatal("expected translated stream bytes to be read")
+	}
+}
+
+func TestStreamingTranslationClosesUpstreamOnTranslationError(t *testing.T) {
+	upstream := &trackingReadCloser{Reader: strings.NewReader("data: not-json\n\n")}
+	stream := newTranslatedStream(upstream, "anthropic", "openai", "claude-sonnet-4")
+
+	buf := make([]byte, 64)
+	_, err := stream.Read(buf)
+	if err == nil {
+		t.Fatal("expected translation error")
+	}
+	if !strings.Contains(err.Error(), "stream translation failed") {
+		t.Fatalf("expected wrapped translation error, got %v", err)
+	}
+	if upstream.closeCount.Load() == 0 {
+		t.Fatal("expected upstream to be closed on translation error")
+	}
+}
+
 func TestForward_TranslationErrorHandling(t *testing.T) {
 	credPath := filepath.Join(t.TempDir(), "db.json")
 	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"anthropic","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
@@ -914,6 +990,32 @@ func TestSanitizeClientErrorMessage_RedactsSensitiveValues(t *testing.T) {
 	}
 	if msg == "" {
 		t.Fatal("expected non-empty sanitized message")
+	}
+}
+
+func TestSanitizeClientErrorMessage_TruncatesAtTwoHundredCharacters(t *testing.T) {
+	msg := sanitizeClientErrorMessage(strings.Repeat("a", 250))
+	if len(msg) != 203 {
+		t.Fatalf("expected 203-char truncated message including ellipsis, got %d", len(msg))
+	}
+	if !strings.HasSuffix(msg, "...") {
+		t.Fatalf("expected truncated message to end with ellipsis, got %q", msg)
+	}
+}
+
+func TestIsHopByHopHeader_IsCaseInsensitive(t *testing.T) {
+	if !isHopByHopHeader("Transfer-Encoding") {
+		t.Fatal("expected mixed-case transfer-encoding header to be treated as hop-by-hop")
+	}
+}
+
+func TestGenerateRequestID_HasExpectedPrefixAndLength(t *testing.T) {
+	id := generateRequestID()
+	if !strings.HasPrefix(id, "req_") {
+		t.Fatalf("expected request id prefix req_, got %q", id)
+	}
+	if len(id) != 20 {
+		t.Fatalf("expected request id length 20, got %d", len(id))
 	}
 }
 
@@ -992,4 +1094,14 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
+}
+
+type trackingReadCloser struct {
+	io.Reader
+	closeCount atomic.Int32
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closeCount.Add(1)
+	return nil
 }
