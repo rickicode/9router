@@ -1,3 +1,30 @@
+# Unreleased
+
+## Security
+- Fixed dashboard authorization vulnerability (#742)
+- Added IP whitelist validation
+- Added trusted proxy support
+- Added audit logging with rotation
+- Added rate limiting on login endpoint
+
+## Fixed
+- Fixed 12 critical bugs including temporal dead zones, race conditions, and memory leaks
+- Fixed race condition in streaming translation
+- Fixed memory leak on translation error
+- Fixed unbounded frame size DoS vulnerability
+- Fixed context cancellation in streaming
+
+## Added
+- Added Azure OpenAI provider support
+- Added translation layer integration for OpenAI ↔ Claude ↔ Gemini
+- Added custom provider translation support
+- Added streaming translation for all formats
+
+## Changed
+- Refactored hot state management
+- Improved error handling and context preservation
+- Expanded test coverage and refreshed supporting documentation
+
 # v0.3.98 (2026-04-22)
 
 # v0.3.97 (2026-04-22)
@@ -98,11 +125,6 @@
 
 ## Fixes
 - Fix OpenRouter custom models not showing after being added
-
-# Unreleased
-
-## Features
-- Added API key visibility toggle (eye icon) to Endpoint dashboard page for improved UX and security.
 
 # v0.2.66 (2026-02-06)
 
