@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"net"
@@ -164,19 +165,33 @@ func TestHTTPForwarder_StreamingRequestUpstreamDropIsObservedByStreamReader(t *t
 	}
 	defer ln.Close()
 
+	wroteResponse := make(chan struct{})
+
 	go func() {
 		conn, acceptErr := ln.Accept()
 		if acceptErr != nil {
 			return
 		}
 		defer conn.Close()
+
+		reader := bufio.NewReader(conn)
+		req, reqErr := http.ReadRequest(reader)
+		if reqErr != nil {
+			return
+		}
+		if req.Body != nil {
+			_, _ = io.Copy(io.Discard, req.Body)
+			_ = req.Body.Close()
+		}
+
 		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\n" +
 			"Content-Type: text/event-stream\r\n" +
 			"Transfer-Encoding: chunked\r\n" +
 			"\r\n" +
 			"10\r\n" +
 			"data: {\"delta\":\"a\"}\n\n\r\n"))
-		_ = conn.Close()
+		close(wroteResponse)
+		time.Sleep(50 * time.Millisecond)
 	}()
 
 	forwarder := HTTPForwarder{
@@ -196,6 +211,12 @@ func TestHTTPForwarder_StreamingRequestUpstreamDropIsObservedByStreamReader(t *t
 	}
 	if resp.BodyStream == nil {
 		t.Fatalf("expected stream reader")
+	}
+
+	select {
+	case <-wroteResponse:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("expected upstream response to be written")
 	}
 
 	_, readErr := io.ReadAll(resp.BodyStream)
