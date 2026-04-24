@@ -63,43 +63,47 @@ export async function POST(request) {
         });
       }
 
-      if (provider === "azure") {
-        const endpoint = (providerSpecificData?.azureEndpoint || "").replace(/\/$/, "");
-        const deployment = providerSpecificData?.deployment || "gpt-4";
-        const apiVersion = providerSpecificData?.apiVersion || "2024-10-01-preview";
-        const organization = providerSpecificData?.organization;
-
-        const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-        const headers = {
-          "api-key": apiKey,
-          "Content-Type": "application/json",
-        };
-        if (organization) headers["OpenAI-Organization"] = organization;
-
-        const azureRes = await fetch(url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            messages: [{ role: "user", content: "test" }],
-            max_tokens: 5,
-            stream: false,
-          }),
-        });
-        isValid = azureRes.status !== 401 && azureRes.status !== 403;
-        let errorMsg = "Invalid API key or Azure configuration";
-        if (!isValid && azureRes.status >= 400) {
-          try {
-            const errBody = await azureRes.json();
-            errorMsg = errBody?.error?.message || errorMsg;
-          } catch {}
-        }
-        return NextResponse.json({
-          valid: isValid,
-          error: isValid ? null : errorMsg,
-        });
-      }
-
       switch (provider) {
+        case "azure": {
+          const endpoint = (providerSpecificData?.azureEndpoint || "").replace(/\/$/, "");
+          const deployment = providerSpecificData?.deployment || "gpt-4";
+          const apiVersion = providerSpecificData?.apiVersion || "2024-10-01-preview";
+          const organization = providerSpecificData?.organization;
+
+          const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+          const headers = {
+            "api-key": apiKey,
+            "Content-Type": "application/json",
+          };
+
+          if (organization) headers["OpenAI-Organization"] = organization;
+
+          const azureRes = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              messages: [{ role: "user", content: "test" }],
+              max_tokens: 5,
+              stream: false,
+            }),
+          });
+
+          isValid = azureRes.status !== 401 && azureRes.status !== 403;
+          let errorMsg = "Invalid API key or Azure configuration";
+
+          if (!isValid && azureRes.status >= 400) {
+            try {
+              const errBody = await azureRes.json();
+              errorMsg = errBody?.error?.message || errorMsg;
+            } catch {}
+          }
+
+          return NextResponse.json({
+            valid: isValid,
+            error: isValid ? null : errorMsg,
+          });
+        }
+
         case "openai":
           const openaiRes = await fetch("https://api.openai.com/v1/models", {
             headers: { "Authorization": `Bearer ${apiKey}` },

@@ -12,6 +12,7 @@ const responseRegistry = new Map();
 
 // Track initialization state
 let initialized = false;
+let initPromise = null;
 
 // Register translator
 export function register(from, to, requestFn, responseFn) {
@@ -25,31 +26,57 @@ export function register(from, to, requestFn, responseFn) {
 }
 
 // Lazy load translators (called once on first use)
-function ensureInitialized() {
+// Thread-safe: multiple concurrent calls will wait for the same promise
+async function ensureInitialized() {
+  // Fast path: already initialized
   if (initialized) return;
-  initialized = true;
-
-  // Request translators - sync require pattern for bundler
-  require("./request/claude-to-openai.js");
-  require("./request/openai-to-claude.js");
-  require("./request/gemini-to-openai.js");
-  require("./request/openai-to-gemini.js");
-  require("./request/openai-to-vertex.js");
-  require("./request/antigravity-to-openai.js");
-  require("./request/openai-responses.js");
-  require("./request/openai-to-kiro.js");
-  require("./request/openai-to-cursor.js");
-  require("./request/openai-to-ollama.js");
-
-  // Response translators
-  require("./response/claude-to-openai.js");
-  require("./response/openai-to-claude.js");
-  require("./response/gemini-to-openai.js");
-  require("./response/openai-to-antigravity.js");
-  require("./response/openai-responses.js");
-  require("./response/kiro-to-openai.js");
-  require("./response/cursor-to-openai.js");
-  require("./response/ollama-to-openai.js");
+  
+  // Slow path: initialization in progress or needed
+  if (initPromise) return initPromise;
+  
+  // Start initialization
+  initPromise = (async () => {
+    try {
+      // Load all translator modules with timeout
+      await Promise.race([
+        Promise.all([
+          import("./request/claude-to-openai.js"),
+          import("./request/openai-to-claude.js"),
+          import("./request/gemini-to-openai.js"),
+          import("./request/openai-to-gemini.js"),
+          import("./request/openai-to-vertex.js"),
+          import("./request/antigravity-to-openai.js"),
+          import("./request/openai-responses.js"),
+          import("./request/openai-to-kiro.js"),
+          import("./request/openai-to-cursor.js"),
+          import("./request/openai-to-ollama.js"),
+          // Response translators
+          import("./response/claude-to-openai.js"),
+          import("./response/openai-to-claude.js"),
+          import("./response/gemini-to-openai.js"),
+          import("./response/openai-to-antigravity.js"),
+          import("./response/openai-responses.js"),
+          import("./response/kiro-to-openai.js"),
+          import("./response/cursor-to-openai.js"),
+          import("./response/ollama-to-openai.js")
+        ]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Translator initialization timeout (30s)")), 30000)
+        )
+      ]);
+      
+      // Mark as initialized only after successful load
+      initialized = true;
+    } catch (error) {
+      // Reset state to allow retry on next request
+      initPromise = null;
+      console.error("[Translator] Initialization failed:", error);
+      throw new Error(`Failed to initialize translators: ${error.message}`);
+    }
+  })();
+  
+  await initPromise;
+  initPromise = null;
 }
 
 // Strip specific content types from messages (explicit opt-in via strip[] in PROVIDER_MODELS)
@@ -70,8 +97,8 @@ function stripContentTypes(body, stripList = []) {
 }
 
 // Translate request: source -> openai -> target
-export function translateRequest(sourceFormat, targetFormat, model, body, stream = true, credentials = null, provider = null, reqLogger = null, stripList = [], connectionId = null) {
-  ensureInitialized();
+export async function translateRequest(sourceFormat, targetFormat, model, body, stream = true, credentials = null, provider = null, reqLogger = null, stripList = [], connectionId = null) {
+  await ensureInitialized();
   let result = body;
 
   // Strip explicit content types (opt-in via strip[] in PROVIDER_MODELS entry)
@@ -146,8 +173,8 @@ export function translateRequest(sourceFormat, targetFormat, model, body, stream
 }
 
 // Translate response chunk: target -> openai -> source
-export function translateResponse(targetFormat, sourceFormat, chunk, state) {
-  ensureInitialized();
+export async function translateResponse(targetFormat, sourceFormat, chunk, state) {
+  await ensureInitialized();
   // Null chunk is a flush signal; same-format passthrough should not emit a synthetic payload.
   if (chunk == null && sourceFormat === targetFormat) {
     return [];
@@ -250,6 +277,6 @@ export function initState(sourceFormat) {
 }
 
 // Initialize all translators (kept for backward compatibility)
-export function initTranslators() {
-  ensureInitialized();
+export async function initTranslators() {
+  await ensureInitialized();
 }

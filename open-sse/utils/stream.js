@@ -100,13 +100,14 @@ export function createSSEStream(options = {}) {
   }
 
   return new TransformStream({
-    transform(chunk, controller) {
-      if (!ttftAt) {
-        ttftAt = Date.now();
-      }
-      const text = decoder.decode(chunk, { stream: true });
-      buffer += text;
-      reqLogger?.appendProviderChunk?.(text);
+    async transform(chunk, controller) {
+      try {
+        if (!ttftAt) {
+          ttftAt = Date.now();
+        }
+        const text = decoder.decode(chunk, { stream: true });
+        buffer += text;
+        reqLogger?.appendProviderChunk?.(text);
 
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
@@ -264,7 +265,7 @@ export function createSSEStream(options = {}) {
         if (extracted) state.usage = extracted; // Keep original usage for logging
 
         // Translate: targetFormat -> openai -> sourceFormat
-        const translated = translateResponse(targetFormat, sourceFormat, parsed, state);
+        const translated = await translateResponse(targetFormat, sourceFormat, parsed, state);
 
         // Log OpenAI intermediate chunks (if available)
         if (translated?._openaiIntermediate) {
@@ -298,9 +299,18 @@ export function createSSEStream(options = {}) {
           }
         }
       }
+      } catch (error) {
+        console.error("[Stream] Transform error:", error);
+        // Emit error event to client
+        const errorChunk = sourceFormat === FORMATS.OPENAI 
+          ? { error: { message: error.message, type: "translation_error" } }
+          : { type: "error", error: { message: error.message } };
+        emit(formatSSE(errorChunk, sourceFormat), controller);
+        controller.error(error);
+      }
     },
 
-    flush(controller) {
+    async flush(controller) {
       trackPendingRequest(model, provider, connectionId, false);
       try {
         const remaining = decoder.decode();
@@ -368,7 +378,7 @@ export function createSSEStream(options = {}) {
           const decloaked = shouldDecloak ? decloakSSELine(buffer, toolNameMap) : buffer;
           const parsed = parseSSELine(decloaked.trim());
           if (parsed && !parsed.done) {
-            const translated = translateResponse(targetFormat, sourceFormat, parsed, state);
+            const translated = await translateResponse(targetFormat, sourceFormat, parsed, state);
 
             if (translated?._openaiIntermediate) {
               for (const item of translated._openaiIntermediate) {
@@ -385,7 +395,7 @@ export function createSSEStream(options = {}) {
           }
         }
 
-        const flushed = translateResponse(targetFormat, sourceFormat, null, state);
+        const flushed = await translateResponse(targetFormat, sourceFormat, null, state);
 
         if (flushed?._openaiIntermediate) {
           for (const item of flushed._openaiIntermediate) {

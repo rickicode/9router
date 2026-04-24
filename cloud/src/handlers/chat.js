@@ -13,33 +13,6 @@ import { getMachineData, saveMachineData } from "../services/storage.js";
 
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 const refreshLocks = new Map();
-const UPSTREAM_PROCESSING_ERROR_PATTERNS = [
-  "error occurred",
-  "request id",
-  "internal error",
-];
-
-function isUpstreamProcessingError(status, errorText) {
-  if (!Number.isFinite(Number(status))) {
-    return false;
-  }
-
-  const numericStatus = Number(status);
-  if (numericStatus < 500 || numericStatus > 599) {
-    return false;
-  }
-
-  const message = typeof errorText === "string"
-    ? errorText
-    : errorText?.message || errorText?.error || errorText?.cause?.message || "";
-
-  if (!message) {
-    return false;
-  }
-
-  const lowerError = String(message).toLowerCase();
-  return UPSTREAM_PROCESSING_ERROR_PATTERNS.some((pattern) => lowerError.includes(pattern));
-}
 
 async function getModelInfo(modelStr, machineId, env) {
   const data = await getMachineData(machineId, env);
@@ -360,33 +333,13 @@ async function markAccountUnavailable(machineId, connectionId, status, errorText
   const nowIso = new Date().toISOString();
   data.providers[connectionId].backoffLevel = newBackoffLevel ?? backoffLevel;
   data.providers[connectionId].routingStatus = "blocked";
-
-  if (isUpstreamProcessingError(status, errorText)) {
-    data.providers[connectionId].healthStatus = "unhealthy";
-    data.providers[connectionId].quotaState = "ok";
-    data.providers[connectionId].authState = "ok";
-    data.providers[connectionId].reasonCode = "upstream_unhealthy";
-    data.providers[connectionId].reasonDetail = reason;
-  } else if (status === 429) {
-    data.providers[connectionId].healthStatus = "degraded";
-    data.providers[connectionId].quotaState = "exhausted";
-    data.providers[connectionId].authState = "ok";
-    data.providers[connectionId].reasonCode = "quota_exhausted";
-    data.providers[connectionId].reasonDetail = reason;
-  } else if (status === 401 || status === 403) {
-    data.providers[connectionId].healthStatus = "healthy";
-    data.providers[connectionId].quotaState = "ok";
-    data.providers[connectionId].authState = "invalid";
-    data.providers[connectionId].reasonCode = "auth_invalid";
-    data.providers[connectionId].reasonDetail = reason;
-  } else {
-    data.providers[connectionId].healthStatus = status >= 500 ? "unhealthy" : "degraded";
-    data.providers[connectionId].quotaState = "ok";
-    data.providers[connectionId].authState = "ok";
-    data.providers[connectionId].reasonCode = "usage_request_failed";
-    data.providers[connectionId].reasonDetail = reason;
-  }
-
+  data.providers[connectionId].healthStatus = status >= 500 ? "unhealthy" : "degraded";
+  data.providers[connectionId].quotaState = status === 429 ? "exhausted" : "ok";
+  data.providers[connectionId].authState = (status === 401 || status === 403) ? "invalid" : "ok";
+  data.providers[connectionId].reasonCode = status === 429
+    ? "quota_exhausted"
+    : ((status === 401 || status === 403) ? "auth_invalid" : "usage_request_failed");
+  data.providers[connectionId].reasonDetail = reason;
   data.providers[connectionId].nextRetryAt = rateLimitedUntil;
   data.providers[connectionId].resetAt = rateLimitedUntil;
   data.providers[connectionId].lastCheckedAt = nowIso;

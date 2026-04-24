@@ -23,7 +23,7 @@ export class AzureExecutor extends DefaultExecutor {
       || process.env.AZURE_DEPLOYMENT;
 
     if (!deployment) {
-      throw new Error("Azure deployment name is required");
+      throw new Error("Azure deployment name is required in provider configuration");
     }
 
     const endpoint = azureEndpoint.replace(/\/$/, "");

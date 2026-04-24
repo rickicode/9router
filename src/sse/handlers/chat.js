@@ -158,7 +158,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   const excludeConnectionIds = new Set();
   let lastError = null;
   let lastStatus = null;
-  const MAX_FALLBACK_ATTEMPTS = 10;
+  const MAX_FALLBACK_ATTEMPTS = connections.length * 2;
   let fallbackAttempts = 0;
 
   while (fallbackAttempts < MAX_FALLBACK_ATTEMPTS) {

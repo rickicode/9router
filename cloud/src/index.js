@@ -18,8 +18,7 @@ import { handleHealth } from "./handlers/health.js";
 import { createLandingPageResponse } from "./services/landingPage.js";
 import { cleanupExpiredSessions, limitUsageMapSize } from "./services/state.js";
 
-// Initialize translators at module load (static imports)
-initTranslators();
+// Translators will be initialized lazily on first use
 
 let lastMemoryCleanupAt = 0;
 

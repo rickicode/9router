@@ -10,7 +10,7 @@ import { filterToOpenAIFormat } from "../../open-sse/translator/helpers/openaiHe
 import { parseSSELine } from "../../open-sse/utils/streamHelpers.js";
 
 describe("request normalization", () => {
-  it("claudeToOpenAIRequest flattens text-only content arrays into string", () => {
+  it("claudeToOpenAIRequest flattens text-only content arrays into string", async () => {
     const body = {
       messages: [
         {
@@ -27,7 +27,7 @@ describe("request normalization", () => {
     expect(result.messages[0].content).toBe("hi\nthere");
   });
 
-  it("claudeToOpenAIRequest preserves multimodal arrays", () => {
+  it("claudeToOpenAIRequest preserves multimodal arrays", async () => {
     const body = {
       messages: [
         {
@@ -51,7 +51,7 @@ describe("request normalization", () => {
     expect(Array.isArray(result.messages[0].content)).toBe(true);
   });
 
-  it("filterToOpenAIFormat flattens text-only arrays to string", () => {
+  it("filterToOpenAIFormat flattens text-only arrays to string", async () => {
     const body = {
       messages: [
         {
@@ -68,7 +68,7 @@ describe("request normalization", () => {
     expect(result.messages[0].content).toBe("a\nb");
   });
 
-  it("translateRequest keeps /v1/messages Claude->OpenAI text payloads string-safe", () => {
+  it("translateRequest keeps /v1/messages Claude->OpenAI text payloads string-safe", async () => {
     const body = {
       model: "ollama/gpt-oss:120b",
       system: [{ type: "text", text: "You are helpful." }],
@@ -84,7 +84,7 @@ describe("request normalization", () => {
       stream: true,
     };
 
-    const result = translateRequest(
+    const result = await translateRequest(
       FORMATS.CLAUDE,
       FORMATS.OPENAI,
       "gpt-oss:120b",
@@ -99,7 +99,7 @@ describe("request normalization", () => {
     expect(userMessage.content).toBe("hello\nworld");
   });
 
-  it("translateRequest still inserts missing tool responses before normalization", () => {
+  it("translateRequest still inserts missing tool responses before normalization", async () => {
     const body = {
       messages: [
         {
@@ -123,7 +123,7 @@ describe("request normalization", () => {
       ],
     };
 
-    const result = translateRequest(
+    const result = await translateRequest(
       FORMATS.OPENAI,
       FORMATS.OPENAI,
       "gpt-4o",
