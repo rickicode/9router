@@ -15,9 +15,13 @@ export default function GoProxyTab() {
   const [port, setPort] = useState(20138);
   const [httpTimeout, setHttpTimeout] = useState(30);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [tokens, setTokens] = useState(null);
+  const [tokensVisible, setTokensVisible] = useState(false);
+  const [regeneratingTokens, setRegeneratingTokens] = useState(false);
 
   useEffect(() => {
     fetchStatus();
+    fetchTokens();
     const interval = setInterval(fetchStatus, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -55,6 +59,37 @@ export default function GoProxyTab() {
       }
     } catch (error) {
       console.error("Failed to fetch logs:", error);
+    }
+  };
+
+  const fetchTokens = async () => {
+    try {
+      const res = await fetch("/api/runtime/go-proxy/tokens");
+      if (res.ok) {
+        const data = await res.json();
+        setTokens(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tokens:", error);
+    }
+  };
+
+  const handleRegenerateTokens = async () => {
+    if (!confirm("Regenerate internal proxy tokens? This will require restarting Go Proxy.")) return;
+
+    setRegeneratingTokens(true);
+    try {
+      const res = await fetch("/api/runtime/go-proxy/tokens", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setTokens(data);
+        alert("Tokens regenerated successfully. Please restart Go Proxy for changes to take effect.");
+      }
+    } catch (error) {
+      console.error("Failed to regenerate tokens:", error);
+      alert("Failed to regenerate tokens");
+    } finally {
+      setRegeneratingTokens(false);
     }
   };
 
@@ -227,6 +262,61 @@ export default function GoProxyTab() {
             <div className="text-xs text-text-muted">
               <span className="font-medium">Binary Path:</span> ~/.9router/bin/9router-go-proxy
             </div>
+            
+            {/* Internal Tokens Section */}
+            <div className="space-y-3 pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-text">Internal Proxy Tokens</h4>
+                <Button
+                  size="sm"
+                  onClick={handleRegenerateTokens}
+                  disabled={regeneratingTokens}
+                  variant="ghost"
+                >
+                  {regeneratingTokens ? "Regenerating..." : "Regenerate"}
+                </Button>
+              </div>
+              {tokens && (
+                <div className="space-y-2">
+                  <div className="p-3 rounded-lg bg-black/10 dark:bg-white/5">
+                    <div className="text-xs text-text-muted mb-1">Resolve Token</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs font-mono text-text flex-1 break-all">
+                        {tokensVisible ? tokens.resolveToken : "••••••••••••••••••••••••••••••••"}
+                      </div>
+                      <button
+                        onClick={() => setTokensVisible(!tokensVisible)}
+                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {tokensVisible ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-black/10 dark:bg-white/5">
+                    <div className="text-xs text-text-muted mb-1">Report Token</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs font-mono text-text flex-1 break-all">
+                        {tokensVisible ? tokens.reportToken : "••••••••••••••••••••••••••••••••"}
+                      </div>
+                      <button
+                        onClick={() => setTokensVisible(!tokensVisible)}
+                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {tokensVisible ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-text-muted">
+                    Auto-generated on first use. Regenerate if compromised.
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <div className="flex justify-end">
               <Button
                 onClick={handleSaveConfig}

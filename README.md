@@ -1,24 +1,48 @@
 <div align="center">
-  <img src="./images/9router.png?1" alt="9Router Dashboard" width="800"/>
+  <img src="./images/9router.png?1" alt="9Router Plus Dashboard" width="800"/>
   
-  # 9Router - Free AI Router
+  # 9Router Plus - Enhanced AI Router
   
-  **Never stop coding. Auto-route to FREE & cheap AI models with smart fallback.**
+  **Never stop coding. Auto-route to FREE & cheap AI models with smart fallback + Go Proxy Runtime.**
   
   **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
   
-  [![npm](https://img.shields.io/npm/v/9router.svg)](https://www.npmjs.com/package/9router)
-  [![Downloads](https://img.shields.io/npm/dm/9router.svg)](https://www.npmjs.com/package/9router)
-  [![License](https://img.shields.io/npm/l/9router.svg)](https://github.com/decolua/9router/blob/main/LICENSE)
+  [![License](https://img.shields.io/npm/l/9router.svg)](https://github.com/rickicode/9router/blob/main/LICENSE)
+  [![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/rickicode/9router)
   
-  [🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🌐 Website](https://9router.com)
+  [🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🔄 vs 9Router](#-9router-plus-vs-9router)
 
-  [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
+  **Based on [9Router](https://github.com/decolua/9router) by decolua**
 </div>
 
 ---
 
-## 🤔 Why 9Router?
+## 🔄 9Router Plus vs 9Router
+
+| Feature | 9Router | 9Router Plus |
+|---------|---------|--------------|
+| **Core Routing** | ✅ Smart fallback | ✅ Smart fallback |
+| **Providers** | 40+ providers | 40+ providers |
+| **Translation Layer** | OpenAI ↔ Claude | ✅ OpenAI ↔ Claude ↔ Gemini |
+| **Go Proxy Runtime** | ❌ | ✅ High-performance data plane |
+| **Tab-Based UI** | ❌ | ✅ Main/Cloud/Go Proxy tabs |
+| **Security Hardening** | Basic | ✅ 12 critical bug fixes + SSRF protection |
+| **Real-Time Monitoring** | Basic | ✅ Live status + logs viewer |
+| **Auto-Restart** | ❌ | ✅ Config change detection |
+| **Responsive Design** | Basic | ✅ Mobile/Tablet/Desktop optimized |
+| **Performance** | Node.js only | ✅ Go proxy for faster forwarding |
+
+**Key Enhancements:**
+- 🚀 **Go Proxy Runtime** - High-performance Go-based data plane (port 20138)
+- 🔄 **Enhanced Translation** - Full OpenAI ↔ Claude ↔ Gemini format support
+- 🎨 **Modern UI** - Tab-based interface with glassmorphism design
+- 🔒 **Security First** - Fixed 12 critical bugs, added SSRF protection
+- 📊 **Real-Time Monitoring** - Live status updates and log streaming
+- 📱 **Responsive** - Optimized for all screen sizes
+
+---
+
+## 🤔 Why 9Router Plus?
 
 **Stop wasting money and hitting limits:**
 
@@ -27,12 +51,14 @@
 - ❌ Expensive APIs ($20-50/month per provider)
 - ❌ Manual switching between providers
 
-**9Router solves this:**
+**9Router Plus solves this:**
 
 - ✅ **Maximize subscriptions** - Track quota, use every bit before reset
 - ✅ **Auto fallback** - Subscription → Cheap → Free, zero downtime
 - ✅ **Multi-account** - Round-robin between accounts per provider
 - ✅ **Universal** - Works with Claude Code, Codex, Gemini CLI, Cursor, Cline, any CLI tool
+- ✅ **Go Proxy Runtime** - High-performance data plane for faster request forwarding
+- ✅ **Enhanced Security** - 12 critical bug fixes + SSRF protection + audit logging
 
 ---
 
@@ -46,10 +72,11 @@
        │ http://localhost:20128/v1
        ↓
 ┌─────────────────────────────────────────┐
-│           9Router (Smart Router)        │
-│  • Format translation (OpenAI ↔ Claude) │
+│        9Router Plus (Smart Router)      │
+│  • Format translation (OpenAI ↔ Claude ↔ Gemini) │
 │  • Quota tracking                       │
 │  • Auto token refresh                   │
+│  • Go Proxy Runtime (high-performance)  │
 └──────┬──────────────────────────────────┘
        │
        ├─→ [Tier 1: SUBSCRIPTION] Claude Code, Codex, Gemini CLI
@@ -65,14 +92,28 @@ Result: Never stop coding, minimal cost
 
 ## ⚡ Quick Start
 
-**1. Install globally:**
+**1. Run from source:**
+
+This is an enhanced fork with custom features, so source execution is the recommended path.
+
+```bash
+git clone https://github.com/rickicode/9router.git 9router-plus
+cd 9router-plus
+cp .env.example .env
+npm install
+npm run dev
+```
+
+🎉 Dashboard opens at `http://localhost:20128`
+
+**Alternative: Install original 9router globally:**
+
+For the base version without Go Proxy Runtime and enhanced features:
 
 ```bash
 npm install -g 9router
 9router
 ```
-
-🎉 Dashboard opens at `http://localhost:20128`
 
 **2. Connect a FREE provider (no signup needed):**
 
@@ -87,17 +128,7 @@ Claude Code/Codex/Gemini CLI/OpenClaw/Cursor/Cline Settings:
   Model: if/kimi-k2-thinking
 ```
 
-**That's it!** Start coding with FREE AI models.
-
-**Alternative: run from source (this repository):**
-
-This repository package is private (`9router-app`), so source/Docker execution is the expected local development path.
-
-```bash
-cp .env.example .env
-npm install
-PORT=20129 NEXT_PUBLIC_BASE_URL=http://localhost:20129 npm run dev
-```
+**That's it!** Start coding with FREE AI models + Go Proxy Runtime for enhanced performance.
 
 Production mode:
 

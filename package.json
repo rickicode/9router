@@ -1,10 +1,10 @@
 {
-  "name": "9router-app",
-  "version": "0.4.5-custom",
-  "description": "9Router web dashboard",
-  "private": true,
+  "name": "9router-plus",
+  "version": "0.5.0",
+  "description": "9Router Plus - Enhanced AI Router with Go Proxy Runtime",
+  "private": false,
   "scripts": {
-    "dev": "next dev --webpack --port 20129",
+    "dev": "next dev --webpack --port 20128",
     "build:web": "NODE_ENV=production next build --webpack",
     "build:go-proxy": "sh -c 'mkdir -p bin && cd go-proxy && go build -o ../bin/9router-go-proxy .'",
     "verify:go-proxy-bin": "sh -c 'test -x bin/9router-go-proxy && (./bin/9router-go-proxy --help >/dev/null 2>&1 || ./bin/9router-go-proxy -h >/dev/null 2>&1 || true)'",
@@ -14,7 +14,7 @@
     "start:with-go-wrapper": "GO_PROXY_WRAPPER_ENABLED=true NODE_ENV=production node ./scripts/start.js",
     "go-proxy:test": "sh -c 'cd go-proxy && go test ./...'",
     "test": "npm --prefix tests test",
-    "dev:bun": "bun --bun next dev --webpack --port 20129",
+    "dev:bun": "bun --bun next dev --webpack --port 20128",
     "build:bun": "NODE_ENV=production bun --bun next build --webpack",
     "start:bun": "NODE_ENV=production bun ./.next/standalone/server.js"
   },
@@ -58,5 +58,22 @@
     "eslint-config-next": "16.1.6",
     "postcss": "^8.5.6",
     "tailwindcss": "^4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rickicode/9router.git"
+  },
+  "keywords": [
+    "ai-router",
+    "llm-proxy",
+    "openai",
+    "claude",
+    "gemini",
+    "go-proxy",
+    "smart-fallback",
+    "rate-limiting"
+  ],
+  "author": "rickicode",
+  "license": "MIT",
+  "homepage": "https://github.com/rickicode/9router#readme"
 }

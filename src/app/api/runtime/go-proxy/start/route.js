@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { goProxyManager } from "@/lib/goProxyManager";
 import { startGoProxyRuntime } from "@/lib/goProxyRuntime";
 import { getSettings } from "@/lib/localDb";
+import { getInternalProxyTokens } from "@/lib/internalProxyTokens";
 
 export async function POST(request) {
   try {
@@ -13,13 +14,15 @@ export async function POST(request) {
     }
 
     const settings = await getSettings();
+    const tokens = await getInternalProxyTokens();
+    
     const config = {
       host: "127.0.0.1",
       port: body.port || settings.goProxyPort || 20138,
       httpTimeoutSeconds: body.httpTimeoutSeconds || settings.goProxyHttpTimeout || 30,
       ninerouterBaseUrl: "http://localhost:20128",
-      internalResolveToken: process.env.INTERNAL_PROXY_RESOLVE_TOKEN,
-      internalReportToken: process.env.INTERNAL_PROXY_REPORT_TOKEN,
+      internalResolveToken: tokens.resolveToken,
+      internalReportToken: tokens.reportToken,
       credentialsFile: settings.credentialsFilePath || `${process.env.HOME}/.9router/db.json`,
       binaryPath: `${process.env.HOME}/.9router/bin/9router-go-proxy`,
     };
