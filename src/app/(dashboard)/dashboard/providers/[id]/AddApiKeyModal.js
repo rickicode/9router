@@ -7,12 +7,13 @@ import { Button, Badge, Input, Modal, Select } from "@/shared/components";
 export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, website, proxyPools, onSave, onClose }) {
   const NONE_PROXY_POOL_VALUE = "__none__";
   const isOllamaLocal = provider === "ollama-local";
-  const isAzure = provider === "azure";
   const isCookie = authType === "cookie";
   const credentialLabel = isCookie ? "Cookie Value" : "API Key";
   const credentialPlaceholder = isCookie
     ? (provider === "grok-web" ? "sso=xxxxx... or just the raw value" : "eyJhbGciOi...")
     : "";
+
+  const isAzure = provider === "azure";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -21,15 +22,15 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
     proxyPoolId: NONE_PROXY_POOL_VALUE,
     ollamaHostUrl: "",
   });
-  const [validating, setValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [azureData, setAzureData] = useState({
     azureEndpoint: "",
     apiVersion: "2024-10-01-preview",
     deployment: "",
     organization: "",
   });
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const buildProviderSpecificData = () => {
     if (isAzure) {
@@ -178,6 +179,19 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             Leave blank to use <code>http://localhost:11434</code>. For remote Ollama, enter the full host URL (e.g. <code>http://192.168.1.10:11434</code>).
           </p>
         )}
+        {validationResult && (
+          <Badge variant={validationResult === "success" ? "success" : "error"}>
+            {validationResult === "success" ? "Valid" : "Invalid"}
+          </Badge>
+        )}
+        {isCompatible && (
+          <p className="text-xs text-text-muted">
+            {isAnthropic 
+              ? `Validation checks ${providerName || "Anthropic Compatible"} by verifying the API key.`
+              : `Validation checks ${providerName || "OpenAI Compatible"} via /models on your base URL.`
+            }
+          </p>
+        )}
         {isAzure && (
           <div className="bg-sidebar/50 p-4 rounded-lg border border-accent/20">
             <h3 className="font-semibold mb-3 text-sm">Azure OpenAI Configuration</h3>
@@ -209,19 +223,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             </div>
           </div>
         )}
-        {validationResult && (
-          <Badge variant={validationResult === "success" ? "success" : "error"}>
-            {validationResult === "success" ? "Valid" : "Invalid"}
-          </Badge>
-        )}
-        {isCompatible && (
-          <p className="text-xs text-text-muted">
-            {isAnthropic 
-              ? `Validation checks ${providerName || "Anthropic Compatible"} by verifying the API key.`
-              : `Validation checks ${providerName || "OpenAI Compatible"} via /models on your base URL.`
-            }
-          </p>
-        )}
+
         <Input
           label="Priority"
           type="number"
@@ -251,7 +253,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         </p>
 
         <div className="flex gap-2">
-          <Button onClick={handleSubmit} fullWidth disabled={saving || (!isOllamaLocal && (!formData.name || !formData.apiKey)) || (isAzure && (!azureData.azureEndpoint || !azureData.deployment))}>
+          <Button onClick={handleSubmit} fullWidth disabled={saving || (!isOllamaLocal && (!formData.name || !formData.apiKey)) || (isAzure && (!azureData.azureEndpoint || !azureData.deployment || !azureData.organization))}>
             {saving ? "Saving..." : "Save"}
           </Button>
           <Button onClick={onClose} variant="ghost" fullWidth>

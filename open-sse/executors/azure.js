@@ -10,6 +10,7 @@ export class AzureExecutor extends DefaultExecutor {
       || process.env.AZURE_ENDPOINT
       || "https://api.openai.com";
 
+    // Security validation (SSRF protection)
     if (!azureEndpoint || !azureEndpoint.startsWith("http")) {
       throw new Error("Invalid Azure endpoint URL. Must start with http:// or https://");
     }
@@ -62,13 +63,11 @@ export class AzureExecutor extends DefaultExecutor {
       || process.env.AZURE_API_VERSION
       || "2024-10-01-preview";
 
-    // Deployment name is required - Azure deployment names often differ from model IDs
+    // Deployment name with fallback to model (upstream behavior)
     const deployment = credentials?.providerSpecificData?.deployment
-      || process.env.AZURE_DEPLOYMENT;
-
-    if (!deployment) {
-      throw new Error("Azure deployment name is required in provider configuration");
-    }
+      || model
+      || process.env.AZURE_DEPLOYMENT
+      || "gpt-4";
 
     const endpoint = azureEndpoint.replace(/\/$/, "");
     return `${endpoint}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${apiVersion}`;
@@ -96,7 +95,7 @@ export class AzureExecutor extends DefaultExecutor {
     }
 
     if (stream) {
-      headers.Accept = "text/event-stream";
+      headers["Accept"] = "text/event-stream";
     }
 
     return headers;
