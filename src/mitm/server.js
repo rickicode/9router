@@ -31,6 +31,12 @@ const handlers = {
   cursor: loadHandler("cursor"),
 };
 
+// Kimi session pruning
+const kimiSession = loadHandler("kimiSession");
+setInterval(() => {
+  kimiSession.pruneExpiredSessions();
+}, kimiSession.PRUNE_INTERVAL_MS);
+
 // ── SSL / SNI ─────────────────────────────────────────────────
 
 const certCache = new Map();

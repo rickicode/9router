@@ -142,7 +142,7 @@ export async function POST(request) {
                 "content-type": "application/json",
               },
               body: JSON.stringify({
-                model: "claude-sonnet-4-20250514",
+                model: "kimi-k2.5",
                 max_tokens: 1,
                 messages: [{ role: "user", content: "test" }],
               }),

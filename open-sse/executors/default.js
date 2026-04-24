@@ -147,6 +147,18 @@ export class DefaultExecutor extends BaseExecutor {
     return headers;
   }
 
+  transformRequest(model, body, stream, credentials) {
+    // Kimi provider requires temperature = 1
+    if (this.provider === "kimi" || this.provider === "kimi-coding") {
+      const transformed = { ...body };
+      if (transformed.temperature !== undefined) {
+        transformed.temperature = 1;
+      }
+      return transformed;
+    }
+    return body;
+  }
+
   async refreshCredentials(credentials, log) {
     if (!credentials.refreshToken) return null;
 
