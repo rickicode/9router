@@ -5,7 +5,14 @@
  * 3. Keep thinking: enabled so Kimi works with reasoning
  */
 const fs = require('fs');
-const LOG_FILE = require('path').join(require('os').homedir(), '.9router', 'kimi_debug.log');
+const path = require('path');
+const LOG_FILE = path.join(require('os').homedir(), '.9router', 'kimi_debug.log');
+const LOG_DIR = path.dirname(LOG_FILE);
+
+// Ensure log directory exists
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
 
 function fileLog(msg) {
   const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
@@ -14,6 +21,7 @@ function fileLog(msg) {
 
 const SESSION_TTL_MS = 120 * 60 * 1000;
 const MAX_SESSIONS = 1000;
+const MAX_CONTENTS = 1000;
 const sessionStore = new Map();
 const crypto = require('crypto');
 
@@ -72,6 +80,11 @@ async function buildKimiBody(parsedBody, req, logFn) {
     fileLog(`[BUILD] no request.contents found`);
     const body = { ...parsedBody, thinking: { type: "enabled", keep: "all" } };
     return { body, sessionKey: sk };
+  }
+  
+  // Validate array size to prevent DoS
+  if (contents.length > MAX_CONTENTS) {
+    throw new Error(`Contents array too large: ${contents.length} (max: ${MAX_CONTENTS})`);
   }
   
   fileLog(`[BUILD] google contents=${contents.length} hasCachedReasoning=${!!lastReasoning}`);

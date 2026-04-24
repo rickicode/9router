@@ -31,8 +31,19 @@ async function intercept(req, res, bodyBuffer, mappedModel) {
     }
   } catch (error) {
     err(`[antigravity] ${error.message}`);
+    
+    // Sanitize error message to prevent information leakage
+    let safeMessage = "Internal server error";
+    if (error.message.includes("too large")) {
+      safeMessage = "Request payload too large";
+    } else if (error.message.includes("timeout")) {
+      safeMessage = "Request timeout";
+    } else if (error.message.includes("ECONNREFUSED") || error.message.includes("ENOTFOUND")) {
+      safeMessage = "Service unavailable";
+    }
+    
     if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: { message: error.message, type: "mitm_error" } }));
+    res.end(JSON.stringify({ error: { message: safeMessage, type: "mitm_error" } }));
   }
 }
 

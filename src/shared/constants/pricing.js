@@ -203,10 +203,32 @@ export const PATTERN_PRICING = [
 
 /**
  * Match a model ID against a glob pattern (* = wildcard).
+ * Uses simple string matching to avoid ReDoS vulnerabilities.
  */
 function matchPattern(pattern, model) {
-  const regex = new RegExp("^" + pattern.split("*").map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
-  return regex.test(model);
+  const parts = pattern.split("*");
+  let pos = 0;
+  
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part === "") continue; // Skip empty parts from consecutive **
+    
+    if (i === 0) {
+      // First part must match start
+      if (!model.startsWith(part)) return false;
+      pos = part.length;
+    } else if (i === parts.length - 1) {
+      // Last part must match end
+      if (!model.endsWith(part)) return false;
+    } else {
+      // Middle parts must exist in order
+      const idx = model.indexOf(part, pos);
+      if (idx === -1) return false;
+      pos = idx + part.length;
+    }
+  }
+  
+  return true;
 }
 
 /**
