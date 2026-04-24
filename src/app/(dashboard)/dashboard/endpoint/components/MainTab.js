@@ -144,7 +144,7 @@ export default function MainTab({ machineId }) {
         />
         <div className="space-y-3 mt-4">
           {keys.map((key) => (
-            <div key={key.id} className="flex items-center gap-3 p-3 rounded-lg bg-black/10 dark:bg-white/5">
+            <div key={key.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-lg bg-black/10 dark:bg-white/5">
               <div className="flex-1">
                 <div className="text-sm font-medium text-text">{key.name}</div>
                 <div className="text-xs font-mono text-text-muted mt-1">
