@@ -11,6 +11,8 @@ const getQuotaRefreshScheduler = vi.fn(() => ({
 
 const getSettings = vi.fn(async () => ({}));
 const updateSettings = vi.fn(async (updates) => updates);
+const isCloudEnabled = vi.fn(async () => false);
+const syncToCloud = vi.fn(async () => {});
 
 vi.mock("next/server", () => ({
   NextResponse: {
@@ -29,6 +31,11 @@ vi.mock("@/lib/quotaRefreshScheduler", () => ({
 vi.mock("@/lib/localDb", () => ({
   getSettings,
   updateSettings,
+  isCloudEnabled,
+}));
+
+vi.mock("@/lib/cloudSync", () => ({
+  syncToCloud,
 }));
 
 vi.mock("@/lib/network/outboundProxy", () => ({
@@ -58,6 +65,9 @@ describe("quota refresh api routes", () => {
     refreshSchedule.mockReset();
     getSettings.mockReset();
     updateSettings.mockReset();
+    isCloudEnabled.mockReset();
+    isCloudEnabled.mockResolvedValue(false);
+    syncToCloud.mockReset();
   });
 
   it("returns the current scheduler status snapshot", async () => {

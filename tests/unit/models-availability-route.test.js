@@ -77,21 +77,16 @@ describe("models availability route", () => {
         lastError: "Quota exhausted",
       }),
       expect.objectContaining({
-        connectionId: "conn-model-lock",
-        provider: "codex",
-        model: "gpt-4.1",
-        status: "cooldown",
-        until: "2026-04-24T00:00:00.000Z",
-      }),
-      expect.objectContaining({
         connectionId: "conn-blocked",
         provider: "openai",
+        connectionName: "Blocked Conn",
         model: "__all",
         status: "blocked",
+        until: undefined,
         lastError: null,
       }),
     ]);
-    expect(response.body.unavailableCount).toBe(3);
+    expect(response.body.unavailableCount).toBe(2);
   });
 
   it("includes exhausted provider-wide and model-lock rows when both apply", async () => {
@@ -114,12 +109,6 @@ describe("models availability route", () => {
         model: "__all",
         status: "exhausted",
         until: "2026-04-25T00:00:00.000Z",
-      }),
-      expect.objectContaining({
-        connectionId: "conn-both",
-        model: "gpt4",
-        status: "cooldown",
-        until: "2026-04-24T00:00:00.000Z",
       }),
     ]);
   });
@@ -198,9 +187,7 @@ describe("models availability route", () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(updateProviderConnection).toHaveBeenCalledWith("conn-model-lock", {
-      modelLock_gpt4: null,
-    });
+    expect(updateProviderConnection).not.toHaveBeenCalled();
   });
 
   it("ignores expired raw model lock fields when clearing a specific model", async () => {

@@ -185,7 +185,8 @@ describe("internal proxy report route", () => {
         provider: "openai",
         patch: expect.objectContaining({
           healthStatus: "degraded",
-          lastErrorType: "proxy_error",
+          lastCheckedAt: expect.any(String),
+          version: expect.any(Number),
         }),
       })
     );
@@ -316,7 +317,8 @@ describe("internal proxy report route", () => {
       expect.objectContaining({
         patch: expect.objectContaining({
           healthStatus: "degraded",
-          lastErrorType: "proxy_error",
+          lastCheckedAt: expect.any(String),
+          version: expect.any(Number),
         }),
       })
     );
@@ -363,7 +365,8 @@ describe("internal proxy report route", () => {
       expect.objectContaining({
         patch: expect.objectContaining({
           healthStatus: "degraded",
-          lastErrorType: "proxy_error",
+          lastCheckedAt: expect.any(String),
+          version: expect.any(Number),
         }),
       })
     );

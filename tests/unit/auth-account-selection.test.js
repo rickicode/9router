@@ -659,12 +659,13 @@ describe("auth account selection", () => {
     expect(updateProviderConnection).toHaveBeenCalledWith("conn-health-blocked", expect.objectContaining({
       modelLock_gpt4: "2026-04-25T00:00:00.000Z",
       routingStatus: "blocked",
-      healthStatus: "unhealthy",
+      healthStatus: "degraded",
       authState: "ok",
       quotaState: "ok",
-      reasonCode: "upstream_unhealthy",
+      reasonCode: "usage_request_failed",
       reasonDetail: "Provider health check failed",
       backoffLevel: 2,
+      lastCheckedAt: expect.any(String),
     }));
     expect(applyLiveQuotaUpdate).not.toHaveBeenCalled();
   });
