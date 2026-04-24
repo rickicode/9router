@@ -1,9 +1,12 @@
 package http
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +25,7 @@ import (
 	"go-proxy/internal/proxy"
 	"go-proxy/internal/report"
 	"go-proxy/internal/resolve"
+	"go-proxy/internal/translate"
 )
 
 func TestConfigDefaults(t *testing.T) {
@@ -897,7 +901,7 @@ func TestStreamingTranslationConcurrentRead(t *testing.T) {
 		"",
 	}, "\n")
 
-	stream := newTranslatedStream(io.NopCloser(strings.NewReader(payload)), "anthropic", "openai", "claude-sonnet-4")
+	stream := newTranslatedStream(context.Background(), io.NopCloser(strings.NewReader(payload)), "claude", "openai", "claude-sonnet-4")
 	t.Cleanup(func() { _ = stream.Close() })
 
 	var wg sync.WaitGroup
@@ -931,7 +935,7 @@ func TestStreamingTranslationConcurrentRead(t *testing.T) {
 
 func TestStreamingTranslationClosesUpstreamOnTranslationError(t *testing.T) {
 	upstream := &trackingReadCloser{Reader: strings.NewReader("data: not-json\n\n")}
-	stream := newTranslatedStream(upstream, "anthropic", "openai", "claude-sonnet-4")
+	stream := newTranslatedStream(context.Background(), upstream, "claude", "openai", "claude-sonnet-4")
 
 	buf := make([]byte, 64)
 	_, err := stream.Read(buf)
@@ -973,11 +977,150 @@ func TestForward_TranslationErrorHandling(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), "translation failed") {
 		t.Fatalf("expected translation error message, got %q", rr.Body.String())
 	}
+	if !strings.Contains(rr.Body.String(), "upstream status 200") {
+		t.Fatalf("expected upstream status in translation error message, got %q", rr.Body.String())
+	}
+}
+
+func TestStreaming_TranslatedStreamReadHonorsContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	stream := &translatedStream{
+		ctx:      ctx,
+		upstream: io.NopCloser(strings.NewReader("")),
+		reader:   bufio.NewReader(strings.NewReader("")),
+	}
+
+	buf := make([]byte, 1)
+	_, err := stream.Read(buf)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+}
+
+func TestStreaming_TranslatedStreamReadFrameRejectsOversizedFrames(t *testing.T) {
+	oversized := bytes.Repeat([]byte("a"), maxFrameSize+1)
+	stream := &translatedStream{
+		ctx:      context.Background(),
+		upstream: io.NopCloser(strings.NewReader("")),
+		reader:   bufio.NewReader(bytes.NewReader(append(oversized, '\n'))),
+	}
+
+	_, err := stream.readFrame()
+	if err == nil {
+		t.Fatal("expected oversized frame error")
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("%d", maxFrameSize)) {
+		t.Fatalf("expected max frame size in error, got %v", err)
+	}
+}
+
+func TestStreaming_TranslatedStreamCloseIsIdempotent(t *testing.T) {
+	upstream := &countingReadCloser{Reader: strings.NewReader("")}
+	stream := &translatedStream{upstream: upstream}
+
+	if err := stream.Close(); err != nil {
+		t.Fatalf("first close failed: %v", err)
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatalf("second close failed: %v", err)
+	}
+	if upstream.closeCalls != 1 {
+		t.Fatalf("expected upstream to close once, got %d", upstream.closeCalls)
+	}
 }
 
 func TestForward_NormalizeProviderFormatMappings(t *testing.T) {
 	if got := normalizeProviderFormat(provider.FormatGeminiCLI); got != "gemini" {
 		t.Fatalf("expected gemini mapping, got %q", got)
+	}
+}
+
+func TestTranslateRequestBody_RejectsEmptyBody(t *testing.T) {
+	_, _, err := translateRequestBody(nil, resolve.Response{Provider: "openai", Model: "gpt-4.1"}, false)
+	if err == nil || !strings.Contains(err.Error(), "empty request body") {
+		t.Fatalf("expected empty body error, got %v", err)
+	}
+}
+
+func TestTranslateRequestBody_PreservesOpenAIResponsesSourceFormat(t *testing.T) {
+	body := []byte(`{"model":"gpt-4.1","input":"hello"}`)
+	format, translated, err := translateRequestBody(body, resolve.Response{Provider: "codex", Model: "gpt-4.1"}, false)
+	if err != nil {
+		t.Fatalf("translate request body: %v", err)
+	}
+	if format != translate.FormatOpenAIResponses {
+		t.Fatalf("expected source format %q, got %q", translate.FormatOpenAIResponses, format)
+	}
+	if string(translated) != string(body) {
+		t.Fatalf("expected body to remain unchanged, got %s", string(translated))
+	}
+}
+
+func TestExtractFrameData_UsesFirstDataLineOnly(t *testing.T) {
+	payload, ok := extractFrameData([]byte("event: message\ndata: first\ndata: second\n\n"))
+	if !ok {
+		t.Fatal("expected frame data to be extracted")
+	}
+	if string(payload) != "first" {
+		t.Fatalf("expected first data line, got %q", string(payload))
+	}
+}
+
+func TestExtractFrameData_DoneStopsProcessing(t *testing.T) {
+	payload, ok := extractFrameData([]byte("data: [DONE]\n\n"))
+	if ok || payload != nil {
+		t.Fatalf("expected done frame to stop processing, got payload=%q ok=%t", string(payload), ok)
+	}
+}
+
+func TestTranslatedStreamReadFrame_ReturnsUnexpectedEOFForIncompleteEvent(t *testing.T) {
+	s := &translatedStream{reader: bufio.NewReader(strings.NewReader("event: message"))}
+	frame, err := s.readFrame()
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("expected unexpected EOF, got frame=%q err=%v", string(frame), err)
+	}
+}
+
+func TestTranslatedStreamReadFrame_AllowsEOFWithDataFrame(t *testing.T) {
+	s := &translatedStream{reader: bufio.NewReader(strings.NewReader("data: {\"ok\":true}"))}
+	frame, err := s.readFrame()
+	if err != nil {
+		t.Fatalf("expected complete frame at EOF, got %v", err)
+	}
+	if !bytes.Contains(frame, []byte("data:")) {
+		t.Fatalf("expected data frame, got %q", string(frame))
+	}
+}
+
+func TestTranslateStreamFrame_ReusesStateAcrossMultiHop(t *testing.T) {
+	state := &translate.StreamState{}
+	frame := []byte("data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"hello\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1,\"totalTokenCount\":2}}\n\n")
+
+	translatedFrame, err := translateStreamFrame(frame, translate.FormatGemini, translate.FormatClaude, state, "claude-sonnet-4")
+	if err != nil {
+		t.Fatalf("translate stream frame: %v", err)
+	}
+	if len(translatedFrame) == 0 {
+		t.Fatal("expected translated frame")
+	}
+	if state.Model == "" {
+		t.Fatal("expected shared state to be updated during translation")
+	}
+}
+
+func TestStreamEvidenceCapture_KeepsTrailingWindow(t *testing.T) {
+	capture := &streamEvidenceCapture{maxSize: 64, sseLike: true}
+	_, _ = capture.Write([]byte(strings.Repeat("x", 80)))
+	_, _ = capture.Write([]byte("\ndata: {\"usage\":{\"prompt_tokens\":9}}\n\n"))
+
+	usage, _ := capture.Evidence()
+	if usage == nil {
+		t.Fatal("expected usage from trailing SSE window")
+	}
+	if got, ok := usage["prompt_tokens"].(float64); !ok || int(got) != 9 {
+		t.Fatalf("expected prompt_tokens=9, got %#v", usage["prompt_tokens"])
 	}
 }
 
@@ -1037,6 +1180,16 @@ func mustLoadModelStore(t *testing.T, path string) *model.Store {
 type staticResolveClient struct {
 	response resolve.Response
 	err      error
+}
+
+type countingReadCloser struct {
+	io.Reader
+	closeCalls int
+}
+
+func (c *countingReadCloser) Close() error {
+	c.closeCalls++
+	return nil
 }
 
 func (s staticResolveClient) Resolve(context.Context, resolve.ResolveRequest) (resolve.Response, error) {

@@ -33,6 +33,7 @@ const (
 	routeResponses       = "/v1/responses"
 	routeMessages        = "/v1/messages"
 	reportTimeout        = 3 * time.Second
+	maxFrameSize         = 1024 * 1024 // 1MB
 )
 
 var (
@@ -318,7 +319,7 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 		})
 		if err == nil {
 			if translateErr := translateForwardResponse(&resp, sourceFormat, targetFormat, resolved.Model, stream); translateErr != nil {
-				return resp, target.connectionID, translateErr
+				return resp, target.connectionID, fmt.Errorf("translation failed (upstream status %d): %w", resp.StatusCode, translateErr)
 			}
 		}
 		lastResp, lastErr = resp, err
@@ -381,7 +382,7 @@ func translateForwardResponse(resp *proxy.ForwardResponse, sourceFormat, targetF
 			return nil
 		}
 		log.Printf("translate: streaming response %s -> %s for model=%s", targetFormat, sourceFormat, model)
-		resp.BodyStream = newTranslatedStream(resp.BodyStream, targetFormat, sourceFormat, model)
+		resp.BodyStream = newTranslatedStream(context.Background(), resp.BodyStream, targetFormat, sourceFormat, model)
 		resp.Header.Set("Content-Type", "text/event-stream")
 		return nil
 	}
@@ -719,6 +720,7 @@ func stringifyAny(value any) string {
 
 type translatedStream struct {
 	mu         sync.Mutex
+	ctx        context.Context
 	upstream   io.ReadCloser
 	reader     *bufio.Reader
 	buffer     bytes.Buffer
@@ -727,12 +729,16 @@ type translatedStream struct {
 	state      *translate.StreamState
 	model      string
 	doneSent   bool
-	closed     bool
+	closeOnce  sync.Once
 }
 
-func newTranslatedStream(upstream io.ReadCloser, fromFormat, toFormat, model string) io.ReadCloser {
+func newTranslatedStream(ctx context.Context, upstream io.ReadCloser, fromFormat, toFormat, model string) io.ReadCloser {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	return &translatedStream{
 		upstream:   upstream,
+		ctx:        ctx,
 		reader:     bufio.NewReader(upstream),
 		fromFormat: normalizeTranslateFormat(fromFormat),
 		toFormat:   normalizeTranslateFormat(toFormat),
@@ -746,35 +752,37 @@ func (s *translatedStream) Read(p []byte) (int, error) {
 	defer s.mu.Unlock()
 
 	for s.buffer.Len() == 0 {
-		s.mu.Unlock()
+		select {
+		case <-s.ctx.Done():
+			return 0, s.ctx.Err()
+		default:
+		}
 		if err := s.fill(); err != nil {
-			s.mu.Lock()
 			if err == io.EOF && s.buffer.Len() > 0 {
 				break
 			}
 			return 0, err
 		}
-		s.mu.Lock()
 	}
 	return s.buffer.Read(p)
 }
 
 func (s *translatedStream) Close() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.closed {
-		return nil
-	}
-	s.closed = true
-	return s.upstream.Close()
+	var err error
+	s.closeOnce.Do(func() {
+		if s.upstream != nil {
+			err = s.upstream.Close()
+		}
+	})
+	return err
 }
 
 func (s *translatedStream) fill() error {
+	if s.upstream == nil {
+		return io.EOF
+	}
 	frame, err := s.readFrame()
 	if err != nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		if err == io.EOF && !s.doneSent && s.toFormat == translate.FormatOpenAI {
 			s.buffer.WriteString("data: [DONE]\n\n")
 			s.doneSent = true
@@ -790,8 +798,6 @@ func (s *translatedStream) fill() error {
 	if len(translated) == 0 {
 		return nil
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.buffer.Write(translated)
 	return nil
 }
@@ -799,9 +805,15 @@ func (s *translatedStream) fill() error {
 func (s *translatedStream) readFrame() ([]byte, error) {
 	var frame bytes.Buffer
 	for {
+		if frame.Len() > maxFrameSize {
+			return nil, fmt.Errorf("SSE frame exceeds maximum size of %d bytes", maxFrameSize)
+		}
 		line, err := s.reader.ReadBytes('\n')
 		if len(line) > 0 {
 			frame.Write(line)
+			if frame.Len() > maxFrameSize {
+				return nil, fmt.Errorf("SSE frame exceeds maximum size of %d bytes", maxFrameSize)
+			}
 			if bytes.Equal(bytes.TrimSpace(line), []byte("")) {
 				return frame.Bytes(), nil
 			}
