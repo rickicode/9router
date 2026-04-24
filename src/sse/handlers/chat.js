@@ -86,7 +86,7 @@ export async function handleChat(request, clientRawRequest = null) {
 
   // Bypass naming/warmup requests before combo rotation to avoid wasting rotation slots
   const userAgent = request?.headers?.get("user-agent") || "";
-  const bypassResponse = handleBypassRequest(body, modelStr, userAgent, !!settings.ccFilterNaming);
+  const bypassResponse = await handleBypassRequest(body, modelStr, userAgent, !!settings.ccFilterNaming);
   if (bypassResponse) return bypassResponse.response || bypassResponse;
 
   // Check if model is a combo (has multiple models with fallback)
@@ -158,7 +158,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   const excludeConnectionIds = new Set();
   let lastError = null;
   let lastStatus = null;
-  const MAX_FALLBACK_ATTEMPTS = connections.length * 2;
+  const MAX_FALLBACK_ATTEMPTS = 10;
   let fallbackAttempts = 0;
 
   while (fallbackAttempts < MAX_FALLBACK_ATTEMPTS) {

@@ -1,4 +1,4 @@
-import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys } from "@/lib/localDb";
+import { cleanupProviderConnections, getSettings, updateSettings, getApiKeys, isCloudEnabled } from "@/lib/localDb";
 import { getQuotaRefreshScheduler } from "@/lib/quotaRefreshScheduler";
 import { enableTunnel, isTunnelManuallyDisabled, isTunnelReconnecting } from "@/lib/tunnel/tunnelManager";
 import { killCloudflared, isCloudflaredRunning, ensureCloudflared } from "@/lib/tunnel/cloudflared";
@@ -107,11 +107,9 @@ export async function initializeApp() {
     }
 
     // Start cloud sync scheduler if enabled
-    const { isCloudEnabled } = await import("@/lib/localDb");
-    const { getCloudSyncScheduler } = await import("@/shared/services/cloudSyncScheduler");
-
     if (await isCloudEnabled()) {
       try {
+        const { getCloudSyncScheduler } = await import("@/shared/services/cloudSyncScheduler");
         const syncScheduler = await getCloudSyncScheduler();
         await syncScheduler.start();
         console.log('[INIT] Cloud sync scheduler started (15 min interval)');
