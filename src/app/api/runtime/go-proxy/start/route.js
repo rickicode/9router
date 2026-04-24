@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { goProxyManager } from "@/lib/goProxyManager";
 import { startGoProxyRuntime } from "@/lib/goProxyRuntime";
-import { readSettings } from "@/lib/settings";
+import { getSettings } from "@/lib/localDb";
 
 export async function POST(request) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request) {
       // Use defaults if no body
     }
 
-    const settings = await readSettings();
+    const settings = await getSettings();
     const config = {
       host: "127.0.0.1",
       port: body.port || settings.goProxyPort || 20138,
