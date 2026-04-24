@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"os"
@@ -22,6 +24,7 @@ import (
 	"go-proxy/internal/proxy"
 	"go-proxy/internal/report"
 	"go-proxy/internal/resolve"
+	"go-proxy/internal/translate"
 )
 
 const (
@@ -151,6 +154,10 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 
 	result, usedConnectionID, err := h.forwardResolved(r, body, stream, apiKey, resolved, protocolFamily)
 	if err != nil {
+		statusCode := http.StatusBadGateway
+		if isTranslationError(err) {
+			statusCode = http.StatusInternalServerError
+		}
 		normalized := proxy.NormalizeOutcome(result, err)
 		usageEvidence, quotasEvidence := extractResponseEvidence(result)
 		h.reportOutcome(report.OutcomePayload{
@@ -169,7 +176,7 @@ func (h requestHandler) handleProxy(w http.ResponseWriter, r *http.Request, prot
 			Quotas:            quotasEvidence,
 			Error:             mapForwardError(normalized.Error),
 		})
-		http.Error(w, sanitizeClientErrorMessage(err.Error()), http.StatusBadGateway)
+		http.Error(w, sanitizeClientErrorMessage(err.Error()), statusCode)
 		return
 	}
 
@@ -263,6 +270,13 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 		return proxy.ForwardResponse{}, "", fmt.Errorf("missing resolved primary connection")
 	}
 
+	sourceFormat, translatedBody, err := translateRequestBody(body, resolved, stream)
+	if err != nil {
+		return proxy.ForwardResponse{}, "", err
+	}
+	body = translatedBody
+	targetFormat := normalizeProviderFormat(provider.GetTargetFormat(resolved.Provider))
+
 	targetIDs := append([]string{resolved.ChosenConnectionID}, resolved.FallbackConnectionIDs...)
 	targets := make([]resolvedTarget, 0, len(targetIDs))
 	for _, connectionID := range targetIDs {
@@ -301,6 +315,11 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 			APIKey: target.connectionID,
 			Stream: stream,
 		})
+		if err == nil {
+			if translateErr := translateForwardResponse(&resp, sourceFormat, targetFormat, resolved.Model, stream); translateErr != nil {
+				return resp, target.connectionID, translateErr
+			}
+		}
 		lastResp, lastErr = resp, err
 		lastConnectionID = target.connectionID
 		if err == nil && resp.Outcome == proxy.OutcomeOK {
@@ -315,6 +334,728 @@ func (h requestHandler) forwardResolved(r *http.Request, body []byte, stream boo
 		return lastResp, lastConnectionID, lastErr
 	}
 	return lastResp, lastConnectionID, nil
+}
+
+func translateRequestBody(body []byte, resolved resolve.Response, stream bool) (string, []byte, error) {
+	if len(body) == 0 {
+		return translate.FormatOpenAI, body, nil
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", nil, fmt.Errorf("translation failed: request body is not valid JSON: %w", err)
+	}
+
+	sourceFormat := normalizeTranslateFormat(translate.DetectFormat(payload))
+	targetFormat := normalizeProviderFormat(provider.GetTargetFormat(resolved.Provider))
+	if sourceFormat == targetFormat {
+		return sourceFormat, body, nil
+	}
+
+	translated, err := translate.TranslateRequest(sourceFormat, targetFormat, payload, translate.TranslateOptions{
+		Model:    resolved.Model,
+		Stream:   stream,
+		Provider: resolved.Provider,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("translation failed: request translation: %w", err)
+	}
+
+	encoded, err := json.Marshal(translated)
+	if err != nil {
+		return "", nil, fmt.Errorf("translation failed: marshal translated request: %w", err)
+	}
+
+	log.Printf("translate: request %s -> %s for provider=%s model=%s stream=%t", sourceFormat, targetFormat, resolved.Provider, resolved.Model, stream)
+	return sourceFormat, encoded, nil
+}
+
+func translateForwardResponse(resp *proxy.ForwardResponse, sourceFormat, targetFormat, model string, stream bool) error {
+	if resp == nil || sourceFormat == targetFormat {
+		return nil
+	}
+
+	if stream {
+		if resp.BodyStream == nil {
+			return nil
+		}
+		log.Printf("translate: streaming response %s -> %s for model=%s", targetFormat, sourceFormat, model)
+		resp.BodyStream = newTranslatedStream(resp.BodyStream, targetFormat, sourceFormat, model)
+		resp.Header.Set("Content-Type", "text/event-stream")
+		return nil
+	}
+
+	if len(resp.Body) == 0 {
+		return nil
+	}
+
+	translated, err := translateResponseBody(resp.Body, targetFormat, sourceFormat, model)
+	if err != nil {
+		return fmt.Errorf("translation failed: response translation: %w", err)
+	}
+	resp.Body = translated
+	resp.Header.Set("Content-Type", "application/json")
+	log.Printf("translate: response %s -> %s for model=%s", targetFormat, sourceFormat, model)
+	return nil
+}
+
+func isTranslationError(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "translation failed")
+}
+
+func normalizeProviderFormat(format provider.TargetFormat) string {
+	switch format {
+	case provider.FormatClaude:
+		return translate.FormatClaude
+	case provider.FormatGemini, provider.FormatGeminiCLI, provider.FormatAntigravity:
+		return translate.FormatGemini
+	case provider.FormatOpenAI, provider.FormatOpenAIResponses, provider.FormatVertex:
+		return translate.FormatOpenAI
+	default:
+		return translate.FormatOpenAI
+	}
+}
+
+func normalizeTranslateFormat(format string) string {
+	switch format {
+	case translate.FormatOpenAIResponses:
+		return translate.FormatOpenAI
+	case translate.FormatGeminiCLI, translate.FormatAntigravity:
+		return translate.FormatGemini
+	default:
+		return format
+	}
+}
+
+func translateResponseBody(body []byte, fromFormat, toFormat, model string) ([]byte, error) {
+	current := normalizeTranslateFormat(fromFormat)
+	target := normalizeTranslateFormat(toFormat)
+	if current == target {
+		return body, nil
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("invalid JSON body: %w", err)
+	}
+
+	openAIResponse, err := responseToOpenAI(payload, current, model)
+	if err != nil {
+		return nil, err
+	}
+	translated, err := openAIResponseToFormat(openAIResponse, target, model)
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := json.Marshal(translated)
+	if err != nil {
+		return nil, fmt.Errorf("marshal translated response: %w", err)
+	}
+	return encoded, nil
+}
+
+func responseToOpenAI(payload map[string]any, fromFormat, model string) (map[string]any, error) {
+	switch normalizeTranslateFormat(fromFormat) {
+	case translate.FormatOpenAI:
+		return payload, nil
+	case translate.FormatClaude:
+		if _, ok := payload["content"].([]any); !ok && payload["content"] != nil {
+			return nil, fmt.Errorf("invalid claude response content")
+		}
+		return claudeResponseToOpenAI(payload, model), nil
+	case translate.FormatGemini:
+		if candidate := firstCandidateLocal(payload); candidate != nil {
+			if content, ok := candidate["content"].(map[string]any); ok && content["parts"] != nil {
+				if _, ok := content["parts"].([]any); !ok {
+					return nil, fmt.Errorf("invalid gemini response parts")
+				}
+			}
+		}
+		return geminiResponseToOpenAI(payload, model), nil
+	default:
+		return nil, fmt.Errorf("unsupported response source format: %s", fromFormat)
+	}
+}
+
+func openAIResponseToFormat(payload map[string]any, toFormat, model string) (map[string]any, error) {
+	switch normalizeTranslateFormat(toFormat) {
+	case translate.FormatOpenAI:
+		return payload, nil
+	case translate.FormatClaude:
+		return openAIResponseToClaude(payload, model), nil
+	case translate.FormatGemini:
+		return openAIResponseToGemini(payload, model), nil
+	default:
+		return nil, fmt.Errorf("unsupported response target format: %s", toFormat)
+	}
+}
+
+func claudeResponseToOpenAI(payload map[string]any, model string) map[string]any {
+	messageID := stringValueAny(payload["id"])
+	if messageID == "" {
+		messageID = fmt.Sprintf("chatcmpl-%d", time.Now().UnixMilli())
+	}
+	content := extractClaudeResponseText(payload)
+	finishReason := convertClaudeStopReasonLocal(stringValueAny(payload["stop_reason"]))
+	if finishReason == "" {
+		finishReason = "stop"
+	}
+	response := map[string]any{
+		"id":      messageID,
+		"object":  "chat.completion",
+		"created": time.Now().Unix(),
+		"model":   valueOrDefaultString(stringValueAny(payload["model"]), model),
+		"choices": []any{map[string]any{
+			"index": 0,
+			"message": map[string]any{
+				"role":    "assistant",
+				"content": content,
+			},
+			"finish_reason": finishReason,
+		}},
+	}
+	if usage, ok := payload["usage"].(map[string]any); ok {
+		promptTokens := intValueAny(usage["input_tokens"], 0) + intValueAny(usage["cache_read_input_tokens"], 0) + intValueAny(usage["cache_creation_input_tokens"], 0)
+		completionTokens := intValueAny(usage["output_tokens"], 0)
+		response["usage"] = map[string]any{
+			"prompt_tokens":     promptTokens,
+			"completion_tokens": completionTokens,
+			"total_tokens":      promptTokens + completionTokens,
+		}
+	}
+	return response
+}
+
+func geminiResponseToOpenAI(payload map[string]any, model string) map[string]any {
+	response := map[string]any{
+		"id":      valueOrDefaultString(stringValueAny(payload["responseId"]), fmt.Sprintf("chatcmpl-%d", time.Now().UnixMilli())),
+		"object":  "chat.completion",
+		"created": time.Now().Unix(),
+		"model":   valueOrDefaultString(stringValueAny(payload["modelVersion"]), model),
+		"choices": []any{map[string]any{
+			"index": 0,
+			"message": map[string]any{
+				"role":    "assistant",
+				"content": extractGeminiResponseText(payload),
+			},
+			"finish_reason": convertGeminiFinishReasonLocal(stringValueAny(firstCandidateLocal(payload)["finishReason"]), false),
+		}},
+	}
+	if usage, ok := payload["usageMetadata"].(map[string]any); ok {
+		promptTokens := intValueAny(usage["promptTokenCount"], 0)
+		completionTokens := intValueAny(usage["candidatesTokenCount"], 0) + intValueAny(usage["thoughtsTokenCount"], 0)
+		totalTokens := intValueAny(usage["totalTokenCount"], promptTokens+completionTokens)
+		response["usage"] = map[string]any{
+			"prompt_tokens":     promptTokens,
+			"completion_tokens": completionTokens,
+			"total_tokens":      totalTokens,
+		}
+	}
+	return response
+}
+
+func openAIResponseToClaude(payload map[string]any, model string) map[string]any {
+	content := extractOpenAIResponseText(payload)
+	message := map[string]any{
+		"id":          valueOrDefaultString(stringValueAny(payload["id"]), fmt.Sprintf("msg_%d", time.Now().UnixMilli())),
+		"type":       "message",
+		"role":       "assistant",
+		"model":       valueOrDefaultString(stringValueAny(payload["model"]), model),
+		"content":    []any{map[string]any{"type": "text", "text": content}},
+		"stop_reason": openAIToClaudeStopReason(payload),
+		"stop_sequence": nil,
+	}
+	if usage, ok := payload["usage"].(map[string]any); ok {
+		message["usage"] = map[string]any{
+			"input_tokens":  intValueAny(usage["prompt_tokens"], 0),
+			"output_tokens": intValueAny(usage["completion_tokens"], 0),
+		}
+	}
+	return message
+}
+
+func openAIResponseToGemini(payload map[string]any, model string) map[string]any {
+	result := map[string]any{
+		"responseId":   valueOrDefaultString(stringValueAny(payload["id"]), fmt.Sprintf("resp_%d", time.Now().UnixMilli())),
+		"modelVersion": valueOrDefaultString(stringValueAny(payload["model"]), model),
+		"candidates": []any{map[string]any{
+			"content": map[string]any{
+				"role":  "model",
+				"parts": []any{map[string]any{"text": extractOpenAIResponseText(payload)}},
+			},
+			"finishReason": openAIToGeminiFinishReason(payload),
+		}},
+	}
+	if usage, ok := payload["usage"].(map[string]any); ok {
+		result["usageMetadata"] = map[string]any{
+			"promptTokenCount":     intValueAny(usage["prompt_tokens"], 0),
+			"candidatesTokenCount": intValueAny(usage["completion_tokens"], 0),
+			"totalTokenCount":      intValueAny(usage["total_tokens"], intValueAny(usage["prompt_tokens"], 0)+intValueAny(usage["completion_tokens"], 0)),
+		}
+	}
+	return result
+}
+
+func extractClaudeResponseText(payload map[string]any) string {
+	content, _ := payload["content"].([]any)
+	parts := make([]string, 0, len(content))
+	for _, raw := range content {
+		block, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		switch stringValueAny(block["type"]) {
+		case "text":
+			if text := stringValueAny(block["text"]); text != "" {
+				parts = append(parts, text)
+			}
+		case "tool_result":
+			parts = append(parts, stringifyAny(block["content"]))
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+func extractGeminiResponseText(payload map[string]any) string {
+	candidate := firstCandidateLocal(payload)
+	if candidate == nil {
+		return ""
+	}
+	content, _ := candidate["content"].(map[string]any)
+	parts, _ := content["parts"].([]any)
+	texts := make([]string, 0, len(parts))
+	for _, raw := range parts {
+		part, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if text := stringValueAny(part["text"]); text != "" {
+			texts = append(texts, text)
+		}
+	}
+	return strings.Join(texts, "")
+}
+
+func extractOpenAIResponseText(payload map[string]any) string {
+	choices, _ := payload["choices"].([]any)
+	if len(choices) == 0 {
+		return ""
+	}
+	choice, _ := choices[0].(map[string]any)
+	message, _ := choice["message"].(map[string]any)
+	if text := stringValueAny(message["content"]); text != "" {
+		return text
+	}
+	if parts, ok := message["content"].([]any); ok {
+		texts := make([]string, 0, len(parts))
+		for _, raw := range parts {
+			part, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if text := stringValueAny(part["text"]); text != "" {
+				texts = append(texts, text)
+			}
+		}
+		return strings.Join(texts, "")
+	}
+	return ""
+}
+
+func openAIToClaudeStopReason(payload map[string]any) string {
+	finishReason := extractOpenAIFinishReason(payload)
+	switch finishReason {
+	case "length":
+		return "max_tokens"
+	case "tool_calls":
+		return "tool_use"
+	default:
+		return "end_turn"
+	}
+}
+
+func openAIToGeminiFinishReason(payload map[string]any) string {
+	finishReason := extractOpenAIFinishReason(payload)
+	switch finishReason {
+	case "length":
+		return "MAX_TOKENS"
+	case "content_filter":
+		return "SAFETY"
+	default:
+		return "STOP"
+	}
+}
+
+func extractOpenAIFinishReason(payload map[string]any) string {
+	choices, _ := payload["choices"].([]any)
+	if len(choices) == 0 {
+		return ""
+	}
+	choice, _ := choices[0].(map[string]any)
+	return stringValueAny(choice["finish_reason"])
+}
+
+func stringifyAny(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case nil:
+		return ""
+	default:
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Sprint(v)
+		}
+		return string(encoded)
+	}
+}
+
+type translatedStream struct {
+	upstream   io.ReadCloser
+	reader     *bufio.Reader
+	buffer     bytes.Buffer
+	fromFormat string
+	toFormat   string
+	state      *translate.StreamState
+	model      string
+	doneSent   bool
+	closed     bool
+}
+
+func newTranslatedStream(upstream io.ReadCloser, fromFormat, toFormat, model string) io.ReadCloser {
+	return &translatedStream{
+		upstream:   upstream,
+		reader:     bufio.NewReader(upstream),
+		fromFormat: normalizeTranslateFormat(fromFormat),
+		toFormat:   normalizeTranslateFormat(toFormat),
+		state:      &translate.StreamState{Model: model},
+		model:      model,
+	}
+}
+
+func (s *translatedStream) Read(p []byte) (int, error) {
+	for s.buffer.Len() == 0 {
+		if err := s.fill(); err != nil {
+			if err == io.EOF && s.buffer.Len() > 0 {
+				break
+			}
+			return 0, err
+		}
+	}
+	return s.buffer.Read(p)
+}
+
+func (s *translatedStream) Close() error {
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+	return s.upstream.Close()
+}
+
+func (s *translatedStream) fill() error {
+	frame, err := s.readFrame()
+	if err != nil {
+		if err == io.EOF && !s.doneSent && s.toFormat == translate.FormatOpenAI {
+			s.buffer.WriteString("data: [DONE]\n\n")
+			s.doneSent = true
+			return nil
+		}
+		return err
+	}
+	translated, err := translateStreamFrame(frame, s.fromFormat, s.toFormat, s.state, s.model)
+	if err != nil {
+		return fmt.Errorf("stream translation failed: %w", err)
+	}
+	if len(translated) == 0 {
+		return nil
+	}
+	s.buffer.Write(translated)
+	return nil
+}
+
+func (s *translatedStream) readFrame() ([]byte, error) {
+	var frame bytes.Buffer
+	for {
+		line, err := s.reader.ReadBytes('\n')
+		if len(line) > 0 {
+			frame.Write(line)
+			if bytes.Equal(bytes.TrimSpace(line), []byte("")) {
+				return frame.Bytes(), nil
+			}
+		}
+		if err != nil {
+			if err == io.EOF && frame.Len() > 0 {
+				return frame.Bytes(), nil
+			}
+			return nil, err
+		}
+	}
+}
+
+func translateStreamFrame(frame []byte, fromFormat, toFormat string, state *translate.StreamState, model string) ([]byte, error) {
+	fromFormat = normalizeTranslateFormat(fromFormat)
+	toFormat = normalizeTranslateFormat(toFormat)
+	if fromFormat == toFormat {
+		return frame, nil
+	}
+	if toFormat == translate.FormatOpenAI {
+		return translateStreamFrameToOpenAI(frame, fromFormat, state)
+	}
+	if fromFormat == translate.FormatOpenAI {
+		return translateOpenAIStreamFrame(frame, toFormat, state, model)
+	}
+	openAIFrame, err := translateStreamFrameToOpenAI(frame, fromFormat, state)
+	if err != nil || len(openAIFrame) == 0 {
+		return openAIFrame, err
+	}
+	intermediateState := &translate.StreamState{Model: model}
+	return translateOpenAIStreamFrame(openAIFrame, toFormat, intermediateState, model)
+}
+
+func translateStreamFrameToOpenAI(frame []byte, fromFormat string, state *translate.StreamState) ([]byte, error) {
+	var translated []byte
+	var err error
+	switch fromFormat {
+	case translate.FormatClaude:
+		payload, ok := extractFrameData(frame)
+		if !ok {
+			return nil, nil
+		}
+		translated, err = translate.ClaudeToOpenAIChunk(payload, state)
+	case translate.FormatGemini:
+		translated, err = translate.GeminiToOpenAIChunk(frame, state)
+	default:
+		return nil, fmt.Errorf("unsupported streaming source format: %s", fromFormat)
+	}
+	if err != nil || len(translated) == 0 {
+		return translated, err
+	}
+	return []byte("data: " + string(translated) + "\n\n"), nil
+}
+
+func translateOpenAIStreamFrame(frame []byte, toFormat string, state *translate.StreamState, model string) ([]byte, error) {
+	payload, ok := extractFrameData(frame)
+	if !ok {
+		return nil, nil
+	}
+	if bytes.Equal(bytes.TrimSpace(payload), []byte("[DONE]")) {
+		return nil, io.EOF
+	}
+
+	var chunk map[string]any
+	if err := json.Unmarshal(payload, &chunk); err != nil {
+		return nil, fmt.Errorf("unmarshal openai chunk: %w", err)
+	}
+
+	switch toFormat {
+	case translate.FormatClaude:
+		return openAIChunkToClaudeSSE(chunk, state, model)
+	case translate.FormatGemini:
+		return openAIChunkToGeminiSSE(chunk, state, model)
+	default:
+		return nil, fmt.Errorf("unsupported streaming target format: %s", toFormat)
+	}
+}
+
+func extractFrameData(frame []byte) ([]byte, bool) {
+	lines := strings.Split(string(frame), "\n")
+	parts := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "data:") {
+			continue
+		}
+		parts = append(parts, strings.TrimSpace(strings.TrimPrefix(trimmed, "data:")))
+	}
+	if len(parts) == 0 {
+		trimmed := strings.TrimSpace(string(frame))
+		if trimmed == "" {
+			return nil, false
+		}
+		return []byte(trimmed), true
+	}
+	return []byte(strings.Join(parts, "\n")), true
+}
+
+func openAIChunkToClaudeSSE(chunk map[string]any, state *translate.StreamState, model string) ([]byte, error) {
+	choices, _ := chunk["choices"].([]any)
+	if len(choices) == 0 {
+		return nil, nil
+	}
+	choice, _ := choices[0].(map[string]any)
+	delta, _ := choice["delta"].(map[string]any)
+	finishReason := stringValueAny(choice["finish_reason"])
+	messageID := valueOrDefaultString(state.MessageID, valueOrDefaultString(strings.TrimPrefix(stringValueAny(chunk["id"]), "chatcmpl-"), fmt.Sprintf("msg_%d", time.Now().UnixMilli())))
+	state.MessageID = messageID
+	if state.Model == "" {
+		state.Model = valueOrDefaultString(stringValueAny(chunk["model"]), model)
+	}
+
+	events := make([]string, 0, 4)
+	if !state.TextBlockStarted {
+		start, _ := json.Marshal(map[string]any{"type": "message_start", "message": map[string]any{"id": messageID, "type": "message", "role": "assistant", "model": valueOrDefaultString(state.Model, model)}})
+		events = append(events, "data: "+string(start)+"\n\n")
+		if text := stringValueAny(delta["content"]); text != "" {
+			blockStart, _ := json.Marshal(map[string]any{"type": "content_block_start", "index": 0, "content_block": map[string]any{"type": "text", "text": ""}})
+			events = append(events, "data: "+string(blockStart)+"\n\n")
+			state.TextBlockStarted = true
+		}
+	}
+	if text := stringValueAny(delta["content"]); text != "" {
+		if !state.TextBlockStarted {
+			blockStart, _ := json.Marshal(map[string]any{"type": "content_block_start", "index": 0, "content_block": map[string]any{"type": "text", "text": ""}})
+			events = append(events, "data: "+string(blockStart)+"\n\n")
+			state.TextBlockStarted = true
+		}
+		deltaChunk, _ := json.Marshal(map[string]any{"type": "content_block_delta", "index": 0, "delta": map[string]any{"type": "text_delta", "text": text}})
+		events = append(events, "data: "+string(deltaChunk)+"\n\n")
+	}
+	if finishReason != "" {
+		if state.TextBlockStarted {
+			blockStop, _ := json.Marshal(map[string]any{"type": "content_block_stop", "index": 0})
+			events = append(events, "data: "+string(blockStop)+"\n\n")
+		}
+		messageDelta := map[string]any{"type": "message_delta", "delta": map[string]any{"stop_reason": openAIToClaudeStopReason(map[string]any{"choices": []any{choice}})}}
+		if usage, ok := chunk["usage"].(map[string]any); ok {
+			messageDelta["usage"] = map[string]any{
+				"input_tokens":  intValueAny(usage["prompt_tokens"], 0),
+				"output_tokens": intValueAny(usage["completion_tokens"], 0),
+			}
+		}
+		messageDeltaJSON, _ := json.Marshal(messageDelta)
+		messageStop, _ := json.Marshal(map[string]any{"type": "message_stop"})
+		events = append(events, "data: "+string(messageDeltaJSON)+"\n\n", "data: "+string(messageStop)+"\n\n")
+		state.TextBlockStarted = false
+	}
+	return []byte(strings.Join(events, "")), nil
+}
+
+func openAIChunkToGeminiSSE(chunk map[string]any, state *translate.StreamState, model string) ([]byte, error) {
+	choices, _ := chunk["choices"].([]any)
+	if len(choices) == 0 {
+		return nil, nil
+	}
+	choice, _ := choices[0].(map[string]any)
+	delta, _ := choice["delta"].(map[string]any)
+	finishReason := stringValueAny(choice["finish_reason"])
+	responseID := valueOrDefaultString(state.MessageID, valueOrDefaultString(stringValueAny(chunk["id"]), fmt.Sprintf("resp_%d", time.Now().UnixMilli())))
+	state.MessageID = responseID
+	state.Model = valueOrDefaultString(state.Model, valueOrDefaultString(stringValueAny(chunk["model"]), model))
+
+	responses := make([]string, 0, 2)
+	if text := stringValueAny(delta["content"]); text != "" {
+		body, _ := json.Marshal(map[string]any{
+			"responseId":   responseID,
+			"modelVersion": state.Model,
+			"candidates": []any{map[string]any{
+				"content": map[string]any{"role": "model", "parts": []any{map[string]any{"text": text}}},
+			}},
+		})
+		responses = append(responses, "data: "+string(body)+"\n\n")
+	}
+	if finishReason != "" {
+		final := map[string]any{
+			"responseId":   responseID,
+			"modelVersion": state.Model,
+			"candidates":   []any{map[string]any{"finishReason": openAIToGeminiFinishReason(map[string]any{"choices": []any{choice}})}},
+		}
+		if usage, ok := chunk["usage"].(map[string]any); ok {
+			final["usageMetadata"] = map[string]any{
+				"promptTokenCount":     intValueAny(usage["prompt_tokens"], 0),
+				"candidatesTokenCount": intValueAny(usage["completion_tokens"], 0),
+				"totalTokenCount":      intValueAny(usage["total_tokens"], intValueAny(usage["prompt_tokens"], 0)+intValueAny(usage["completion_tokens"], 0)),
+			}
+		}
+		body, _ := json.Marshal(final)
+		responses = append(responses, "data: "+string(body)+"\n\n")
+	}
+	return []byte(strings.Join(responses, "")), nil
+}
+
+func stringValueAny(value any) string {
+	if str, ok := value.(string); ok {
+		return str
+	}
+	return ""
+}
+
+func valueOrDefaultString(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+
+func intValueAny(value any, fallback int) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int8:
+		return int(v)
+	case int16:
+		return int(v)
+	case int32:
+		return int(v)
+	case int64:
+		return int(v)
+	case uint:
+		return int(v)
+	case uint8:
+		return int(v)
+	case uint16:
+		return int(v)
+	case uint32:
+		return int(v)
+	case uint64:
+		return int(v)
+	case float32:
+		return int(v)
+	case float64:
+		return int(v)
+	default:
+		return fallback
+	}
+}
+
+func firstCandidateLocal(payload map[string]any) map[string]any {
+	candidates, _ := payload["candidates"].([]any)
+	if len(candidates) == 0 {
+		return nil
+	}
+	candidate, _ := candidates[0].(map[string]any)
+	return candidate
+}
+
+func convertClaudeStopReasonLocal(reason string) string {
+	switch reason {
+	case "end_turn", "stop_sequence", "":
+		return "stop"
+	case "max_tokens":
+		return "length"
+	case "tool_use":
+		return "tool_calls"
+	default:
+		return "stop"
+	}
+}
+
+func convertGeminiFinishReasonLocal(reason string, hasToolCalls bool) string {
+	switch strings.ToUpper(reason) {
+	case "STOP", "":
+		if hasToolCalls {
+			return "tool_calls"
+		}
+		return "stop"
+	case "MAX_TOKENS":
+		return "length"
+	case "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII":
+		return "content_filter"
+	case "MALFORMED_FUNCTION_CALL":
+		return "tool_calls"
+	default:
+		return strings.ToLower(reason)
+	}
 }
 
 type resolvedTarget struct {

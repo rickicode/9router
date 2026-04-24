@@ -16,6 +16,7 @@ import (
 	"go-proxy/internal/config"
 	"go-proxy/internal/credentials"
 	"go-proxy/internal/model"
+	"go-proxy/internal/provider"
 	"go-proxy/internal/proxy"
 	"go-proxy/internal/report"
 	"go-proxy/internal/resolve"
@@ -697,6 +698,210 @@ func TestCloneForwardHeaders_FiltersUnsafeHeaders(t *testing.T) {
 		if got := headers.Get(blocked); got != "" {
 			t.Fatalf("expected blocked header %s to be removed, got %q", blocked, got)
 		}
+	}
+}
+
+func TestForward_OpenAIToClaudeTranslation(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"anthropic","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	var seenRequest map[string]any
+	h := requestHandler{
+		resolver:  staticResolveClient{response: resolve.Response{Provider: "anthropic", Model: "claude-sonnet-4", ChosenConnectionID: "conn-a"}},
+		reporter:  &capturingReporter{},
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body, _ := io.ReadAll(req.Body)
+			_ = json.Unmarshal(body, &seenRequest)
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4","content":[{"type":"text","text":"hi there"}],"stop_reason":"end_turn","usage":{"input_tokens":3,"output_tokens":4}}`))}, nil
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1","messages":[{"role":"user","content":"hello"}]}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if _, ok := seenRequest["anthropic_version"]; !ok {
+		t.Fatalf("expected translated Claude request, got %#v", seenRequest)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal translated response: %v", err)
+	}
+	if response["object"] != "chat.completion" {
+		t.Fatalf("expected openai response object, got %#v", response["object"])
+	}
+	choices := response["choices"].([]any)
+	message := choices[0].(map[string]any)["message"].(map[string]any)
+	if message["content"] != "hi there" {
+		t.Fatalf("expected translated response content, got %#v", message["content"])
+	}
+}
+
+func TestForward_ClaudeToOpenAITranslation(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"openai","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	var seenRequest map[string]any
+	h := requestHandler{
+		resolver:  staticResolveClient{response: resolve.Response{Provider: "openai", Model: "gpt-4.1", ChosenConnectionID: "conn-a"}},
+		reporter:  &capturingReporter{},
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body, _ := io.ReadAll(req.Body)
+			_ = json.Unmarshal(body, &seenRequest)
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"id":"chatcmpl_1","object":"chat.completion","model":"gpt-4.1","choices":[{"index":0,"message":{"role":"assistant","content":"hello back"},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}`))}, nil
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(`{"model":"claude-sonnet-4","anthropic_version":"2023-06-01","messages":[{"role":"user","content":[{"type":"text","text":"hello"}]}]}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "anthropic")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if _, ok := seenRequest["messages"]; !ok || seenRequest["anthropic_version"] != nil {
+		t.Fatalf("expected translated openai request, got %#v", seenRequest)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal translated response: %v", err)
+	}
+	if response["type"] != "message" {
+		t.Fatalf("expected claude response type, got %#v", response["type"])
+	}
+	content := response["content"].([]any)
+	if content[0].(map[string]any)["text"] != "hello back" {
+		t.Fatalf("expected translated claude content, got %#v", content)
+	}
+}
+
+func TestForward_OpenAIToGeminiTranslation(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"gemini","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	var seenRequest map[string]any
+	h := requestHandler{
+		resolver:  staticResolveClient{response: resolve.Response{Provider: "gemini", Model: "gemini-2.5-pro", ChosenConnectionID: "conn-a"}},
+		reporter:  &capturingReporter{},
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body, _ := io.ReadAll(req.Body)
+			_ = json.Unmarshal(body, &seenRequest)
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"responseId":"resp_1","modelVersion":"gemini-2.5-pro","candidates":[{"content":{"role":"model","parts":[{"text":"gemini hi"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":2,"totalTokenCount":3}}`))}, nil
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1","messages":[{"role":"user","content":"hello"}]}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if _, ok := seenRequest["contents"]; !ok {
+		t.Fatalf("expected translated gemini request, got %#v", seenRequest)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal translated response: %v", err)
+	}
+	if response["object"] != "chat.completion" {
+		t.Fatalf("expected openai response object, got %#v", response["object"])
+	}
+}
+
+func TestForward_StreamingTranslation(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"anthropic","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	h := requestHandler{
+		resolver:  staticResolveClient{response: resolve.Response{Provider: "anthropic", Model: "claude-sonnet-4", ChosenConnectionID: "conn-a"}},
+		reporter:  &capturingReporter{},
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			payload := strings.Join([]string{
+				"data: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\",\"model\":\"claude-sonnet-4\"}}",
+				"",
+				"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}",
+				"",
+				"data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"input_tokens\":2,\"output_tokens\":3}}",
+				"",
+				"data: {\"type\":\"message_stop\"}",
+				"",
+			}, "\n")
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(payload))}, nil
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1","stream":true,"messages":[{"role":"user","content":"hello"}]}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, `"object":"chat.completion.chunk"`) {
+		t.Fatalf("expected translated openai stream chunk, got %q", body)
+	}
+	if !strings.Contains(body, `data: [DONE]`) {
+		t.Fatalf("expected done frame, got %q", body)
+	}
+}
+
+func TestForward_TranslationErrorHandling(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "db.json")
+	if err := os.WriteFile(credPath, []byte(`{"providerConnections":[{"id":"conn-a","provider":"anthropic","authType":"apiKey","apiKey":"upstream-key"}]}`), 0o600); err != nil {
+		t.Fatalf("write credentials file: %v", err)
+	}
+
+	h := requestHandler{
+		resolver:  staticResolveClient{response: resolve.Response{Provider: "anthropic", Model: "claude-sonnet-4", ChosenConnectionID: "conn-a"}},
+		reporter:  &capturingReporter{},
+		credReader: credentialsReaderForTest(credPath),
+		httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4","content":"invalid"}`))}, nil
+		})},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"gpt-4.1","messages":[{"role":"user","content":"hello"}]}`))
+	req.Header.Set("Authorization", "Bearer sk-public")
+	rr := httptest.NewRecorder()
+
+	h.handleProxy(rr, req, "openai")
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 on translation error, got %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "translation failed") {
+		t.Fatalf("expected translation error message, got %q", rr.Body.String())
+	}
+}
+
+func TestForward_NormalizeProviderFormatMappings(t *testing.T) {
+	if got := normalizeProviderFormat(provider.FormatGeminiCLI); got != "gemini" {
+		t.Fatalf("expected gemini mapping, got %q", got)
 	}
 }
 
