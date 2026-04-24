@@ -13,16 +13,21 @@ function fileLog(msg) {
 }
 
 const SESSION_TTL_MS = 120 * 60 * 1000;
+const MAX_SESSIONS = 1000;
 const sessionStore = new Map();
+const crypto = require('crypto');
 
 function isKimiModel(model) {
   if (!model || typeof model !== "string") return false;
   const m = model.toLowerCase();
-  return m.includes("kimi") || m.includes("k2.6") || m.includes("if/kimi");
+  return m.startsWith("kimi-") || m === "kimi" || m.startsWith("if/kimi");
 }
 
 function getSessionKey(req, parsedBody) {
-  return parsedBody?.conversationId ? `kimi:${parsedBody.conversationId}` : `kimi:default`;
+  const convId = parsedBody?.conversationId || 
+                 req.headers?.['x-request-id'] || 
+                 crypto.randomUUID();
+  return `kimi:${convId}`;
 }
 
 function getSession(key) {
@@ -36,6 +41,13 @@ function getSession(key) {
 }
 
 function upsertSession(key, patch) {
+  // Evict oldest session if at capacity
+  if (!sessionStore.has(key) && sessionStore.size >= MAX_SESSIONS) {
+    const firstKey = sessionStore.keys().next().value;
+    sessionStore.delete(firstKey);
+    fileLog(`[SESSION] evicted oldest session: ${firstKey}`);
+  }
+  
   const existing = sessionStore.get(key) || { lastAssistantReasoning: null, createdAt: Date.now() };
   const updated = { ...existing, ...patch, updatedAt: Date.now() };
   sessionStore.set(key, updated);
