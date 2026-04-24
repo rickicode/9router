@@ -1049,6 +1049,57 @@ Notes:
 - On Windows, `APPDATA` can be used for local storage path resolution.
 - `INSTANCE_NAME` appears in older docs/env templates, but is currently not used at runtime.
 
+## 🔒 Security Configuration
+
+### IP Whitelist
+
+By default, dashboard access from localhost and Docker networks is allowed. Configure custom IPs in Settings or `data/db.json`:
+
+```json
+{
+  "ipWhitelist": ["127.0.0.1", "::1", "172.17.0.0/16", "10.0.0.0/8"]
+}
+```
+
+Supports:
+- Exact IPs: `127.0.0.1`, `::1`
+- CIDR ranges: `172.17.0.0/16`, `10.0.0.0/8`
+
+### Trusted Proxy Mode
+
+If behind nginx/Cloudflare, enable trusted proxy to read `X-Forwarded-For`:
+
+```json
+{
+  "trustedProxyEnabled": true
+}
+```
+
+⚠️ Only enable if you trust the proxy. Malicious proxies can spoof IPs.
+
+### Audit Logging
+
+Security events are logged to `data/audit.log` (default: enabled, 10MB max):
+
+```json
+{
+  "auditLogEnabled": true,
+  "auditLogMaxSize": 10485760
+}
+```
+
+Events logged:
+- Login attempts (success/failure)
+- Auth bypass attempts
+- Rate limit exceeded
+- Tunnel access attempts
+
+### Rate Limiting
+
+Login endpoint: 5 attempts per IP per 15 minutes. Automatic cleanup every 5 minutes.
+
+See `docs/security/DASHBOARD_AUTH.md` for complete security documentation.
+
 ### Runtime Files and Storage
 
 - Main app state: `${DATA_DIR}/db.json` (providers, combos, aliases, keys, settings), managed by `src/lib/localDb.js`.
