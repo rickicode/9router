@@ -65,12 +65,41 @@ export async function POST(request) {
 
       switch (provider) {
         case "azure": {
-          const endpoint = (providerSpecificData?.azureEndpoint || "").replace(/\/$/, "");
-          const deployment = providerSpecificData?.deployment || "gpt-4";
+          if (!providerSpecificData?.azureEndpoint) {
+            return NextResponse.json({
+              valid: false,
+              error: "Azure endpoint is required"
+            }, { status: 400 });
+          }
+
+          if (!providerSpecificData?.deployment) {
+            return NextResponse.json({
+              valid: false,
+              error: "Deployment name is required"
+            }, { status: 400 });
+          }
+
+          try {
+            const parsedUrl = new URL(providerSpecificData.azureEndpoint);
+            if (parsedUrl.protocol !== "https:") {
+              return NextResponse.json({
+                valid: false,
+                error: "Azure endpoint must use HTTPS"
+              }, { status: 400 });
+            }
+          } catch {
+            return NextResponse.json({
+              valid: false,
+              error: "Invalid Azure endpoint URL format"
+            }, { status: 400 });
+          }
+
+          const endpoint = providerSpecificData.azureEndpoint.replace(/\/$/, "");
+          const deployment = providerSpecificData.deployment;
           const apiVersion = providerSpecificData?.apiVersion || "2024-10-01-preview";
           const organization = providerSpecificData?.organization;
 
-          const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+          const url = `${endpoint}/openai/deployments/${encodeURIComponent(deployment)}/chat/completions?api-version=${apiVersion}`;
           const headers = {
             "api-key": apiKey,
             "Content-Type": "application/json",

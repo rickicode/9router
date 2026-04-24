@@ -27,7 +27,7 @@ func Default() Config {
 		host = "127.0.0.1"
 	}
 
-	port := 8080
+	port := 20138
 	if raw := strings.TrimSpace(os.Getenv("GO_PROXY_PORT")); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
 			port = parsed
@@ -99,7 +99,7 @@ func LoadFromArgs(args []string) (Config, error) {
 		cfg.Host = "127.0.0.1"
 	}
 	if cfg.Port <= 0 {
-		cfg.Port = 8080
+		cfg.Port = 20138
 	}
 	cfg.NineRouterBaseURL = strings.TrimRight(strings.TrimSpace(cfg.NineRouterBaseURL), "/")
 	if cfg.NineRouterBaseURL == "" {

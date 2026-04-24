@@ -20,6 +20,13 @@ const sharedEncoder = new TextEncoder();
 // for the full "exec_ide" symptom writeup.
 function decloakSSELine(line, toolNameMap) {
   if (!line.startsWith("data:") || !line.includes("tool_use")) return line;
+
+  // Fast path: skip lines that definitely don't have tool_use blocks.
+  // This avoids expensive JSON parse/walk on text deltas, thinking, metadata, etc.
+  if (!line.includes('"type":"tool_use"') && !line.includes('"type":"content_block_start"')) {
+    return line;
+  }
+
   const payload = line.slice(5).trim();
   if (!payload || payload === "[DONE]") return line;
   try {
@@ -429,7 +436,17 @@ export function createSSEStream(options = {}) {
           }, state?.usage, ttftAt);
         }
       } catch (error) {
-        console.log("Error in flush:", error);
+        console.error("[Stream] Flush error:", error);
+        // Emit error to client if possible
+        try {
+          const errorChunk = sourceFormat === FORMATS.OPENAI 
+            ? { error: { message: error.message, type: "flush_error" } }
+            : { type: "error", error: { message: error.message } };
+          emit(formatSSE(errorChunk, sourceFormat), controller);
+        } catch (emitError) {
+          // If emit fails, just log - stream is likely already closed
+          console.error("[Stream] Failed to emit flush error:", emitError);
+        }
       }
     }
   });

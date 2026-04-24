@@ -69,8 +69,9 @@ describe("Translator Concurrent Initialization", () => {
   });
 
   it("recovers from initialization failure and retries", async () => {
-    // This test verifies that if initialization fails, subsequent requests can retry
-    // We can't easily mock dynamic imports, so we just verify the error handling exists
+    // Note: We can't easily mock dynamic imports to force failure,
+    // but we can verify the error handling structure exists and
+    // that subsequent requests after successful init work correctly
     
     const body = {
       messages: [{ role: "user", content: "test" }],
@@ -89,18 +90,19 @@ describe("Translator Concurrent Initialization", () => {
       "claude"
     );
     expect(result1).toBeDefined();
+    expect(result1.messages).toBeDefined();
 
-    // Second request should also succeed (already initialized)
-    const result2 = await translateRequest(
-      FORMATS.OPENAI, 
-      FORMATS.CLAUDE, 
-      "claude-3-5-sonnet-20241022", 
-      body, 
-      false, 
-      null, 
-      "claude"
-    );
-    expect(result2).toBeDefined();
+    // Multiple subsequent requests should also succeed (already initialized)
+    const results = await Promise.all([
+      translateRequest(FORMATS.OPENAI, FORMATS.CLAUDE, "claude-3-5-sonnet-20241022", body, false, null, "claude"),
+      translateRequest(FORMATS.OPENAI, FORMATS.CLAUDE, "claude-3-5-sonnet-20241022", body, false, null, "claude"),
+      translateRequest(FORMATS.OPENAI, FORMATS.CLAUDE, "claude-3-5-sonnet-20241022", body, false, null, "claude"),
+    ]);
+    
+    results.forEach(result => {
+      expect(result).toBeDefined();
+      expect(result.messages).toBeDefined();
+    });
   });
 
   it("completes initialization within timeout", async () => {
